@@ -8,4 +8,4 @@ set(CMAKE_MODULE_PATH
 find_package(RDKit REQUIRED)
 include_directories(${RDKit_INCLUDE_DIR})
 
-add_library(chemicalite SHARED chemicalite.c)
+add_library(chemicalite MODULE chemicalite.c)
