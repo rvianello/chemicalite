@@ -18,20 +18,35 @@ endif(RDBASE)
 find_path(RDKit_INCLUDE_DIR RDGeneral
           HINTS ${RDKit_INCLUDE_HINT_PATH})
 
-find_library(RDKit_RDGENERAL_LIBRARY RDGeneral
-             HINTS ${RDKit_LIBRARY_HINT_PATH})
+foreach (_LIBTAG
+         ChemicalFeatures 
+         RDGeneral SimDivPickers EigenSolvers Catalogs DataStructs 
+         RDGeometryLib Optimizer ForceField Alignment GraphMol
+         SubstructMatch Depictor SLNParse SmilesParse FileParsers
+         ChemReactions ChemTransforms PartialCharges Subgraphs
+         Descriptors DistGeometry ForceFieldHelpers DistGeomHelpers
+         Fingerprints FragCatalog MolTransforms ShapeHelpers MolAlign
+         MolCatalog MolChemicalFeatures RDBoost)
 
-# handle the QUIETLY and REQUIRED arguments and set RDKit_FOUND to TRUE if 
+    string(TOUPPER ${_LIBTAG} _LIBTAG_UPPER)
+    set(_LIBVAR RDKit_${_LIBTAG_UPPER}_LIBRARY)
+    find_library(${_LIBVAR} ${_LIBTAG} 
+                 HINTS ${RDKit_LIBRARY_HINT_PATH})
+    set(RDKit_LIBRARY_VARS ${RDKit_LIBRARY_VARS} ${_LIBVAR}) 
+
+endforeach (_LIBTAG)
+
+# handle the QUIETLY and REQUIRED arguments and set RDKIT_FOUND to TRUE if 
 # all listed variables are TRUE
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(RDKit DEFAULT_MSG 
-                                  RDKit_RDGENERAL_LIBRARY 
-                                  RDKit_INCLUDE_DIR)
+find_package_handle_standard_args(RDKit DEFAULT_MSG ${RDKit_LIBRARY_VARS})
 
-if(RDKit_FOUND)
-  set( RDKit_LIBRARIES ${RDKit_RDGENERAL_LIBRARY} )
-else(RDKit_FOUND)
+if (RDKIT_FOUND)
+    foreach (_LIBVAR ${RDKit_LIBRARY_VARS})
+      set(RDKit_LIBRARIES ${RDKit_LIBRARIES} ${${_LIBVAR}})
+    endforeach (_LIBVAR)
+else (RDKIT_FOUND)
   set( RDKit_LIBRARIES )
-endif(RDKit_FOUND)
+endif (RDKIT_FOUND)
 
-mark_as_advanced( RDKit_RDGENERAL_LIBRARY RDKit_INCLUDE_DIR )
+mark_as_advanced( RDKit_LIBRARIES ${RDKit_LIBRARIES} RDKit_INCLUDE_DIR )
