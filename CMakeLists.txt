@@ -9,6 +9,6 @@ find_package(RDKit REQUIRED)
 include_directories(${RDKit_INCLUDE_DIR})
 
 add_library(chemicalite MODULE 
-            chemicalite.c
+            chemicalite.cpp
             rdkit_adapter.cpp)
 target_link_libraries(chemicalite ${RDKit_DESCRIPTORS_LIBRARY})
