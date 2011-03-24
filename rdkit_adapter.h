@@ -9,6 +9,8 @@ extern "C" {
 
   void free_cmol(CMol *);
 
+  int txt_to_cmol(const char * txt, bool as_smarts, CMol **ppCMol);
+
   double cmol_amw(CMol *);
   double cmol_logp(CMol *);
   double cmol_tpsa(CMol *);
