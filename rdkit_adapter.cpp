@@ -21,14 +21,14 @@ struct CMol : RDKit::ROMol {
   CMol(const std::string & pickle) : RDKit::ROMol(pickle) {}
 };
 
-void free_cmolecule(CMol *pCMol)
+void free_cmol(CMol *pCMol)
 {
   delete static_cast<RDKit::ROMol *>(pCMol);
 }
 
 // SMILES/SMARTS <-> Molecule ////////////////////////////////////////////////
 
-int txt_to_cmol(const char * txt, bool as_smarts, CMol **ppCMol)
+int txt_to_cmol(const char * txt, int as_smarts, CMol **ppCMol)
 {
   assert(txt);
   int rc = SQLITE_OK;
@@ -53,7 +53,7 @@ int txt_to_cmol(const char * txt, bool as_smarts, CMol **ppCMol)
   return rc;
 }
 
-int cmol_to_txt(CMol *pCMol, bool as_smarts, char **pTxt)
+int cmol_to_txt(CMol *pCMol, int as_smarts, char **pTxt)
 {
   assert(pCMol);
   *pTxt = 0;
@@ -135,6 +135,30 @@ int cmol_to_blob(CMol *pCMol, u8 **ppBlob, int *pLen)
     }
   }
 
+  return rc;
+}
+
+// Blob <-> SMILES/SMARTS ////////////////////////////////////////////////////
+
+int txt_to_blob(const char * txt, int as_smarts, u8 **pBlob, int *pLen)
+{
+  CMol * pCMol = 0;
+  int rc = txt_to_cmol(txt, as_smarts, &pCMol);
+  if (rc == SQLITE_OK) {
+    rc = cmol_to_blob(pCMol, pBlob, pLen);
+    free_cmol(pCMol);
+  }
+  return rc;
+}
+
+int blob_to_txt(u8 *blob, int len, int as_smarts, char **pTxt)
+{
+  CMol * pCMol = 0;
+  int rc = blob_to_cmol(blob, len, &pCMol);
+  if (rc == SQLITE_OK) {
+    rc = cmol_to_txt(pCMol, as_smarts, pTxt);
+    free_cmol(pCMol);
+  }
   return rc;
 }
 
