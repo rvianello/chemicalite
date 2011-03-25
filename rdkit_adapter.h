@@ -9,9 +9,9 @@ extern "C" {
   typedef unsigned char u8;
   typedef unsigned int u32;
 
-
   void free_cmol(CMol *pCMol);
 
+  /* data types interconversion */
   int txt_to_cmol(const char * txt, int as_smarts, CMol **ppCMol);
   int cmol_to_txt(CMol *pCMol, int as_smarts, char **pTxt);
 
@@ -21,6 +21,11 @@ extern "C" {
   int txt_to_blob(const char * txt, int as_smarts, u8 **pBlob, int *pLen);
   int blob_to_txt(u8 *blob, int len, int as_smarts, char **pTxt);
 
+  /* cmol ops */
+  int cmol_cmp(CMol *p1, CMol *p2);
+  int is_cmol_substruct(CMol *p1, CMol *p2);
+
+  /* descriptors */
   double cmol_amw(CMol *pCMol);
   double cmol_logp(CMol *pCMol);
   double cmol_tpsa(CMol *pCMol);

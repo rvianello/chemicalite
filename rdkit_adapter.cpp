@@ -13,6 +13,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/SmilesParse/SmartsWrite.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
+#include <GraphMol/Substruct/SubstructMatch.h>
 
 struct CMol : RDKit::ROMol {
   CMol() : RDKit::ROMol() {}
@@ -160,6 +161,42 @@ int blob_to_txt(u8 *blob, int len, int as_smarts, char **pTxt)
     free_cmol(pCMol);
   }
   return rc;
+}
+
+// Molecules comparison //////////////////////////////////////////////////////
+
+int is_cmol_substruct(CMol *p1, CMol *p2)
+{
+  RDKit::MatchVectType matchVect;
+  return RDKit::SubstructMatch(*p1, *p2, matchVect); 
+}
+
+int cmol_cmp(CMol *p1, CMol *p2)
+{
+  if(!p1 && !p2) { 
+    return 0;
+  }
+  else if (!p1) {
+    return -1;
+  }
+  else if (!p2) {
+    return 1;
+  }
+  
+  int res = p1->getNumAtoms() - p2->getNumAtoms();
+  if (res) {return (res > 0) ? 1 : -1;}
+
+  res = p1->getNumBonds() - p2->getNumBonds();
+  if (res) {return (res > 0) ? 1 : -1;}
+
+  res = int(RDKit::Descriptors::calcAMW(*p1, false) -
+	    RDKit::Descriptors::calcAMW(*p2, false) + .5);
+  if (res) {return (res > 0) ? 1 : -1;}
+
+  res = p1->getRingInfo()->numRings() - p2->getRingInfo()->numRings();
+  if (res) {return (res > 0) ? 1 : -1;}
+
+  return is_cmol_substruct(p1, p2) ? 0 : -1;
 }
 
 // Molecular descriptors /////////////////////////////////////////////////////
