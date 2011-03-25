@@ -23,7 +23,7 @@ extern "C" {
 
   /* cmol ops */
   int cmol_cmp(CMol *p1, CMol *p2);
-  int is_cmol_substruct(CMol *p1, CMol *p2);
+  int cmol_is_substruct(CMol *p1, CMol *p2);
 
   /* descriptors */
   double cmol_amw(CMol *pCMol);

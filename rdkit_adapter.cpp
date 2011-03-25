@@ -165,8 +165,9 @@ int blob_to_txt(u8 *blob, int len, int as_smarts, char **pTxt)
 
 // Molecules comparison //////////////////////////////////////////////////////
 
-int is_cmol_substruct(CMol *p1, CMol *p2)
+int cmol_is_substruct(CMol *p1, CMol *p2)
 {
+  assert(p1 && p2);
   RDKit::MatchVectType matchVect;
   return RDKit::SubstructMatch(*p1, *p2, matchVect); 
 }
@@ -196,7 +197,7 @@ int cmol_cmp(CMol *p1, CMol *p2)
   res = p1->getRingInfo()->numRings() - p2->getRingInfo()->numRings();
   if (res) {return (res > 0) ? 1 : -1;}
 
-  return is_cmol_substruct(p1, p2) ? 0 : -1;
+  return cmol_is_substruct(p1, p2) ? 0 : -1;
 }
 
 // Molecular descriptors /////////////////////////////////////////////////////
