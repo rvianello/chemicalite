@@ -47,6 +47,10 @@ extern "C" {
   int bitstring_to_blob(BitString *pBits, u8 **ppBlob, int *pLen);
   int blob_to_bitstring(u8 *pBlob, int len, BitString **ppBits);
 
+  /* bitstring ops */
+  int bitstring_tanimoto(BitString *pBits1, BitString *pBits2, double *pSim);
+  int bitstring_dice(BitString *pBits1, BitString *pBits2, double *pSim);
+
 #ifdef __cplusplus
 } /* extern "C" { */
 #endif

@@ -14,8 +14,9 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <GraphMol/SmilesParse/SmartsWrite.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
 #include <GraphMol/Substruct/SubstructMatch.h>
-#include <DataStructs/ExplicitBitVect.h>
 #include <GraphMol/Fingerprints/Fingerprints.h>
+#include <DataStructs/ExplicitBitVect.h>
+#include <DataStructs/BitOps.h>
 
 struct Mol : RDKit::ROMol {
   // Mol() : RDKit::ROMol() {}
@@ -361,4 +362,52 @@ int blob_to_bitstring(u8 *pBlob, int len, BitString **ppBits)
   }
 
   return rc;       
+}
+
+// BitString <-> Blob ///////////////////////////////////////////////////////
+
+int bitstring_tanimoto(BitString *pBits1, BitString *pBits2, double *pSim)
+{
+  int rc = SQLITE_OK;
+  *pSim = 0.0;
+
+  // Nsame / (Na + Nb - Nsame)
+        
+  try {
+    *pSim = TanimotoSimilarity(*static_cast<ExplicitBitVect *>(pBits1), 
+			       *static_cast<ExplicitBitVect *>(pBits2));
+  } 
+  catch (ValueErrorException& e) {
+    // TODO investigate possible causes for this exc
+    rc = SQLITE_ERROR;
+  } 
+  catch (...) {
+    // unknown exception
+    rc = SQLITE_ERROR;
+  }
+
+  return rc;
+}
+
+int bitstring_dice(BitString *pBits1, BitString *pBits2, double *pSim)
+{
+  int rc = SQLITE_OK;
+  *pSim = 0.0;
+
+  // 2 * Nsame / (Na + Nb)
+        
+  try {
+    *pSim = DiceSimilarity(*static_cast<ExplicitBitVect *>(pBits1), 
+			   *static_cast<ExplicitBitVect *>(pBits2));
+  } 
+  catch (ValueErrorException& e) {
+    // TODO investigate possible causes for this exc
+    rc = SQLITE_ERROR;
+  } 
+  catch (...) {
+    // unknown exception
+    rc = SQLITE_ERROR;
+  }
+
+  return rc;
 }
