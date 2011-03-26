@@ -14,17 +14,35 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <GraphMol/SmilesParse/SmartsWrite.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
 #include <GraphMol/Substruct/SubstructMatch.h>
+#include <DataStructs/ExplicitBitVect.h>
+#include <GraphMol/Fingerprints/Fingerprints.h>
 
 struct CMol : RDKit::ROMol {
-  CMol() : RDKit::ROMol() {}
-  CMol(const CMol & other) : RDKit::ROMol(other) {}
-  CMol(const RDKit::ROMol & other) : RDKit::ROMol(other) {}
+  // CMol() : RDKit::ROMol() {}
+  // CMol(const CMol & other) : RDKit::ROMol(other) {}
+  // CMol(const RDKit::ROMol & other) : RDKit::ROMol(other) {}
   CMol(const std::string & pickle) : RDKit::ROMol(pickle) {}
 };
 
 void free_cmol(CMol *pCMol)
 {
   delete static_cast<RDKit::ROMol *>(pCMol);
+}
+
+struct BitString : ExplicitBitVect {
+  BitString(const char * d, const unsigned int n) : ExplicitBitVect(d, n) {}
+};
+
+void free_bitstring(BitString *pBits)
+{
+  delete static_cast<ExplicitBitVect *>(pBits);
+}
+
+namespace {
+  const unsigned int SSS_FP_SIZE         = 1024;
+  const unsigned int LAYERED_FP_SIZE     = 1024;
+  const unsigned int MORGAN_FP_SIZE      = 1024;
+  const unsigned int HASHED_PAIR_FP_SIZE = 2048;
 }
 
 // SMILES/SMARTS <-> Molecule ////////////////////////////////////////////////
@@ -163,6 +181,38 @@ int blob_to_txt(u8 *blob, int len, int as_smarts, char **pTxt)
   return rc;
 }
 
+// Molecule -> signature /////////////////////////////////////////////////////
+
+int cmol_signature(CMol *pCMol, u8 **ppSign, int *pLen)
+{
+  assert(pCMol);
+
+  *ppSign = 0;
+  *pLen = 0;
+
+  int rc = SQLITE_OK;
+  BitString *pBits = 0;
+
+  try {
+    ExplicitBitVect *bv 
+      = RDKit::LayeredFingerprintMol(*pCMol, RDKit::substructLayers, 1, 6, 
+				     SSS_FP_SIZE);
+    if (bv) {
+      rc = bitstring_to_blob(static_cast<BitString *>(bv), ppSign, pLen);
+      delete bv;
+    }
+    else {
+      rc = SQLITE_ERROR;
+    }
+  } 
+  catch (...) {
+    // unknown exception
+    rc = SQLITE_ERROR;
+  }
+        
+  return rc;
+}
+
 // Molecules comparison //////////////////////////////////////////////////////
 
 int cmol_is_substruct(CMol *p1, CMol *p2)
@@ -264,3 +314,51 @@ int cmol_num_rings(CMol *pCMol)
   return RDKit::Descriptors::calcNumRings(*pCMol);
 }
 
+// BitString <-> Blob ///////////////////////////////////////////////////////
+
+int bitstring_to_blob(BitString *pBits, u8 **ppBlob, int *pLen)
+{
+  assert(pBits);
+  *ppBlob = 0;
+  *pLen = 0;
+
+  int rc = SQLITE_OK;
+
+  int num_bits = pBits->getNumBits();
+  int num_bytes = num_bits/8;
+  if (num_bits % 8) ++num_bytes;
+
+  *ppBlob = (u8 *)sqlite3_malloc(num_bytes);
+
+  u8 *s = *ppBlob;
+  if (!s) {
+    rc = SQLITE_NOMEM;
+  }
+  else {
+    *pLen = num_bytes;
+    for (int i = 0; i < num_bits; ++i) {
+      if (!pBits->getBit(i)) { continue; }
+      s[ i/8 ]  |= 1 << (i % 8);
+    }
+  }
+
+  return rc;
+}
+
+int blob_to_bitstring(u8 *pBlob, int len, BitString **ppBits)
+{
+  assert(pBlob);
+  int rc = SQLITE_OK;
+  *ppBits = 0;
+        
+  try {
+    if (!( *ppBits = new BitString((const char *)pBlob, len) )) {
+      rc = SQLITE_NOMEM;
+    }
+  } catch (...) {
+    // Unknown exception
+    rc = SQLITE_ERROR;
+  }
+
+  return rc;       
+}
