@@ -17,16 +17,16 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <DataStructs/ExplicitBitVect.h>
 #include <GraphMol/Fingerprints/Fingerprints.h>
 
-struct CMol : RDKit::ROMol {
-  // CMol() : RDKit::ROMol() {}
-  // CMol(const CMol & other) : RDKit::ROMol(other) {}
-  // CMol(const RDKit::ROMol & other) : RDKit::ROMol(other) {}
-  CMol(const std::string & pickle) : RDKit::ROMol(pickle) {}
+struct Mol : RDKit::ROMol {
+  // Mol() : RDKit::ROMol() {}
+  // Mol(const Mol & other) : RDKit::ROMol(other) {}
+  // Mol(const RDKit::ROMol & other) : RDKit::ROMol(other) {}
+  Mol(const std::string & pickle) : RDKit::ROMol(pickle) {}
 };
 
-void free_cmol(CMol *pCMol)
+void free_mol(Mol *pMol)
 {
-  delete static_cast<RDKit::ROMol *>(pCMol);
+  delete static_cast<RDKit::ROMol *>(pMol);
 }
 
 struct BitString : ExplicitBitVect {
@@ -47,24 +47,24 @@ namespace {
 
 // SMILES/SMARTS <-> Molecule ////////////////////////////////////////////////
 
-int txt_to_cmol(const char * txt, int as_smarts, CMol **ppCMol)
+int txt_to_mol(const char * txt, int as_smarts, Mol **ppMol)
 {
   assert(txt);
   int rc = SQLITE_OK;
 
-  *ppCMol = 0;
+  *ppMol = 0;
 
   try {
     std::string data(txt);
     RDKit::ROMol *pROMol = as_smarts ?
       RDKit::SmartsToMol(data) : RDKit::SmilesToMol(data);
-      *ppCMol = static_cast<CMol *>(pROMol);
+      *ppMol = static_cast<Mol *>(pROMol);
   } 
   catch (...) {
     // problem generating molecule from smiles
     rc = SQLITE_ERROR;
   }
-  if (!*ppCMol) {
+  if (!*ppMol) {
     // parse error
     rc = SQLITE_ERROR;
   }
@@ -72,17 +72,17 @@ int txt_to_cmol(const char * txt, int as_smarts, CMol **ppCMol)
   return rc;
 }
 
-int cmol_to_txt(CMol *pCMol, int as_smarts, char **pTxt)
+int mol_to_txt(Mol *pMol, int as_smarts, char **pTxt)
 {
-  assert(pCMol);
+  assert(pMol);
   *pTxt = 0;
   int rc = SQLITE_OK;
 
   std::string txt;
   try {
     txt.assign( as_smarts ? 
-		RDKit::MolToSmarts(*pCMol, false) : 
-		RDKit::MolToSmiles(*pCMol, true) );
+		RDKit::MolToSmarts(*pMol, false) : 
+		RDKit::MolToSmiles(*pMol, true) );
   } 
   catch (...) {
     // unknown exception
@@ -101,24 +101,24 @@ int cmol_to_txt(CMol *pCMol, int as_smarts, char **pTxt)
 
 // Blob <-> Molecule /////////////////////////////////////////////////////////
 
-int blob_to_cmol(u8 *pBlob, int len, CMol **ppCMol)
+int blob_to_mol(u8 *pBlob, int len, Mol **ppMol)
 {
   assert(pBlob);
-  *ppCMol = 0;
+  *ppMol = 0;
 
   int rc = SQLITE_OK;
 
   std::string blob;
   try {
     blob.assign((const char *)pBlob, len);
-    *ppCMol = new CMol(blob);
+    *ppMol = new Mol(blob);
   } 
   catch (...) {
     // problem generating molecule from blob data
     rc = SQLITE_ERROR;
   }
   
-  if (!(*ppCMol)) {
+  if (!(*ppMol)) {
     // blob data could not be parsed
     rc = SQLITE_ERROR;
   }
@@ -126,9 +126,9 @@ int blob_to_cmol(u8 *pBlob, int len, CMol **ppCMol)
   return rc;
 }
 
-int cmol_to_blob(CMol *pCMol, u8 **ppBlob, int *pLen)
+int mol_to_blob(Mol *pMol, u8 **ppBlob, int *pLen)
 {
-  assert(pCMol);
+  assert(pMol);
 
   *ppBlob = 0;
   *pLen = 0;
@@ -136,7 +136,7 @@ int cmol_to_blob(CMol *pCMol, u8 **ppBlob, int *pLen)
   int rc = SQLITE_OK;
   std::string blob;
   try {
-    RDKit::MolPickler::pickleMol(*pCMol, blob);
+    RDKit::MolPickler::pickleMol(*pMol, blob);
   } 
   catch (...) {
     // unknown exception
@@ -161,31 +161,31 @@ int cmol_to_blob(CMol *pCMol, u8 **ppBlob, int *pLen)
 
 int txt_to_blob(const char * txt, int as_smarts, u8 **pBlob, int *pLen)
 {
-  CMol * pCMol = 0;
-  int rc = txt_to_cmol(txt, as_smarts, &pCMol);
+  Mol * pMol = 0;
+  int rc = txt_to_mol(txt, as_smarts, &pMol);
   if (rc == SQLITE_OK) {
-    rc = cmol_to_blob(pCMol, pBlob, pLen);
-    free_cmol(pCMol);
+    rc = mol_to_blob(pMol, pBlob, pLen);
+    free_mol(pMol);
   }
   return rc;
 }
 
 int blob_to_txt(u8 *blob, int len, int as_smarts, char **pTxt)
 {
-  CMol * pCMol = 0;
-  int rc = blob_to_cmol(blob, len, &pCMol);
+  Mol * pMol = 0;
+  int rc = blob_to_mol(blob, len, &pMol);
   if (rc == SQLITE_OK) {
-    rc = cmol_to_txt(pCMol, as_smarts, pTxt);
-    free_cmol(pCMol);
+    rc = mol_to_txt(pMol, as_smarts, pTxt);
+    free_mol(pMol);
   }
   return rc;
 }
 
 // Molecule -> signature /////////////////////////////////////////////////////
 
-int cmol_signature(CMol *pCMol, u8 **ppSign, int *pLen)
+int mol_signature(Mol *pMol, u8 **ppSign, int *pLen)
 {
-  assert(pCMol);
+  assert(pMol);
 
   *ppSign = 0;
   *pLen = 0;
@@ -195,7 +195,7 @@ int cmol_signature(CMol *pCMol, u8 **ppSign, int *pLen)
 
   try {
     ExplicitBitVect *bv 
-      = RDKit::LayeredFingerprintMol(*pCMol, RDKit::substructLayers, 1, 6, 
+      = RDKit::LayeredFingerprintMol(*pMol, RDKit::substructLayers, 1, 6, 
 				     SSS_FP_SIZE);
     if (bv) {
       rc = bitstring_to_blob(static_cast<BitString *>(bv), ppSign, pLen);
@@ -215,14 +215,14 @@ int cmol_signature(CMol *pCMol, u8 **ppSign, int *pLen)
 
 // Molecules comparison //////////////////////////////////////////////////////
 
-int cmol_is_substruct(CMol *p1, CMol *p2)
+int mol_is_substruct(Mol *p1, Mol *p2)
 {
   assert(p1 && p2);
   RDKit::MatchVectType matchVect;
   return RDKit::SubstructMatch(*p1, *p2, matchVect); 
 }
 
-int cmol_cmp(CMol *p1, CMol *p2)
+int mol_cmp(Mol *p1, Mol *p2)
 {
   if(!p1 && !p2) { 
     return 0;
@@ -247,71 +247,71 @@ int cmol_cmp(CMol *p1, CMol *p2)
   res = p1->getRingInfo()->numRings() - p2->getRingInfo()->numRings();
   if (res) {return (res > 0) ? 1 : -1;}
 
-  return cmol_is_substruct(p1, p2) ? 0 : -1;
+  return mol_is_substruct(p1, p2) ? 0 : -1;
 }
 
 // Molecular descriptors /////////////////////////////////////////////////////
 
-double cmol_amw(CMol *pCMol) 
+double mol_amw(Mol *pMol) 
 {
-  assert(pCMol);
-  return RDKit::Descriptors::calcAMW(*pCMol, false);
+  assert(pMol);
+  return RDKit::Descriptors::calcAMW(*pMol, false);
 }
 
-double cmol_logp(CMol *pCMol) 
+double mol_logp(Mol *pMol) 
 {
-  assert(pCMol);
+  assert(pMol);
   double logp, mr;
-  RDKit::Descriptors::calcCrippenDescriptors(*pCMol, logp, mr);
+  RDKit::Descriptors::calcCrippenDescriptors(*pMol, logp, mr);
   return logp;
 }
 
-double cmol_tpsa(CMol *pCMol) 
+double mol_tpsa(Mol *pMol) 
 {
-  assert(pCMol);
-  return RDKit::Descriptors::calcTPSA(*pCMol);
+  assert(pMol);
+  return RDKit::Descriptors::calcTPSA(*pMol);
 }
   
-int cmol_hba(CMol *pCMol) 
+int mol_hba(Mol *pMol) 
 {
-  assert(pCMol);
-  return RDKit::Descriptors::calcLipinskiHBA(*pCMol);
+  assert(pMol);
+  return RDKit::Descriptors::calcLipinskiHBA(*pMol);
 }
 
-int cmol_hbd(CMol *pCMol) 
+int mol_hbd(Mol *pMol) 
 {
-  assert(pCMol);
-  return RDKit::Descriptors::calcLipinskiHBD(*pCMol);
+  assert(pMol);
+  return RDKit::Descriptors::calcLipinskiHBD(*pMol);
 }
 
-int cmol_num_atms(CMol *pCMol) 
+int mol_num_atms(Mol *pMol) 
 {
-  assert(pCMol);
-  return pCMol->getNumAtoms(false);
+  assert(pMol);
+  return pMol->getNumAtoms(false);
 }
 
-int cmol_num_hvyatms(CMol *pCMol) 
+int mol_num_hvyatms(Mol *pMol) 
 {
-  assert(pCMol);
-  return pCMol->getNumAtoms(true);
+  assert(pMol);
+  return pMol->getNumAtoms(true);
 }
 
-int cmol_num_rotatable_bnds(CMol *pCMol) 
+int mol_num_rotatable_bnds(Mol *pMol) 
 {
-  assert(pCMol);
-  RDKit::Descriptors::calcNumRotatableBonds(*pCMol);
+  assert(pMol);
+  RDKit::Descriptors::calcNumRotatableBonds(*pMol);
 }
 
-int cmol_num_hetatms(CMol *pCMol) 
+int mol_num_hetatms(Mol *pMol) 
 {
-  assert(pCMol);
-  return RDKit::Descriptors::calcNumHeteroatoms(*pCMol);
+  assert(pMol);
+  return RDKit::Descriptors::calcNumHeteroatoms(*pMol);
 }
 
-int cmol_num_rings(CMol *pCMol) 
+int mol_num_rings(Mol *pMol) 
 {
-  assert(pCMol);
-  return RDKit::Descriptors::calcNumRings(*pCMol);
+  assert(pMol);
+  return RDKit::Descriptors::calcNumRings(*pMol);
 }
 
 // BitString <-> Blob ///////////////////////////////////////////////////////

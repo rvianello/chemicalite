@@ -8,40 +8,40 @@ extern "C" {
   typedef unsigned char u8;
   typedef unsigned int u32;
 
-  typedef struct CMol CMol;
+  typedef struct Mol Mol;
   typedef struct BitString BitString;
  
-  void free_cmol(CMol *pCMol);
+  void free_mol(Mol *pMol);
 
   /* molecular data types interconversion */
-  int txt_to_cmol(const char * txt, int as_smarts, CMol **ppCMol);
-  int cmol_to_txt(CMol *pCMol, int as_smarts, char **pTxt);
+  int txt_to_mol(const char * txt, int as_smarts, Mol **ppMol);
+  int mol_to_txt(Mol *pMol, int as_smarts, char **pTxt);
 
-  int blob_to_cmol(u8 *blob, int len, CMol **ppCMol);
-  int cmol_to_blob(CMol *pCMol, u8 **ppBlob, int *pLen);
+  int blob_to_mol(u8 *blob, int len, Mol **ppMol);
+  int mol_to_blob(Mol *pMol, u8 **ppBlob, int *pLen);
 
   int txt_to_blob(const char * txt, int as_smarts, u8 **pBlob, int *pLen);
   int blob_to_txt(u8 *blob, int len, int as_smarts, char **pTxt);
 
   /* generation of structural signature */
-  int cmol_signature(CMol *pCMol, u8 **ppSign, int *pLen);
+  int mol_signature(Mol *pMol, u8 **ppSign, int *pLen);
 
-  /* cmol ops */
-  int cmol_cmp(CMol *p1, CMol *p2);
-  int cmol_is_substruct(CMol *p1, CMol *p2);
+  /* mol ops */
+  int mol_cmp(Mol *p1, Mol *p2);
+  int mol_is_substruct(Mol *p1, Mol *p2);
 
   /* descriptors */
-  double cmol_amw(CMol *pCMol);
-  double cmol_logp(CMol *pCMol);
-  double cmol_tpsa(CMol *pCMol);
+  double mol_amw(Mol *pMol);
+  double mol_logp(Mol *pMol);
+  double mol_tpsa(Mol *pMol);
   
-  int cmol_hba(CMol *pCMol);
-  int cmol_hbd(CMol *pCMol);
-  int cmol_num_atms(CMol *pCMol);
-  int cmol_num_hvyatms(CMol *pCMol);
-  int cmol_num_rotatable_bnds(CMol *pCMol);
-  int cmol_num_hetatms(CMol *pCMol);
-  int cmol_num_rings(CMol *pCMol);
+  int mol_hba(Mol *pMol);
+  int mol_hbd(Mol *pMol);
+  int mol_num_atms(Mol *pMol);
+  int mol_num_hvyatms(Mol *pMol);
+  int mol_num_rotatable_bnds(Mol *pMol);
+  int mol_num_hetatms(Mol *pMol);
+  int mol_num_rings(Mol *pMol);
 
   /* bitstring data type interconversion */
   int bitstring_to_blob(BitString *pBits, u8 **ppBlob, int *pLen);

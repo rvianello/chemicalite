@@ -49,17 +49,17 @@ static void mol_mw_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 {
   assert(argc == 1);
 
-  CMol *pCMol = 0;
+  Mol *pMol = 0;
   int rc = SQLITE_ERROR; /* defensively pessimistic */
 
   /* Check that value is a blob */
   if (sqlite3_value_type(argv[0]) == SQLITE_BLOB) {
     int sz = sqlite3_value_bytes(argv[0]);
-    rc = blob_to_cmol((u8 *)sqlite3_value_text(argv[0]), sz, &pCMol);
+    rc = blob_to_mol((u8 *)sqlite3_value_text(argv[0]), sz, &pMol);
   }
   /* or a text string */
   else if (sqlite3_value_type(argv[0]) == SQLITE3_TEXT) {
-    rc = txt_to_cmol(sqlite3_value_text(argv[0]), 0, &pCMol);
+    rc = txt_to_mol(sqlite3_value_text(argv[0]), 0, &pMol);
   }
   else {
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
@@ -67,8 +67,8 @@ static void mol_mw_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
   }
 
   if (rc == SQLITE_OK) {
-    double mw = cmol_amw(pCMol);
-    free_cmol(pCMol);
+    double mw = mol_amw(pMol);
+    free_mol(pMol);
     sqlite3_result_double(ctx, mw);
   }
   else {
