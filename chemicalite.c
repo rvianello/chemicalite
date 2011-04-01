@@ -110,7 +110,7 @@ static void mol_signature_f(sqlite3_context* ctx,
   }
   
   if (rc == SQLITE_OK) {
-    assert(len == 128 /* FIXME */);
+    assert(len == MOL_SIGNATURE_SIZE);
     sqlite3_result_blob(ctx, signature, len, sqlite3_free);
   }
   else {
@@ -145,7 +145,7 @@ static void mol_structural_index_f(sqlite3_context* ctx,
   char * create_index
     = sqlite3_mprintf("CREATE VIRTUAL TABLE 'str_idx_%q_%q' USING\n"
 		      "signtree(id, s bytes(%d))",
-		      table, column, 128);
+		      table, column, MOL_SIGNATURE_SIZE);
 
   if (!create_index) {
     rc = SQLITE_NOMEM;
