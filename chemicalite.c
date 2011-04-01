@@ -42,6 +42,63 @@ static void mol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 }
 
 /*
+** fetch Mol from text or blob argument
+*/
+
+static int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
+{
+  int rc = SQLITE_OK;
+
+  /* Check that value is a blob */
+  if (sqlite3_value_type(arg) == SQLITE_BLOB) {
+    int sz = sqlite3_value_bytes(arg);
+    rc = blob_to_mol((u8 *)sqlite3_value_blob(arg), sz, ppMol);
+  }
+  /* or a text string */
+  else if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
+    rc = sqlite3_value_bytes(arg) <= MAX_TXTMOL_LENGTH ?
+      txt_to_mol(sqlite3_value_text(arg), 0, ppMol) : SQLITE_TOOBIG;
+  }
+  else {
+    rc = SQLITE_MISMATCH;
+  }
+
+  return rc;
+}
+
+/*
+** substructure match
+*/
+
+static void mol_is_substruct_f(sqlite3_context* ctx, 
+			       int argc, sqlite3_value** argv)
+{
+  assert(argc == 2);
+  int rc = SQLITE_OK;
+
+  Mol *p1 = 0;
+  Mol *p2 = 0;
+  
+  rc = fetch_mol_arg(argv[0], &p1);
+  if (rc != SQLITE_OK) goto mol_is_substruct_f_end;
+
+  rc = fetch_mol_arg(argv[1], &p2);
+  if (rc != SQLITE_OK) goto mol_is_substruct_f_free_mol1;
+
+  int result = mol_is_substruct(p1, p2) ? 1 : 0;
+
+ mol_is_substruct_f_free_mol2: free_mol(p2);
+ mol_is_substruct_f_free_mol1: free_mol(p1);
+ mol_is_substruct_f_end:
+  if (rc == SQLITE_OK) {
+    sqlite3_result_int(ctx, result);
+  }
+  else {
+    sqlite3_result_error_code(ctx, rc);
+  }
+}
+
+/*
 ** molecular descriptors
 */
 
@@ -50,21 +107,7 @@ static void mol_mw_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
   assert(argc == 1);
 
   Mol *pMol = 0;
-  int rc = SQLITE_ERROR; /* defensively pessimistic */
-
-  /* Check that value is a blob */
-  if (sqlite3_value_type(argv[0]) == SQLITE_BLOB) {
-    int sz = sqlite3_value_bytes(argv[0]);
-    rc = blob_to_mol((u8 *)sqlite3_value_blob(argv[0]), sz, &pMol);
-  }
-  /* or a text string */
-  else if (sqlite3_value_type(argv[0]) == SQLITE3_TEXT) {
-    rc = txt_to_mol(sqlite3_value_text(argv[0]), 0, &pMol);
-  }
-  else {
-    sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
-    return;
-  }
+  int rc = fetch_mol_arg(argv[0], &pMol);
 
   if (rc == SQLITE_OK) {
     double mw = mol_amw(pMol);
@@ -254,6 +297,11 @@ int sqlite3_chemicalite_init(sqlite3 *db)
   if (rc == SQLITE_OK) {
     rc = sqlite3_create_function(db, "mol",
 				 1, SQLITE_UTF8, 0, mol_f, 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_is_substruct",
+				 2, SQLITE_UTF8, 0, mol_is_substruct_f, 0, 0);
   }
   
   if (rc == SQLITE_OK) {
