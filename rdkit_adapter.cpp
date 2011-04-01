@@ -332,10 +332,12 @@ int bitstring_to_blob(BitString *pBits, u8 **ppBlob, int *pLen)
   *ppBlob = (u8 *)sqlite3_malloc(num_bytes);
 
   u8 *s = *ppBlob;
+
   if (!s) {
     rc = SQLITE_NOMEM;
   }
   else {
+    memset(s, 0, num_bytes);
     *pLen = num_bytes;
     for (int i = 0; i < num_bits; ++i) {
       if (!pBits->getBit(i)) { continue; }
