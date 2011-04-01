@@ -8,7 +8,7 @@ SQLITE_EXTENSION_INIT1
 
 #include "rdkit_adapter.h"
 
-static const int MAX_TXT_LENGTH = 300;
+static const int MAX_TXTMOL_LENGTH = 300;
 
 /*
 ** convert SMILES string into a blob-molecule
@@ -25,7 +25,7 @@ static void mol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 
   /* verify the string is not too big for a SMILES */
   int len = sqlite3_value_bytes(argv[0]);
-  if (len > MAX_TXT_LENGTH) {
+  if (len > MAX_TXTMOL_LENGTH) {
     sqlite3_result_error_toobig(ctx);
     return;
   }
