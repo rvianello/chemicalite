@@ -55,7 +55,7 @@ static void mol_mw_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
   /* Check that value is a blob */
   if (sqlite3_value_type(argv[0]) == SQLITE_BLOB) {
     int sz = sqlite3_value_bytes(argv[0]);
-    rc = blob_to_mol((u8 *)sqlite3_value_text(argv[0]), sz, &pMol);
+    rc = blob_to_mol((u8 *)sqlite3_value_blob(argv[0]), sz, &pMol);
   }
   /* or a text string */
   else if (sqlite3_value_type(argv[0]) == SQLITE3_TEXT) {
