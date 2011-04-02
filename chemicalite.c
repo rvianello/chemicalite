@@ -372,6 +372,54 @@ int sqlite3_chemicalite_init(sqlite3 *db)
   }
   
   if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_logp",
+				 1, SQLITE_UTF8, 0, mol_logp_f, 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_tpsa",
+				 1, SQLITE_UTF8, 0, mol_tpsa_f, 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_hba",
+				 1, SQLITE_UTF8, 0, mol_hba_f, 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_hbd",
+				 1, SQLITE_UTF8, 0, mol_hbd_f, 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_num_atms",
+				 1, SQLITE_UTF8, 0, mol_num_atms_f, 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_num_hvyatms",
+				 1, SQLITE_UTF8, 0, mol_num_hvyatms_f, 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_num_rotatable_bnds",
+				 1, SQLITE_UTF8, 0, mol_num_rotatable_bnds_f, 
+				 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_num_hetatms",
+				 1, SQLITE_UTF8, 0, mol_num_hetatms_f, 
+				 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_num_rings",
+				 1, SQLITE_UTF8, 0, mol_num_rings_f, 
+				 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
     rc = sqlite3_create_function(db, "mol_signature",
 				 1, SQLITE_UTF8, 0, mol_signature_f, 0, 0);
   }
