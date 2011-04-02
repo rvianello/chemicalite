@@ -155,6 +155,45 @@ static void compute_int_descriptor(sqlite3_context* ctx,
   }
 }
 
+static void mol_hba_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  compute_int_descriptor(ctx, argc, argv, mol_hba);
+}
+
+static void mol_hbd_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  compute_int_descriptor(ctx, argc, argv, mol_hbd);
+}
+
+static void mol_num_atms_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  compute_int_descriptor(ctx, argc, argv, mol_num_atms);
+}
+
+static void mol_num_hvyatms_f(sqlite3_context* ctx, 
+			      int argc, sqlite3_value** argv)
+{
+  compute_int_descriptor(ctx, argc, argv, mol_num_hvyatms);
+}
+
+static void mol_num_rotatable_bnds_f(sqlite3_context* ctx, 
+				     int argc, sqlite3_value** argv)
+{
+  compute_int_descriptor(ctx, argc, argv, mol_num_rotatable_bnds);
+}
+
+static void mol_num_hetatms_f(sqlite3_context* ctx, 
+			      int argc, sqlite3_value** argv)
+{
+  compute_int_descriptor(ctx, argc, argv, mol_num_hetatms);
+}
+
+static void mol_num_rings_f(sqlite3_context* ctx, 
+			    int argc, sqlite3_value** argv)
+{
+  compute_int_descriptor(ctx, argc, argv, mol_num_rings);
+}
+
 /*
 ** Molecule bitstring signature
 */
