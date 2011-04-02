@@ -102,7 +102,9 @@ static void mol_is_substruct_f(sqlite3_context* ctx,
 ** molecular descriptors
 */
 
-static void mol_mw_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+static void compute_real_descriptor(sqlite3_context* ctx, 
+				    int argc, sqlite3_value** argv,
+				    double (*descriptor)(Mol *))
 {
   assert(argc == 1);
 
@@ -110,9 +112,43 @@ static void mol_mw_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
   int rc = fetch_mol_arg(argv[0], &pMol);
 
   if (rc == SQLITE_OK) {
-    double mw = mol_amw(pMol);
+    double mw = descriptor(pMol);
     free_mol(pMol);
     sqlite3_result_double(ctx, mw);
+  }
+  else {
+    sqlite3_result_error_code(ctx, rc);
+  }
+}
+
+static void mol_mw_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  compute_real_descriptor(ctx, argc, argv, mol_amw);
+}
+
+static void mol_logp_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  compute_real_descriptor(ctx, argc, argv, mol_logp);
+}
+
+static void mol_tpsa_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  compute_real_descriptor(ctx, argc, argv, mol_tpsa);
+}
+
+static void compute_int_descriptor(sqlite3_context* ctx, 
+				   int argc, sqlite3_value** argv,
+				   int (*descriptor)(Mol *))
+{
+  assert(argc == 1);
+
+  Mol *pMol = 0;
+  int rc = fetch_mol_arg(argv[0], &pMol);
+
+  if (rc == SQLITE_OK) {
+    double mw = descriptor(pMol);
+    free_mol(pMol);
+    sqlite3_result_int(ctx, mw);
   }
   else {
     sqlite3_result_error_code(ctx, rc);
