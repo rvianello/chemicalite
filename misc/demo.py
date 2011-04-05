@@ -46,28 +46,17 @@ def read_chembldb(filepath, limit=0):
 
 db.executemany("INSERT INTO chembl(chembl_id, smiles, mol) "
                "VALUES(?, ?, mol(?));",
-               read_chembldb('chembl_08_chemreps.txt', limit=500000))
+               read_chembldb('chembl_08_chemreps.txt', limit=50000))
+db.commit()
 
 # <demo> stop
 
 def search_substruct(substr):
     return db.execute("SELECT chembl.chembl_id, chembl.smiles FROM "
-                      "chembl JOIN str_idx_chembl_mol ON "
-                      "chembl.id = str_idx_chembl_mol.id "
-                      "WHERE mol_is_substruct(chembl.mol, ?) "
-                      "AND str_idx_chembl_mol.id IN "
-                      "(SELECT id from str_idx_chembl_mol WHERE id MATCH "
-                      "signature_contains(mol_signature(?)))",
+                      "chembl, str_idx_chembl_mol AS idx WHERE "
+                      "mol_is_substruct(chembl.mol, ?) AND "
+                      "chembl.id = idx.id AND idx.s > mol_signature(?)",
                       (substr, substr))
 
 # <demo> stop
 
-#  select *
-#    from indexes join texts on texts.docid = indexes.docid
-#    where texts.reading match 'text1';
-
-#  select *
-#    from texts join indexes on texts.docid = indexes.docid
-#    where texts.docid IN (
-#      SELECT docid FROM texts WHERE reading match 'text1'
-#    );
