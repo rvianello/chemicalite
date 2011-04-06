@@ -37,7 +37,7 @@ def read_chembldb(filepath, limit=0):
         smiles = smiles.replace('N#N=','[N-]=[N+]=')
         if not Chem.MolFromSmiles(smiles): continue
 
-        yield chembl_id, smiles, smiles # smiles repeated to match schema
+        yield chembl_id, smiles, smiles
 
         count +=1
         if limit > 0 and count == limit: break
@@ -51,11 +51,20 @@ db.commit()
 
 # <demo> stop
 
-def search_substruct(substr):
+# search for substructures
+
+def search(substr):
     return db.execute("SELECT chembl.chembl_id, chembl.smiles FROM "
                       "chembl, str_idx_chembl_mol AS idx WHERE "
                       "mol_is_substruct(chembl.mol, ?) AND "
                       "chembl.id = idx.id AND idx.s > mol_signature(?)",
+                      (substr, substr))
+
+def qsearch(substr):
+    return db.execute("SELECT chembl.chembl_id, chembl.smiles FROM "
+                      "chembl, str_idx_chembl_mol AS idx WHERE "
+                      "mol_is_substruct(chembl.mol, qmol(?)) AND "
+                      "chembl.id = idx.id AND idx.s > mol_signature(qmol(?))",
                       (substr, substr))
 
 # <demo> stop

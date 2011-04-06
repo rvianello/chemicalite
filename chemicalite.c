@@ -9,11 +9,16 @@ SQLITE_EXTENSION_INIT1
 #include "rdkit_adapter.h"
 
 static const int MAX_TXTMOL_LENGTH = 300;
+static const int AS_SMILES = 0;
+static const int AS_SMARTS = 1;
 
 /*
-** convert SMILES string into a blob-molecule
+** implementation for SMILES/SMARTS conversion to molecule object 
 */
-static void mol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+
+static void convert_txt_to_molecule(sqlite3_context* ctx, 
+				    int argc, sqlite3_value** argv,
+				    int mode)
 {
   assert(argc == 1);
 
@@ -32,13 +37,29 @@ static void mol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
   
   u8 *pBlob = 0;
   int sz = 0;
-  int rc = txt_to_blob(sqlite3_value_text(argv[0]), 0, &pBlob, &sz);
+  int rc = txt_to_blob(sqlite3_value_text(argv[0]), mode, &pBlob, &sz);
   if (rc == SQLITE_OK) {
     sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free);
   }
   else {
     sqlite3_result_error_code(ctx, rc);
   }
+}
+
+/*
+** convert SMILES string into a molecule
+*/
+static void mol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  convert_txt_to_molecule(ctx, argc, argv, AS_SMILES);
+}
+
+/*
+** Convert SMARTS strings into query molecules
+*/
+static void qmol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  convert_txt_to_molecule(ctx, argc, argv, AS_SMARTS);
 }
 
 /*
@@ -359,6 +380,11 @@ int sqlite3_chemicalite_init(sqlite3 *db)
   if (rc == SQLITE_OK) {
     rc = sqlite3_create_function(db, "mol",
 				 1, SQLITE_UTF8, 0, mol_f, 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "qmol",
+				 1, SQLITE_UTF8, 0, qmol_f, 0, 0);
   }
   
   if (rc == SQLITE_OK) {
