@@ -88,6 +88,28 @@ static int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
 }
 
 /*
+** convert molecule into a SMILES string
+*/
+static void mol_smiles_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  assert(argc == 1);
+  int rc = SQLITE_OK;
+
+  Mol *pMol = 0;
+  char * smiles = 0;
+
+  if ( ((rc = fetch_mol_arg(argv[0], &pMol)) != SQLITE_OK) ||
+       ((rc = mol_to_txt(pMol, AS_SMILES, &smiles)) != SQLITE_OK) ) {
+    sqlite3_result_error_code(ctx, rc);
+  }
+  else {
+    sqlite3_result_text(ctx, smiles, -1, sqlite3_free);
+  }
+
+  free_mol(pMol);
+}
+
+/*
 ** substructure match
 */
 
@@ -385,6 +407,11 @@ int sqlite3_chemicalite_init(sqlite3 *db)
   if (rc == SQLITE_OK) {
     rc = sqlite3_create_function(db, "qmol",
 				 1, SQLITE_UTF8, 0, qmol_f, 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_smiles",
+				 1, SQLITE_UTF8, 0, mol_smiles_f, 0, 0);
   }
   
   if (rc == SQLITE_OK) {
