@@ -171,6 +171,38 @@ static void mol_substruct_of_f(sqlite3_context* ctx,
 }
 
 /*
+** structural equality
+*/
+
+static void mol_same_f(sqlite3_context* ctx, 
+		       int argc, sqlite3_value** argv)
+{
+  assert(argc == 2);
+  int rc = SQLITE_OK;
+
+  Mol *p1 = 0;
+  Mol *p2 = 0;
+  
+  rc = fetch_mol_arg(argv[0], &p1);
+  if (rc != SQLITE_OK) goto mol_is_substruct_f_end;
+
+  rc = fetch_mol_arg(argv[1], &p2);
+  if (rc != SQLITE_OK) goto mol_is_substruct_f_free_mol1;
+
+  int result = mol_cmp(p1, p2) ? 0 : 1;
+
+ mol_is_substruct_f_free_mol2: free_mol(p2);
+ mol_is_substruct_f_free_mol1: free_mol(p1);
+ mol_is_substruct_f_end:
+  if (rc == SQLITE_OK) {
+    sqlite3_result_int(ctx, result);
+  }
+  else {
+    sqlite3_result_error_code(ctx, rc);
+  }
+}
+
+/*
 ** molecular descriptors
 */
 
@@ -451,6 +483,11 @@ int sqlite3_chemicalite_init(sqlite3 *db)
   if (rc == SQLITE_OK) {
     rc = sqlite3_create_function(db, "mol_substruct_of",
 				 2, SQLITE_UTF8, 0, mol_substruct_of_f, 0, 0);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = sqlite3_create_function(db, "mol_same",
+				 2, SQLITE_UTF8, 0, mol_same_f, 0, 0);
   }
   
   if (rc == SQLITE_OK) {
