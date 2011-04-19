@@ -8,6 +8,45 @@ SQLITE_EXTENSION_INIT1
 
 #include "rdkit_adapter.h"
 
+/*
+** data type structure (blob wrappers for chemicalite objects)
+*/
+
+typedef struct Object Object;
+
+struct Object {
+  u32 marker;
+  u8 blob[];
+};
+ 
+static const u32 MAGIC_MASK = 0xFFFFFF00;
+static const u32 TYPE_MASK = 0x000000FF;
+static const u32 MAGIC = 0xABCDEF00;
+
+static const u32 MOLOBJ = 0x00000001;
+static const u32 QMOLOBJ = 0x00000002;
+
+#define OBJMAGIC(p) (*((u32 *)p) & MAGIC_MASK)
+#define OBJTYPE(p) (*((u32 *)p) & TYPE_MASK)
+#define IS_OBJPTR(p) (OBJMAGIC(p) == MAGIC)
+#define IS_MOLOBJ(p) (IS_OBJPTR(p) && (OBJTYPE(p) == MOLOBJ))
+#define IS_QMOLOBJ(p) (IS_OBJPTR(p) && (OBJTYPE(p) == QMOLOBJ))
+
+static int wrap_object(u8 *pBlob, int sz, u32 type, 
+		       Object **ppObject, int *pObjSz)
+{
+  int rc = SQLITE_NOMEM;
+  int objsz = sizeof(Object) + sz;
+  *ppObject = sqlite3_malloc(objsz);
+  if (*ppObject) {
+    *pObjSz = objsz;
+    (*ppObject)->marker = MAGIC | type;
+    memcpy((*ppObject)->blob, pBlob, sz);
+    rc = SQLITE_OK;
+  }
+  return rc;
+}
+
 static const int MAX_TXTMOL_LENGTH = 300;
 static const int AS_SMILES = 0;
 static const int AS_SMARTS = 1;
@@ -16,72 +55,108 @@ static const int AS_SMARTS = 1;
 ** implementation for SMILES/SMARTS conversion to molecule object 
 */
 
-static void convert_txt_to_molecule(sqlite3_context* ctx, 
-				    int argc, sqlite3_value** argv,
-				    int mode)
+static void cast_to_molecule(sqlite3_context* ctx, 
+			     int argc, sqlite3_value** argv,
+			     int mode)
 {
   assert(argc == 1);
+  sqlite3_value *arg = argv[0];
 
-  /* Check that value is actually a string */
-  if (sqlite3_value_type(argv[0]) != SQLITE3_TEXT) {
-    sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
-    return;
-  }
-
-  /* verify the string is not too big for a SMILES */
-  int len = sqlite3_value_bytes(argv[0]);
-  if (len > MAX_TXTMOL_LENGTH) {
-    sqlite3_result_error_toobig(ctx);
-    return;
-  }
+  u32 type = (mode == AS_SMILES) ? MOLOBJ : QMOLOBJ;
   
-  u8 *pBlob = 0;
-  int sz = 0;
-  int rc = txt_to_blob(sqlite3_value_text(argv[0]), mode, &pBlob, &sz);
-  if (rc == SQLITE_OK) {
-    sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free);
+  if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
+    
+    if (sqlite3_value_bytes(arg) > MAX_TXTMOL_LENGTH) {
+      sqlite3_result_error_toobig(ctx);
+      return;
+    }
+    u8 *pBlob = 0;
+    int sz = 0;
+    int rc = txt_to_blob(sqlite3_value_text(arg), mode, &pBlob, &sz);
+    if (rc != SQLITE_OK) {
+      sqlite3_result_error_code(ctx, rc);
+      return;
+    }
+    int objSz = 0;
+    Object *pObject = 0;
+    rc = wrap_object(pBlob, sz, type, &pObject, &objSz);
+    if (rc == SQLITE_OK) {
+      sqlite3_result_blob(ctx, pObject, objSz, sqlite3_free);
+    }
+    else {
+      sqlite3_result_error_code(ctx, rc);
+    }
+    sqlite3_free(pBlob);
+    
+  }
+  else if (sqlite3_value_type(arg) == SQLITE_BLOB) {
+    
+    int sz = sqlite3_value_bytes(arg);
+    Object * pObject = (Object *)sqlite3_value_blob(arg);
+    if (sz > sizeof(Object) && (OBJTYPE(pObject) == type)) {
+      /* 
+      ** the input argument is already a mol/qmol blob of the expected type
+      ** just make a copy (almost a no-op)
+      */
+      u8 *pCopy = sqlite3_malloc(sz);
+      if (pCopy) {
+	memcpy(pCopy, pObject, sz);
+	sqlite3_result_blob(ctx, pCopy, sz, sqlite3_free);
+      }
+      else {
+	sqlite3_result_error_nomem(ctx);
+      }
+    }
+    else {
+      sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
+    }
+
   }
   else {
-    sqlite3_result_error_code(ctx, rc);
+    /* neither a string nor a blob */
+    sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
+
   }
 }
 
 /*
-** convert SMILES string into a molecule
+** convert to molecule
 */
 static void mol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 {
-  convert_txt_to_molecule(ctx, argc, argv, AS_SMILES);
+  cast_to_molecule(ctx, argc, argv, AS_SMILES);
 }
 
 /*
-** Convert SMARTS strings into query molecules
+** Convert to query molecules
 */
 static void qmol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 {
-  convert_txt_to_molecule(ctx, argc, argv, AS_SMARTS);
+  cast_to_molecule(ctx, argc, argv, AS_SMARTS);
 }
 
 /*
-** fetch Mol from text or blob argument
+** fetch Mol from text or blob argument of molobj type
 */
 
 static int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
 {
-  int rc = SQLITE_OK;
+  int rc = SQLITE_MISMATCH;
 
   /* Check that value is a blob */
   if (sqlite3_value_type(arg) == SQLITE_BLOB) {
     int sz = sqlite3_value_bytes(arg);
-    rc = blob_to_mol((u8 *)sqlite3_value_blob(arg), sz, ppMol);
+    Object * pObj = (Object *)sqlite3_value_blob(arg);
+    if ( (sz > sizeof(Object)) && 
+	 (IS_MOLOBJ(pObj) || IS_QMOLOBJ(pObj)) ) {
+      sz -= sizeof(Object);
+      rc = blob_to_mol(pObj->blob, sz, ppMol);
+    }
   }
   /* or a text string */
   else if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
     rc = sqlite3_value_bytes(arg) <= MAX_TXTMOL_LENGTH ?
-      txt_to_mol(sqlite3_value_text(arg), 0, ppMol) : SQLITE_TOOBIG;
-  }
-  else {
-    rc = SQLITE_MISMATCH;
+      txt_to_mol(sqlite3_value_text(arg), AS_SMILES, ppMol) : SQLITE_TOOBIG;
   }
 
   return rc;
