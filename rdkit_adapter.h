@@ -30,7 +30,7 @@ extern "C" {
   int mol_is_substruct(Mol *p1, Mol *p2);
 
   /* descriptors */
-  double mol_amw(Mol *pMol);
+  double mol_mw(Mol *pMol);
   double mol_logp(Mol *pMol);
   double mol_tpsa(Mol *pMol);
   

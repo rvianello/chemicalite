@@ -253,7 +253,7 @@ int mol_cmp(Mol *p1, Mol *p2)
 
 // Molecular descriptors /////////////////////////////////////////////////////
 
-double mol_amw(Mol *pMol) 
+double mol_mw(Mol *pMol) 
 {
   assert(pMol);
   return RDKit::Descriptors::calcAMW(*pMol, false);
