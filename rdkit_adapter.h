@@ -1,13 +1,11 @@
 #ifndef CHEMICALITE_RDKIT_ADAPTER_INCLUDED
 #define CHEMICALITE_RDKIT_ADAPTER_INCLUDED
+#include "inttypes.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
   static const int MOL_SIGNATURE_SIZE = 128;
-
-  typedef unsigned char u8;
-  typedef unsigned int u32;
 
   typedef struct Mol Mol;
   typedef struct BitString BitString;

@@ -3,6 +3,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "inttypes.h"
+
 #include <sqlite3ext.h>
 SQLITE_EXTENSION_INIT1
 
@@ -32,6 +34,10 @@ static const u32 QMOLOBJ = 0x00000002;
 #define IS_MOLOBJ(p) (IS_OBJPTR(p) && (OBJTYPE(p) == MOLOBJ))
 #define IS_QMOLOBJ(p) (IS_OBJPTR(p) && (OBJTYPE(p) == QMOLOBJ))
 
+/* 
+** wraps the binary blob pointed by pBlob in an Object structure where
+** it's prefixed by a data type marker
+*/
 static int wrap_object(u8 *pBlob, int sz, u32 type, 
 		       Object **ppObject, int *pObjSz)
 {
@@ -47,29 +53,30 @@ static int wrap_object(u8 *pBlob, int sz, u32 type,
   return rc;
 }
 
-static const int MAX_TXTMOL_LENGTH = 300;
+static const int MOL_MAX_TXT_LENGTH = 2048;
 static const int AS_SMILES = 0;
 static const int AS_SMARTS = 1;
 
 /*
 ** implementation for SMILES/SMARTS conversion to molecule object 
 */
-
 static void cast_to_molecule(sqlite3_context* ctx, 
-			     int argc, sqlite3_value** argv,
-			     int mode)
+			     int argc, sqlite3_value** argv, int mode)
 {
   assert(argc == 1);
   sqlite3_value *arg = argv[0];
 
+  /* select the destination object type */
   u32 type = (mode == AS_SMILES) ? MOLOBJ : QMOLOBJ;
-  
+
+  /* build the molecule binary repr from a text string */
   if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
     
-    if (sqlite3_value_bytes(arg) > MAX_TXTMOL_LENGTH) {
+    if (sqlite3_value_bytes(arg) > MOL_MAX_TXT_LENGTH) {
       sqlite3_result_error_toobig(ctx);
       return;
     }
+
     u8 *pBlob = 0;
     int sz = 0;
     int rc = txt_to_blob(sqlite3_value_text(arg), mode, &pBlob, &sz);
@@ -77,6 +84,7 @@ static void cast_to_molecule(sqlite3_context* ctx,
       sqlite3_result_error_code(ctx, rc);
       return;
     }
+
     int objSz = 0;
     Object *pObject = 0;
     rc = wrap_object(pBlob, sz, type, &pObject, &objSz);
@@ -86,9 +94,11 @@ static void cast_to_molecule(sqlite3_context* ctx,
     else {
       sqlite3_result_error_code(ctx, rc);
     }
+
     sqlite3_free(pBlob);
     
   }
+  /* building a binary molecule repr from another binary blob */
   else if (sqlite3_value_type(arg) == SQLITE_BLOB) {
     
     int sz = sqlite3_value_bytes(arg);
@@ -112,10 +122,9 @@ static void cast_to_molecule(sqlite3_context* ctx,
     }
 
   }
+  /* neither a string nor a blob */
   else {
-    /* neither a string nor a blob */
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
-
   }
 }
 
@@ -138,7 +147,6 @@ static void qmol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 /*
 ** fetch Mol from text or blob argument of molobj type
 */
-
 static int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
 {
   int rc = SQLITE_MISMATCH;
@@ -153,9 +161,9 @@ static int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
       rc = blob_to_mol(pObj->blob, sz, ppMol);
     }
   }
-  /* or a text string */
+  /* or a text string - by default assumed to be a SMILES */
   else if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
-    rc = sqlite3_value_bytes(arg) <= MAX_TXTMOL_LENGTH ?
+    rc = sqlite3_value_bytes(arg) <= MOL_MAX_TXT_LENGTH ?
       txt_to_mol(sqlite3_value_text(arg), AS_SMILES, ppMol) : SQLITE_TOOBIG;
   }
 
@@ -220,7 +228,6 @@ static void compare_structures(sqlite3_context* ctx,
 /*
 ** substructure match
 */
-
 static void mol_is_substruct_f(sqlite3_context* ctx, 
 			       int argc, sqlite3_value** argv)
 {
@@ -264,9 +271,9 @@ static void compute_real_descriptor(sqlite3_context* ctx,
   int rc = fetch_mol_arg(argv[0], &pMol);
 
   if (rc == SQLITE_OK) {
-    double mw = descriptor(pMol);
+    double rd = descriptor(pMol);
     free_mol(pMol);
-    sqlite3_result_double(ctx, mw);
+    sqlite3_result_double(ctx, rd);
   }
   else {
     sqlite3_result_error_code(ctx, rc);
@@ -298,9 +305,9 @@ static void compute_int_descriptor(sqlite3_context* ctx,
   int rc = fetch_mol_arg(argv[0], &pMol);
 
   if (rc == SQLITE_OK) {
-    double mw = descriptor(pMol);
+    int id = descriptor(pMol);
     free_mol(pMol);
-    sqlite3_result_int(ctx, mw);
+    sqlite3_result_int(ctx, id);
   }
   else {
     sqlite3_result_error_code(ctx, rc);
@@ -344,35 +351,6 @@ static void mol_num_rings_f(sqlite3_context* ctx,
 			    int argc, sqlite3_value** argv)
 {
   compute_int_descriptor(ctx, argc, argv, mol_num_rings);
-}
-
-/*
-** Molecule bitstring signature
-*/
-
-static void mol_signature_f(sqlite3_context* ctx, 
-			    int argc, sqlite3_value** argv)
-{
-  assert(argc == 1);
-
-  Mol *pMol = 0;
-  u8 *signature = 0;
-  int len = 0;
-
-  int rc = fetch_mol_arg(argv[0], &pMol);
-
-  if (rc == SQLITE_OK) {
-    rc = mol_signature(pMol, &signature, &len);
-    free_mol(pMol);
-  }
-  
-  if (rc == SQLITE_OK) {
-    assert(len == MOL_SIGNATURE_SIZE);
-    sqlite3_result_blob(ctx, signature, len, sqlite3_free);
-  }
-  else {
-    sqlite3_result_error_code(ctx, rc);
-  }
 }
 
 /*
@@ -463,11 +441,6 @@ int sqlite3_chemicalite_init(sqlite3 *db)
     rc = sqlite3_create_function(db, "mol_num_rings",
 				 1, SQLITE_UTF8, 0, mol_num_rings_f, 
 				 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_signature",
-				 1, SQLITE_UTF8, 0, mol_signature_f, 0, 0);
   }
   
   /*
