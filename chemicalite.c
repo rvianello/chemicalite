@@ -280,21 +280,6 @@ static void compute_real_descriptor(sqlite3_context* ctx,
   }
 }
 
-static void mol_mw_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
-{
-  compute_real_descriptor(ctx, argc, argv, mol_amw);
-}
-
-static void mol_logp_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
-{
-  compute_real_descriptor(ctx, argc, argv, mol_logp);
-}
-
-static void mol_tpsa_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
-{
-  compute_real_descriptor(ctx, argc, argv, mol_tpsa);
-}
-
 static void compute_int_descriptor(sqlite3_context* ctx, 
 				   int argc, sqlite3_value** argv,
 				   int (*descriptor)(Mol *))
@@ -314,44 +299,29 @@ static void compute_int_descriptor(sqlite3_context* ctx,
   }
 }
 
-static void mol_hba_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
-{
-  compute_int_descriptor(ctx, argc, argv, mol_hba);
+#define REAL_VALUED_MOL_DESCRIPTOR(func) \
+static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
+{ \
+  compute_real_descriptor(ctx, argc, argv, func); \
 }
 
-static void mol_hbd_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
-{
-  compute_int_descriptor(ctx, argc, argv, mol_hbd);
+REAL_VALUED_MOL_DESCRIPTOR(mol_mw)
+REAL_VALUED_MOL_DESCRIPTOR(mol_logp)
+REAL_VALUED_MOL_DESCRIPTOR(mol_tpsa)
+
+#define INT_VALUED_MOL_DESCRIPTOR(func)	 \
+static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
+{ \
+  compute_int_descriptor(ctx, argc, argv, func); \
 }
 
-static void mol_num_atms_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
-{
-  compute_int_descriptor(ctx, argc, argv, mol_num_atms);
-}
-
-static void mol_num_hvyatms_f(sqlite3_context* ctx, 
-			      int argc, sqlite3_value** argv)
-{
-  compute_int_descriptor(ctx, argc, argv, mol_num_hvyatms);
-}
-
-static void mol_num_rotatable_bnds_f(sqlite3_context* ctx, 
-				     int argc, sqlite3_value** argv)
-{
-  compute_int_descriptor(ctx, argc, argv, mol_num_rotatable_bnds);
-}
-
-static void mol_num_hetatms_f(sqlite3_context* ctx, 
-			      int argc, sqlite3_value** argv)
-{
-  compute_int_descriptor(ctx, argc, argv, mol_num_hetatms);
-}
-
-static void mol_num_rings_f(sqlite3_context* ctx, 
-			    int argc, sqlite3_value** argv)
-{
-  compute_int_descriptor(ctx, argc, argv, mol_num_rings);
-}
+INT_VALUED_MOL_DESCRIPTOR(mol_hba)
+INT_VALUED_MOL_DESCRIPTOR(mol_hbd)
+INT_VALUED_MOL_DESCRIPTOR(mol_num_atms)
+INT_VALUED_MOL_DESCRIPTOR(mol_num_hvyatms)
+INT_VALUED_MOL_DESCRIPTOR(mol_num_rotatable_bnds)
+INT_VALUED_MOL_DESCRIPTOR(mol_num_hetatms)
+INT_VALUED_MOL_DESCRIPTOR(mol_num_rings)
 
 /*
 ** Register the chemicalite module with database handle db.
@@ -359,96 +329,39 @@ static void mol_num_rings_f(sqlite3_context* ctx,
 int sqlite3_chemicalite_init(sqlite3 *db)
 {
   int rc = SQLITE_OK;
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol",
-				 1, SQLITE_UTF8, 0, mol_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "qmol",
-				 1, SQLITE_UTF8, 0, qmol_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_smiles",
-				 1, SQLITE_UTF8, 0, mol_smiles_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_is_substruct",
-				 2, SQLITE_UTF8, 0, mol_is_substruct_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_substruct_of",
-				 2, SQLITE_UTF8, 0, mol_substruct_of_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_same",
-				 2, SQLITE_UTF8, 0, mol_same_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_mw",
-				 1, SQLITE_UTF8, 0, mol_mw_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_logp",
-				 1, SQLITE_UTF8, 0, mol_logp_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_tpsa",
-				 1, SQLITE_UTF8, 0, mol_tpsa_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_hba",
-				 1, SQLITE_UTF8, 0, mol_hba_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_hbd",
-				 1, SQLITE_UTF8, 0, mol_hbd_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_num_atms",
-				 1, SQLITE_UTF8, 0, mol_num_atms_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_num_hvyatms",
-				 1, SQLITE_UTF8, 0, mol_num_hvyatms_f, 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_num_rotatable_bnds",
-				 1, SQLITE_UTF8, 0, mol_num_rotatable_bnds_f, 
-				 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_num_hetatms",
-				 1, SQLITE_UTF8, 0, mol_num_hetatms_f, 
-				 0, 0);
-  }
-  
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_function(db, "mol_num_rings",
-				 1, SQLITE_UTF8, 0, mol_num_rings_f, 
-				 0, 0);
-  }
-  
-  /*
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_module_v2(db, [...]);
-  }
-  */
 
+#define CREATE_FUNCTION(argc, func) \
+  do { \
+    if (rc == SQLITE_OK) { \
+      rc = sqlite3_create_function(db, # func, \
+				   argc, SQLITE_UTF8, 0, func##_f, 0, 0); \
+    } \
+  } while (0)
+  
+#define CREATE_UNARY_FUNCTION(func) CREATE_FUNCTION(1, func)
+#define CREATE_BINARY_FUNCTION(func) CREATE_FUNCTION(2, func)
+
+  CREATE_UNARY_FUNCTION(mol);
+  CREATE_UNARY_FUNCTION(qmol);
+
+  CREATE_UNARY_FUNCTION(mol_smiles);
+  
+  CREATE_BINARY_FUNCTION(mol_is_substruct);
+  CREATE_BINARY_FUNCTION(mol_substruct_of);
+  CREATE_BINARY_FUNCTION(mol_same);
+  
+  CREATE_UNARY_FUNCTION(mol_mw);
+  CREATE_UNARY_FUNCTION(mol_logp);
+  CREATE_UNARY_FUNCTION(mol_tpsa);
+
+  CREATE_UNARY_FUNCTION(mol_hba);
+  CREATE_UNARY_FUNCTION(mol_hbd);
+  CREATE_UNARY_FUNCTION(mol_num_atms);
+  CREATE_UNARY_FUNCTION(mol_num_hvyatms);
+  CREATE_UNARY_FUNCTION(mol_num_rotatable_bnds);
+  CREATE_UNARY_FUNCTION(mol_num_hetatms);
+  CREATE_UNARY_FUNCTION(mol_num_rings);
+  
   return rc;
 }
 
