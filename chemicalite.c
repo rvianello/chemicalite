@@ -330,14 +330,10 @@ int sqlite3_chemicalite_init(sqlite3 *db)
 {
   int rc = SQLITE_OK;
 
-#define CREATE_FUNCTION(argc, func) \
-  do { \
-    if (rc == SQLITE_OK) { \
-      rc = sqlite3_create_function(db, # func, \
-				   argc, SQLITE_UTF8, 0, func##_f, 0, 0); \
-    } \
-  } while (0)
-  
+#define CREATE_FUNCTION(a, func)					\
+  if (rc == SQLITE_OK)							\
+    rc = sqlite3_create_function(db, # func, a, SQLITE_UTF8, 0, func##_f, 0, 0)
+
 #define CREATE_UNARY_FUNCTION(func) CREATE_FUNCTION(1, func)
 #define CREATE_BINARY_FUNCTION(func) CREATE_FUNCTION(2, func)
 
