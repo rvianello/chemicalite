@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "inttypes.h"
+#include "utils.h"
 
 #include <sqlite3ext.h>
 SQLITE_EXTENSION_INIT1
@@ -299,29 +300,29 @@ static void compute_int_descriptor(sqlite3_context* ctx,
   }
 }
 
-#define REAL_VALUED_MOL_DESCRIPTOR(func) \
-static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
-{ \
-  compute_real_descriptor(ctx, argc, argv, func); \
-}
+#define REAL_VALUED_DESCRIPTOR(func)					\
+  static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
+  {									\
+    compute_real_descriptor(ctx, argc, argv, func);			\
+  }
 
-REAL_VALUED_MOL_DESCRIPTOR(mol_mw)
-REAL_VALUED_MOL_DESCRIPTOR(mol_logp)
-REAL_VALUED_MOL_DESCRIPTOR(mol_tpsa)
+REAL_VALUED_DESCRIPTOR(mol_mw)
+REAL_VALUED_DESCRIPTOR(mol_logp)
+REAL_VALUED_DESCRIPTOR(mol_tpsa)
 
-#define INT_VALUED_MOL_DESCRIPTOR(func)	 \
-static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
-{ \
-  compute_int_descriptor(ctx, argc, argv, func); \
-}
+#define INT_VALUED_DESCRIPTOR(func)					\
+  static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
+  {									\
+    compute_int_descriptor(ctx, argc, argv, func);			\
+  }
 
-INT_VALUED_MOL_DESCRIPTOR(mol_hba)
-INT_VALUED_MOL_DESCRIPTOR(mol_hbd)
-INT_VALUED_MOL_DESCRIPTOR(mol_num_atms)
-INT_VALUED_MOL_DESCRIPTOR(mol_num_hvyatms)
-INT_VALUED_MOL_DESCRIPTOR(mol_num_rotatable_bnds)
-INT_VALUED_MOL_DESCRIPTOR(mol_num_hetatms)
-INT_VALUED_MOL_DESCRIPTOR(mol_num_rings)
+INT_VALUED_DESCRIPTOR(mol_hba)
+INT_VALUED_DESCRIPTOR(mol_hbd)
+INT_VALUED_DESCRIPTOR(mol_num_atms)
+INT_VALUED_DESCRIPTOR(mol_num_hvyatms)
+INT_VALUED_DESCRIPTOR(mol_num_rotatable_bnds)
+INT_VALUED_DESCRIPTOR(mol_num_hetatms)
+INT_VALUED_DESCRIPTOR(mol_num_rings)
 
 /*
 ** Register the chemicalite module with database handle db.
@@ -329,34 +330,27 @@ INT_VALUED_MOL_DESCRIPTOR(mol_num_rings)
 int sqlite3_chemicalite_init(sqlite3 *db)
 {
   int rc = SQLITE_OK;
-
-#define CREATE_FUNCTION(a, func)					\
-  if (rc == SQLITE_OK)							\
-    rc = sqlite3_create_function(db, # func, a, SQLITE_UTF8, 0, func##_f, 0, 0)
-
-#define CREATE_UNARY_FUNCTION(func) CREATE_FUNCTION(1, func)
-#define CREATE_BINARY_FUNCTION(func) CREATE_FUNCTION(2, func)
-
-  CREATE_UNARY_FUNCTION(mol);
-  CREATE_UNARY_FUNCTION(qmol);
-
-  CREATE_UNARY_FUNCTION(mol_smiles);
   
-  CREATE_BINARY_FUNCTION(mol_is_substruct);
-  CREATE_BINARY_FUNCTION(mol_substruct_of);
-  CREATE_BINARY_FUNCTION(mol_same);
+  CREATE_SQLITE_UNARY_FUNCTION(mol, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(qmol, rc);
   
-  CREATE_UNARY_FUNCTION(mol_mw);
-  CREATE_UNARY_FUNCTION(mol_logp);
-  CREATE_UNARY_FUNCTION(mol_tpsa);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_smiles, rc);
+  
+  CREATE_SQLITE_BINARY_FUNCTION(mol_is_substruct, rc);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_substruct_of, rc);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_same, rc);
+  
+  CREATE_SQLITE_UNARY_FUNCTION(mol_mw, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_logp, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_tpsa, rc);
 
-  CREATE_UNARY_FUNCTION(mol_hba);
-  CREATE_UNARY_FUNCTION(mol_hbd);
-  CREATE_UNARY_FUNCTION(mol_num_atms);
-  CREATE_UNARY_FUNCTION(mol_num_hvyatms);
-  CREATE_UNARY_FUNCTION(mol_num_rotatable_bnds);
-  CREATE_UNARY_FUNCTION(mol_num_hetatms);
-  CREATE_UNARY_FUNCTION(mol_num_rings);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hba, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hbd, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_num_atms, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_num_hvyatms, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_num_rotatable_bnds, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_num_hetatms, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_num_rings, rc);
   
   return rc;
 }
