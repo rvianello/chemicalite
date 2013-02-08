@@ -220,20 +220,17 @@ int mol_is_substruct(Mol *p1, Mol *p2)
 {
   assert(p1 && p2);
   RDKit::MatchVectType matchVect;
-  return RDKit::SubstructMatch(*p1, *p2, matchVect); 
+  return RDKit::SubstructMatch(*p1, *p2, matchVect) ? 1 : 0; 
+}
+
+int mol_is_superstruct(Mol *p1, Mol *p2)
+{
+  return mol_is_substruct(p2, p1);
 }
 
 int mol_cmp(Mol *p1, Mol *p2)
 {
-  if(!p1 && !p2) { 
-    return 0;
-  }
-  else if (!p1) {
-    return -1;
-  }
-  else if (!p2) {
-    return 1;
-  }
+  assert(p1 && p2);
   
   int res = p1->getNumAtoms() - p2->getNumAtoms();
   if (res) {return (res > 0) ? 1 : -1;}
@@ -248,7 +245,8 @@ int mol_cmp(Mol *p1, Mol *p2)
   res = p1->getRingInfo()->numRings() - p2->getRingInfo()->numRings();
   if (res) {return (res > 0) ? 1 : -1;}
 
-  return mol_is_substruct(p1, p2) ? 0 : -1;
+  // FIXME if not the same result is -1 also if the args are swapped
+  return mol_is_substruct(p1, p2) ? 0 : -1; 
 }
 
 // Molecular descriptors /////////////////////////////////////////////////////

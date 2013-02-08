@@ -28,6 +28,7 @@ extern "C" {
   /* mol ops */
   int mol_cmp(Mol *p1, Mol *p2);
   int mol_is_substruct(Mol *p1, Mol *p2);
+  int mol_is_superstruct(Mol *p1, Mol *p2);
 
   /* descriptors */
   double mol_mw(Mol *pMol);

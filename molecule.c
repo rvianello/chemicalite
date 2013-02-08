@@ -157,16 +157,16 @@ static void compare_structures(sqlite3_context* ctx,
   Mol *p2 = 0;
   
   rc = fetch_mol_arg(argv[0], &p1);
-  if (rc != SQLITE_OK) goto mol_is_substruct_f_end;
+  if (rc != SQLITE_OK) goto compare_f_end;
 
   rc = fetch_mol_arg(argv[1], &p2);
-  if (rc != SQLITE_OK) goto mol_is_substruct_f_free_mol1;
+  if (rc != SQLITE_OK) goto compare_f_free_mol1;
 
-  int result = compare(p1, p2) ? 1 : 0;
+  int result = compare(p1, p2);
 
- mol_is_substruct_f_free_mol2: free_mol(p2);
- mol_is_substruct_f_free_mol1: free_mol(p1);
- mol_is_substruct_f_end:
+ compare_f_free_mol2: free_mol(p2);
+ compare_f_free_mol1: free_mol(p1);
+ compare_f_end:
   if (rc == SQLITE_OK) {
     sqlite3_result_int(ctx, result);
   }
@@ -184,27 +184,19 @@ static void mol_is_substruct_f(sqlite3_context* ctx,
   compare_structures(ctx, argc, argv, mol_is_substruct);
 }
 
-/* same as function above but with args swapped */
-static int mol_substruct_of(Mol * p1, Mol * p2)
+static void mol_is_superstruct_f(sqlite3_context* ctx, 
+				 int argc, sqlite3_value** argv)
 {
-  return mol_is_substruct(p2, p1);
-}
-
-static void mol_substruct_of_f(sqlite3_context* ctx, 
-			       int argc, sqlite3_value** argv)
-{
-  compare_structures(ctx, argc, argv, mol_substruct_of);
+  compare_structures(ctx, argc, argv, mol_is_superstruct);
 }
 
 /*
-** structural equality
+** structural comparison (ordering)
 */
-static int mol_same(Mol * p1, Mol * p2) {return mol_cmp(p1, p2) ? 0 : 1;}
-
-static void mol_same_f(sqlite3_context* ctx, 
+static void mol_cmp_f(sqlite3_context* ctx, 
 		       int argc, sqlite3_value** argv)
 {
-  compare_structures(ctx, argc, argv, mol_same);
+  compare_structures(ctx, argc, argv, mol_cmp);
 }
 
 /*

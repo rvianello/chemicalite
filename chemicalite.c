@@ -25,8 +25,8 @@ int sqlite3_chemicalite_init(sqlite3 *db)
   CREATE_SQLITE_UNARY_FUNCTION(mol_smiles, rc);
   
   CREATE_SQLITE_BINARY_FUNCTION(mol_is_substruct, rc);
-  CREATE_SQLITE_BINARY_FUNCTION(mol_substruct_of, rc);
-  CREATE_SQLITE_BINARY_FUNCTION(mol_same, rc);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_is_superstruct, rc);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_cmp, rc);
   
   CREATE_SQLITE_UNARY_FUNCTION(mol_mw, rc);
   CREATE_SQLITE_UNARY_FUNCTION(mol_logp, rc);
