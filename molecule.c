@@ -146,58 +146,40 @@ static void mol_smiles_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 ** structural comparison
 */
 
-static void compare_structures(sqlite3_context* ctx, 
-			       int argc, sqlite3_value** argv,
-			       int (*compare)(Mol *, Mol*))
-{
-  assert(argc == 2);
-  int rc = SQLITE_OK;
-
-  Mol *p1 = 0;
-  Mol *p2 = 0;
-  
-  rc = fetch_mol_arg(argv[0], &p1);
-  if (rc != SQLITE_OK) goto compare_f_end;
-
-  rc = fetch_mol_arg(argv[1], &p2);
-  if (rc != SQLITE_OK) goto compare_f_free_mol1;
-
-  int result = compare(p1, p2);
-
- compare_f_free_mol2: free_mol(p2);
- compare_f_free_mol1: free_mol(p1);
- compare_f_end:
-  if (rc == SQLITE_OK) {
-    sqlite3_result_int(ctx, result);
+#define COMPARE_STRUCTURES(func)					\
+  static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
+  {									\
+    assert(argc == 2);							\
+    int rc = SQLITE_OK;							\
+									\
+    Mol *p1 = 0;							\
+    Mol *p2 = 0;							\
+									\
+    rc = fetch_mol_arg(argv[0], &p1);					\
+    if (rc != SQLITE_OK) goto func##_f_end;				\
+									\
+    rc = fetch_mol_arg(argv[1], &p2);					\
+    if (rc != SQLITE_OK) goto func##_f_free_mol1;			\
+									\
+    int result = func(p1, p2);						\
+									\
+  func##_f_free_mol2: free_mol(p2);					\
+  func##_f_free_mol1: free_mol(p1);					\
+  func##_f_end:								\
+    if (rc == SQLITE_OK) {						\
+      sqlite3_result_int(ctx, result);					\
+    }									\
+    else {								\
+      sqlite3_result_error_code(ctx, rc);				\
+    }									\
   }
-  else {
-    sqlite3_result_error_code(ctx, rc);
-  }
-}
 
 /*
-** substructure match
+** substructure match and structural comparison (ordering)
 */
-static void mol_is_substruct_f(sqlite3_context* ctx, 
-			       int argc, sqlite3_value** argv)
-{
-  compare_structures(ctx, argc, argv, mol_is_substruct);
-}
-
-static void mol_is_superstruct_f(sqlite3_context* ctx, 
-				 int argc, sqlite3_value** argv)
-{
-  compare_structures(ctx, argc, argv, mol_is_superstruct);
-}
-
-/*
-** structural comparison (ordering)
-*/
-static void mol_cmp_f(sqlite3_context* ctx, 
-		       int argc, sqlite3_value** argv)
-{
-  compare_structures(ctx, argc, argv, mol_cmp);
-}
+COMPARE_STRUCTURES(mol_is_substruct)
+COMPARE_STRUCTURES(mol_is_superstruct)
+COMPARE_STRUCTURES(mol_cmp)
 
 /*
 ** molecular descriptors
@@ -220,7 +202,6 @@ static void mol_cmp_f(sqlite3_context* ctx,
       sqlite3_result_error_code(ctx, rc);				\
     }									\
   }
-
 
 MOL_DESCRIPTOR(mol_mw, double)
 MOL_DESCRIPTOR(mol_logp, double)
