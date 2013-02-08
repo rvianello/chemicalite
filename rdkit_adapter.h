@@ -33,6 +33,19 @@ extern "C" {
   double mol_mw(Mol *pMol);
   double mol_logp(Mol *pMol);
   double mol_tpsa(Mol *pMol);
+  double mol_chi0v(Mol *pMol);
+  double mol_chi1v(Mol *pMol);
+  double mol_chi2v(Mol *pMol);
+  double mol_chi3v(Mol *pMol);
+  double mol_chi4v(Mol *pMol);
+  double mol_chi0n(Mol *pMol);
+  double mol_chi1n(Mol *pMol);
+  double mol_chi2n(Mol *pMol);
+  double mol_chi3n(Mol *pMol);
+  double mol_chi4n(Mol *pMol);
+  double mol_kappa1(Mol *pMol);
+  double mol_kappa2(Mol *pMol);
+  double mol_kappa3(Mol *pMol);
   
   int mol_hba(Mol *pMol);
   int mol_hbd(Mol *pMol);

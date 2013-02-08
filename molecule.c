@@ -211,67 +211,49 @@ static void mol_same_f(sqlite3_context* ctx,
 ** molecular descriptors
 */
 
-static void compute_real_descriptor(sqlite3_context* ctx, 
-				    int argc, sqlite3_value** argv,
-				    double (*function)(Mol *))
-{
-  assert(argc == 1);
-
-  Mol *pMol = 0;
-  int rc = fetch_mol_arg(argv[0], &pMol);
-
-  if (rc == SQLITE_OK) {
-    double descriptor = function(pMol);
-    free_mol(pMol);
-    sqlite3_result_double(ctx, descriptor);
-  }
-  else {
-    sqlite3_result_error_code(ctx, rc);
-  }
-}
-
-static void compute_int_descriptor(sqlite3_context* ctx, 
-				   int argc, sqlite3_value** argv,
-				   int (*function)(Mol *))
-{
-  assert(argc == 1);
-
-  Mol *pMol = 0;
-  int rc = fetch_mol_arg(argv[0], &pMol);
-
-  if (rc == SQLITE_OK) {
-    int descriptor = function(pMol);
-    free_mol(pMol);
-    sqlite3_result_int(ctx, descriptor);
-  }
-  else {
-    sqlite3_result_error_code(ctx, rc);
-  }
-}
-
-#define REAL_VALUED_DESCRIPTOR(func)					\
+#define MOL_DESCRIPTOR(func, type) \
   static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
   {									\
-    compute_real_descriptor(ctx, argc, argv, func);			\
+    assert(argc == 1);							\
+									\
+    Mol *pMol = 0;							\
+    int rc = fetch_mol_arg(argv[0], &pMol);				\
+									\
+    if (rc == SQLITE_OK) {						\
+      type descriptor = func(pMol);					\
+      free_mol(pMol);							\
+      sqlite3_result_##type(ctx, descriptor);				\
+    }									\
+    else {								\
+      sqlite3_result_error_code(ctx, rc);				\
+    }									\
   }
 
-REAL_VALUED_DESCRIPTOR(mol_mw)
-REAL_VALUED_DESCRIPTOR(mol_logp)
-REAL_VALUED_DESCRIPTOR(mol_tpsa)
 
-#define INT_VALUED_DESCRIPTOR(func)					\
-  static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
-  {									\
-    compute_int_descriptor(ctx, argc, argv, func);			\
-  }
+MOL_DESCRIPTOR(mol_mw, double)
+MOL_DESCRIPTOR(mol_logp, double)
+MOL_DESCRIPTOR(mol_tpsa, double)
+MOL_DESCRIPTOR(mol_chi0v, double)
+MOL_DESCRIPTOR(mol_chi1v, double)
+MOL_DESCRIPTOR(mol_chi2v, double)
+MOL_DESCRIPTOR(mol_chi3v, double)
+MOL_DESCRIPTOR(mol_chi4v, double)
+MOL_DESCRIPTOR(mol_chi0n, double)
+MOL_DESCRIPTOR(mol_chi1n, double)
+MOL_DESCRIPTOR(mol_chi2n, double)
+MOL_DESCRIPTOR(mol_chi3n, double)
+MOL_DESCRIPTOR(mol_chi4n, double)
+MOL_DESCRIPTOR(mol_kappa1, double)
+MOL_DESCRIPTOR(mol_kappa2, double)
+MOL_DESCRIPTOR(mol_kappa3, double)
 
-INT_VALUED_DESCRIPTOR(mol_hba)
-INT_VALUED_DESCRIPTOR(mol_hbd)
-INT_VALUED_DESCRIPTOR(mol_num_atms)
-INT_VALUED_DESCRIPTOR(mol_num_hvyatms)
-INT_VALUED_DESCRIPTOR(mol_num_rotatable_bnds)
-INT_VALUED_DESCRIPTOR(mol_num_hetatms)
-INT_VALUED_DESCRIPTOR(mol_num_rings)
+MOL_DESCRIPTOR(mol_hba, int)
+MOL_DESCRIPTOR(mol_hbd, int)
+MOL_DESCRIPTOR(mol_num_atms, int)
+MOL_DESCRIPTOR(mol_num_hvyatms, int)
+MOL_DESCRIPTOR(mol_num_rotatable_bnds, int)
+MOL_DESCRIPTOR(mol_num_hetatms, int)
+MOL_DESCRIPTOR(mol_num_rings, int)
 
 #else
 #error "module module included multiple times"

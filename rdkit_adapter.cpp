@@ -253,36 +253,41 @@ int mol_cmp(Mol *p1, Mol *p2)
 
 // Molecular descriptors /////////////////////////////////////////////////////
 
-double mol_mw(Mol *pMol) 
-{
-  assert(pMol);
-  return RDKit::Descriptors::calcAMW(*pMol, false);
-}
+#define MOL_DESCRIPTOR(name, func, type)		\
+  type mol_##name(Mol *pMol)				\
+  {							\
+    assert(pMol);					\
+    return func(*pMol);					\
+  }
 
+MOL_DESCRIPTOR(mw, RDKit::Descriptors::calcAMW, double)
+MOL_DESCRIPTOR(tpsa, RDKit::Descriptors::calcTPSA, double)
+MOL_DESCRIPTOR(hba, RDKit::Descriptors::calcLipinskiHBA, int)
+MOL_DESCRIPTOR(hbd, RDKit::Descriptors::calcLipinskiHBD, int)
+MOL_DESCRIPTOR(num_rotatable_bnds, RDKit::Descriptors::calcNumRotatableBonds, 
+	       int)
+MOL_DESCRIPTOR(num_hetatms, RDKit::Descriptors::calcNumHeteroatoms, int)
+MOL_DESCRIPTOR(num_rings, RDKit::Descriptors::calcNumRings, int)
+MOL_DESCRIPTOR(chi0v,RDKit::Descriptors::calcChi0v,double)
+MOL_DESCRIPTOR(chi1v,RDKit::Descriptors::calcChi1v,double)
+MOL_DESCRIPTOR(chi2v,RDKit::Descriptors::calcChi2v,double)
+MOL_DESCRIPTOR(chi3v,RDKit::Descriptors::calcChi3v,double)
+MOL_DESCRIPTOR(chi4v,RDKit::Descriptors::calcChi4v,double)
+MOL_DESCRIPTOR(chi0n,RDKit::Descriptors::calcChi0n,double)
+MOL_DESCRIPTOR(chi1n,RDKit::Descriptors::calcChi1n,double)
+MOL_DESCRIPTOR(chi2n,RDKit::Descriptors::calcChi2n,double)
+MOL_DESCRIPTOR(chi3n,RDKit::Descriptors::calcChi3n,double)
+MOL_DESCRIPTOR(chi4n,RDKit::Descriptors::calcChi4n,double)
+MOL_DESCRIPTOR(kappa1,RDKit::Descriptors::calcKappa1,double)
+MOL_DESCRIPTOR(kappa2,RDKit::Descriptors::calcKappa2,double)
+MOL_DESCRIPTOR(kappa3,RDKit::Descriptors::calcKappa3,double)
+  
 double mol_logp(Mol *pMol) 
 {
   assert(pMol);
   double logp, mr;
   RDKit::Descriptors::calcCrippenDescriptors(*pMol, logp, mr);
   return logp;
-}
-
-double mol_tpsa(Mol *pMol) 
-{
-  assert(pMol);
-  return RDKit::Descriptors::calcTPSA(*pMol);
-}
-  
-int mol_hba(Mol *pMol) 
-{
-  assert(pMol);
-  return RDKit::Descriptors::calcLipinskiHBA(*pMol);
-}
-
-int mol_hbd(Mol *pMol) 
-{
-  assert(pMol);
-  return RDKit::Descriptors::calcLipinskiHBD(*pMol);
 }
 
 int mol_num_atms(Mol *pMol) 
@@ -297,23 +302,6 @@ int mol_num_hvyatms(Mol *pMol)
   return pMol->getNumAtoms(true);
 }
 
-int mol_num_rotatable_bnds(Mol *pMol) 
-{
-  assert(pMol);
-  RDKit::Descriptors::calcNumRotatableBonds(*pMol);
-}
-
-int mol_num_hetatms(Mol *pMol) 
-{
-  assert(pMol);
-  return RDKit::Descriptors::calcNumHeteroatoms(*pMol);
-}
-
-int mol_num_rings(Mol *pMol) 
-{
-  assert(pMol);
-  return RDKit::Descriptors::calcNumRings(*pMol);
-}
 
 // BitString <-> Blob ///////////////////////////////////////////////////////
 
