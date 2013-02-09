@@ -1,7 +1,14 @@
-#ifndef CHEMICALITE_MOLECULE_INCLUDED
-#define CHEMICALITE_MOLECULE_INCLUDED
+#include <assert.h>
+#include <string.h>
 
+#include <sqlite3ext.h>
+extern const sqlite3_api_routines *sqlite3_api;
+
+#include "chemicalite.h"
 #include "rdkit_adapter.h"
+#include "utils.h"
+#include "object.h"
+#include "molecule.h"
 
 static const int MOL_MAX_TXT_LENGTH = 2048;
 static const int AS_SMILES = 0;
@@ -37,7 +44,7 @@ static void cast_to_molecule(sqlite3_context* ctx,
 
     int objSz = 0;
     Object *pObject = 0;
-    rc = wrap_object(pBlob, sz, type, &pObject, &objSz);
+    rc = wrap_blob(pBlob, sz, type, &pObject, &objSz);
     if (rc == SQLITE_OK) {
       sqlite3_result_blob(ctx, pObject, objSz, sqlite3_free);
     }
@@ -53,7 +60,7 @@ static void cast_to_molecule(sqlite3_context* ctx,
     
     int sz = sqlite3_value_bytes(arg);
     Object * pObject = (Object *)sqlite3_value_blob(arg);
-    if (sz > sizeof(Object) && (OBJTYPE(pObject) == type)) {
+    if (sz > object_header_size() && (OBJTYPE(pObject) == type)) {
       /* 
       ** the input argument is already a mol/qmol blob of the expected type
       ** just make a copy (almost a no-op)
@@ -105,10 +112,11 @@ static int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
   if (sqlite3_value_type(arg) == SQLITE_BLOB) {
     int sz = sqlite3_value_bytes(arg);
     Object * pObj = (Object *)sqlite3_value_blob(arg);
-    if ( (sz > sizeof(Object)) && 
+    int hdr_sz = object_header_size();
+    if ( (sz > hdr_sz) && 
 	 (IS_MOLOBJ(pObj) || IS_QMOLOBJ(pObj)) ) {
-      sz -= sizeof(Object);
-      rc = blob_to_mol(pObj->blob, sz, ppMol);
+      sz -= hdr_sz;
+      rc = blob_to_mol(get_blob(pObj), sz, ppMol);
     }
   }
   /* or a text string - by default assumed to be a SMILES */
@@ -228,6 +236,43 @@ MOL_DESCRIPTOR(mol_num_rotatable_bnds, int)
 MOL_DESCRIPTOR(mol_num_hetatms, int)
 MOL_DESCRIPTOR(mol_num_rings, int)
 
-#else
-#error "module module included multiple times"
-#endif
+int chemicalite_init_molecule(sqlite3 *db)
+{
+  int rc = SQLITE_OK;
+  
+  CREATE_SQLITE_UNARY_FUNCTION(mol, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(qmol, rc);
+  
+  CREATE_SQLITE_UNARY_FUNCTION(mol_smiles, rc);
+  
+  CREATE_SQLITE_BINARY_FUNCTION(mol_is_substruct, rc);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_is_superstruct, rc);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_cmp, rc);
+  
+  CREATE_SQLITE_UNARY_FUNCTION(mol_mw, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_logp, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_tpsa, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_chi0v, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_chi1v, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_chi2v, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_chi3v, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_chi4v, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_chi0n, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_chi1n, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_chi2n, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_chi3n, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_chi4n, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_kappa1, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_kappa2, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_kappa3, rc);
+
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hba, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hbd, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_num_atms, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_num_hvyatms, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_num_rotatable_bnds, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_num_hetatms, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_num_rings, rc);
+  
+  return rc;
+}

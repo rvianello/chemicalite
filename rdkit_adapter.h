@@ -1,6 +1,5 @@
 #ifndef CHEMICALITE_RDKIT_ADAPTER_INCLUDED
 #define CHEMICALITE_RDKIT_ADAPTER_INCLUDED
-#include "inttypes.h"
 
 #ifdef __cplusplus
 extern "C" {

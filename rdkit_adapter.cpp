@@ -1,11 +1,9 @@
-#include "rdkit_adapter.h"
-
-#include <sqlite3ext.h>
-extern const sqlite3_api_routines *sqlite3_api;
-
 #include <cassert>
 #include <cstring>
 #include <string>
+
+#include <sqlite3ext.h>
+extern const sqlite3_api_routines *sqlite3_api;
 
 #include <GraphMol/RDKitBase.h>
 #include <GraphMol/MolPickler.h>
@@ -17,6 +15,9 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <GraphMol/Fingerprints/Fingerprints.h>
 #include <DataStructs/ExplicitBitVect.h>
 #include <DataStructs/BitOps.h>
+
+#include "chemicalite.h"
+#include "rdkit_adapter.h"
 
 struct Mol : RDKit::ROMol {
   // Mol() : RDKit::ROMol() {}

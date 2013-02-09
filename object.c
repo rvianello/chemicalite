@@ -1,33 +1,37 @@
-#ifndef CHEMICALITE_BINARY_OBJECT_WRAPPER_INCLUDED
-#define CHEMICALITE_BINARY_OBJECT_WRAPPER_INCLUDED
+#include <assert.h>
+#include <string.h>
 
-#define MAGIC_MASK 0xFFFFFF00
-#define TYPE_MASK  0x000000FF
-#define MAGIC      0xABCDEF00
+#include <sqlite3ext.h>
+extern const sqlite3_api_routines *sqlite3_api;
 
-#define MOLOBJ  0x00000001
-#define QMOLOBJ 0x00000002
-
-#define OBJMAGIC(p) (*((u32 *)p) & MAGIC_MASK)
-#define OBJTYPE(p) (*((u32 *)p) & TYPE_MASK)
-#define IS_OBJPTR(p) (OBJMAGIC(p) == MAGIC)
-#define IS_MOLOBJ(p) (IS_OBJPTR(p) && (OBJTYPE(p) == MOLOBJ))
-#define IS_QMOLOBJ(p) (IS_OBJPTR(p) && (OBJTYPE(p) == QMOLOBJ))
-
-typedef struct Object Object;
+#include "chemicalite.h"
+#include "object.h"
 
 struct Object {
   u32 marker;
   u8 blob[];
 };
 
+int object_header_size() 
+{ 
+  return sizeof(Object); 
+}
+
+u8* get_blob(Object *pObject) 
+{ 
+  assert(pObject);
+  return pObject->blob; 
+}
+
 /* 
 ** wraps the binary blob pointed by pBlob in an Object structure where
 ** it's prefixed by a data type marker
 */
-static int wrap_object(u8 *pBlob, int sz, u32 type, 
-		       Object **ppObject, int *pObjSz)
+int wrap_blob(u8 *pBlob, int sz, u32 type, Object **ppObject, int *pObjSz)
 {
+  assert(pBlob);
+  assert(sz);
+
   int rc = SQLITE_NOMEM;
   int objsz = sizeof(Object) + sz;
   *ppObject = sqlite3_malloc(objsz);
@@ -39,7 +43,3 @@ static int wrap_object(u8 *pBlob, int sz, u32 type,
   }
   return rc;
 }
-
-#else
-#error "object module included multiple times"
-#endif
