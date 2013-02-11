@@ -15,6 +15,32 @@ static const int AS_SMILES = 0;
 static const int AS_SMARTS = 1;
 
 /*
+** fetch Mol from text or blob argument of molobj type
+*/
+static int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
+{
+  int rc = SQLITE_MISMATCH;
+
+  /* Check that value is a blob */
+  if (sqlite3_value_type(arg) == SQLITE_BLOB) {
+    int sz = sqlite3_value_bytes(arg);
+    Object * pObj = (Object *)sqlite3_value_blob(arg);
+    int hdr_sz = object_header_size();
+    if ( (sz > hdr_sz) && is_object_type(pObj, MOLOBJ | QMOLOBJ) ) {
+      sz -= hdr_sz;
+      rc = blob_to_mol(get_blob(pObj), sz, ppMol);
+    }
+  }
+  /* or a text string - by default assumed to be a SMILES */
+  else if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
+    rc = sqlite3_value_bytes(arg) <= MOL_MAX_TXT_LENGTH ?
+      txt_to_mol(sqlite3_value_text(arg), AS_SMILES, ppMol) : SQLITE_TOOBIG;
+  }
+
+  return rc;
+}
+
+/*
 ** implementation for SMILES/SMARTS conversion to molecule object 
 */
 static void cast_to_molecule(sqlite3_context* ctx, 
@@ -60,7 +86,7 @@ static void cast_to_molecule(sqlite3_context* ctx,
     
     int sz = sqlite3_value_bytes(arg);
     Object * pObject = (Object *)sqlite3_value_blob(arg);
-    if (sz > object_header_size() && (OBJTYPE(pObject) == type)) {
+    if (sz > object_header_size() && is_object_type(pObject, type)) {
       /* 
       ** the input argument is already a mol/qmol blob of the expected type
       ** just make a copy (almost a no-op)
@@ -99,33 +125,6 @@ static void mol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 static void qmol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 {
   cast_to_molecule(ctx, argc, argv, AS_SMARTS);
-}
-
-/*
-** fetch Mol from text or blob argument of molobj type
-*/
-static int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
-{
-  int rc = SQLITE_MISMATCH;
-
-  /* Check that value is a blob */
-  if (sqlite3_value_type(arg) == SQLITE_BLOB) {
-    int sz = sqlite3_value_bytes(arg);
-    Object * pObj = (Object *)sqlite3_value_blob(arg);
-    int hdr_sz = object_header_size();
-    if ( (sz > hdr_sz) && 
-	 (IS_MOLOBJ(pObj) || IS_QMOLOBJ(pObj)) ) {
-      sz -= hdr_sz;
-      rc = blob_to_mol(get_blob(pObj), sz, ppMol);
-    }
-  }
-  /* or a text string - by default assumed to be a SMILES */
-  else if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
-    rc = sqlite3_value_bytes(arg) <= MOL_MAX_TXT_LENGTH ?
-      txt_to_mol(sqlite3_value_text(arg), AS_SMILES, ppMol) : SQLITE_TOOBIG;
-  }
-
-  return rc;
 }
 
 /*

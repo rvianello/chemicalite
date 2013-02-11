@@ -7,6 +7,14 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "chemicalite.h"
 #include "object.h"
 
+#define MAGIC_MASK 0xFFFFFF00
+#define TYPE_MASK  0x000000FF
+#define MAGIC      0xABCDEF00
+
+#define OBJMAGIC(p) (*((u32 *)p) & MAGIC_MASK)
+#define OBJTYPE(p) (*((u32 *)p) & TYPE_MASK)
+#define IS_OBJPTR(p) (OBJMAGIC(p) == MAGIC)
+
 struct Object {
   u32 marker;
   u8 blob[];
@@ -15,6 +23,11 @@ struct Object {
 int object_header_size() 
 { 
   return sizeof(Object); 
+}
+
+int is_object_type(Object * pObject, u32 type)
+{
+  return IS_OBJPTR(pObject) && (OBJTYPE(pObject) | type);
 }
 
 u8* get_blob(Object *pObject) 
