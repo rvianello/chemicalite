@@ -12,3 +12,9 @@ add_library(chemicalite MODULE
             rdkit_adapter.cpp)
 target_link_libraries(chemicalite 
                       Descriptors Fingerprints)
+
+get_target_property(CHEMICALITE_LOCATION chemicalite LOCATION)
+
+enable_testing()
+add_subdirectory(test)
+
