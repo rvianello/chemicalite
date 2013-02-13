@@ -63,6 +63,15 @@ extern "C" {
   int bitstring_tanimoto(BitString *pBits1, BitString *pBits2, double *pSim);
   int bitstring_dice(BitString *pBits1, BitString *pBits2, double *pSim);
 
+  /* mol -> bitstring */
+  int mol_layered_bfp(Mol *pMol, BitString **ppBits);
+  int mol_rdkit_bfp(Mol *pMol, BitString **ppBits);
+  int mol_morgan_bfp(Mol *pMol, int radius, BitString **ppBits);
+  int mol_feat_morgan_bfp(Mol *pMol, int radius, BitString **ppBits);
+  int mol_atom_pair_bfp(Mol *pMol, BitString **ppBits);
+  int mol_topological_torsion_bfp(Mol *pMol, BitString **ppBits);
+  int mol_maccs_bfp(Mol *pMol, BitString **ppBits);
+
 #ifdef __cplusplus
 } /* extern "C" { */
 #endif

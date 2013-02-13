@@ -13,6 +13,9 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <GraphMol/SmilesParse/SmilesWrite.h>
 #include <GraphMol/Substruct/SubstructMatch.h>
 #include <GraphMol/Fingerprints/Fingerprints.h>
+#include <GraphMol/Fingerprints/AtomPairs.h>
+#include <GraphMol/Fingerprints/MorganFingerprints.h>
+#include <GraphMol/Fingerprints/MACCS.h>
 #include <DataStructs/ExplicitBitVect.h>
 #include <DataStructs/BitOps.h>
 
@@ -20,9 +23,6 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "rdkit_adapter.h"
 
 struct Mol : RDKit::ROMol {
-  // Mol() : RDKit::ROMol() {}
-  // Mol(const Mol & other) : RDKit::ROMol(other) {}
-  // Mol(const RDKit::ROMol & other) : RDKit::ROMol(other) {}
   Mol(const std::string & pickle) : RDKit::ROMol(pickle) {}
 };
 
@@ -41,10 +41,11 @@ void free_bitstring(BitString *pBits)
 }
 
 namespace {
-  const unsigned int SSS_FP_SIZE         = 8*MOL_SIGNATURE_SIZE;
-  const unsigned int LAYERED_FP_SIZE     = 1024;
-  const unsigned int MORGAN_FP_SIZE      = 1024;
-  const unsigned int HASHED_PAIR_FP_SIZE = 2048;
+  const unsigned int SSS_FP_SIZE            = 8*MOL_SIGNATURE_SIZE;
+  const unsigned int LAYERED_FP_SIZE        = 1024;
+  const unsigned int MORGAN_FP_SIZE         = 512;
+  const unsigned int HASHED_TORSION_FP_SIZE = 1024;
+  const unsigned int HASHED_PAIR_FP_SIZE    = 2048;
 }
 
 // SMILES/SMARTS <-> Molecule ////////////////////////////////////////////////
@@ -400,3 +401,191 @@ int bitstring_dice(BitString *pBits1, BitString *pBits2, double *pSim)
 
   return rc;
 }
+
+// Molecule -> BitString /////////////////////////////////////////////////////
+
+int mol_layered_bfp(Mol *pMol, BitString **ppBits)
+{
+  assert(pMol);
+
+  int rc = SQLITE_OK;
+  *ppBits = 0;
+
+  try {
+    ExplicitBitVect *bv 
+      = RDKit::LayeredFingerprintMol(*pMol, 0xFFFFFFFF, 1, 7, LAYERED_FP_SIZE);
+    if (bv) {
+      *ppBits = static_cast<BitString *>(bv);
+    }
+    else {
+      rc = SQLITE_ERROR;
+    }
+  } 
+  catch (...) {
+    // unknown exception
+    rc = SQLITE_ERROR;
+  }
+        
+  return rc;
+}
+
+int mol_rdkit_bfp(Mol *pMol, BitString **ppBits)
+{
+  assert(pMol);
+
+  int rc = SQLITE_OK;
+  *ppBits = 0;
+
+  try {
+    ExplicitBitVect *bv 
+      = RDKit::RDKFingerprintMol(*pMol, 1, 7, LAYERED_FP_SIZE, 2);
+    if (bv) {
+      *ppBits = static_cast<BitString *>(bv);
+    }
+    else {
+      rc = SQLITE_ERROR;
+    }
+  } 
+  catch (...) {
+    // unknown exception
+    rc = SQLITE_ERROR;
+  }
+        
+  return rc;
+}
+
+int mol_morgan_bfp(Mol *pMol, int radius, BitString **ppBits)
+{
+  assert(pMol);
+
+  int rc = SQLITE_OK;
+  *ppBits = 0;
+
+  try {
+    std::vector<u32> invars(pMol->getNumAtoms());
+    RDKit::MorganFingerprints::getConnectivityInvariants(*pMol, invars, true);
+    ExplicitBitVect *bv 
+      = RDKit::MorganFingerprints::getFingerprintAsBitVect(*pMol, radius,
+							   MORGAN_FP_SIZE,
+							   &invars);
+    if (bv) {
+      *ppBits = static_cast<BitString *>(bv);
+    }
+    else {
+      rc = SQLITE_ERROR;
+    }
+  } 
+  catch (...) {
+    // unknown exception
+    rc = SQLITE_ERROR;
+  }
+        
+  return rc;
+}
+
+int mol_feat_morgan_bfp(Mol *pMol, int radius, BitString **ppBits)
+{
+  assert(pMol);
+
+  int rc = SQLITE_OK;
+  *ppBits = 0;
+
+  try {
+    std::vector<u32> invars(pMol->getNumAtoms());
+    RDKit::MorganFingerprints::getFeatureInvariants(*pMol, invars);
+    ExplicitBitVect *bv 
+      = RDKit::MorganFingerprints::getFingerprintAsBitVect(*pMol, radius,
+							   MORGAN_FP_SIZE,
+							   &invars);
+    if (bv) {
+      *ppBits = static_cast<BitString *>(bv);
+    }
+    else {
+      rc = SQLITE_ERROR;
+    }
+  } 
+  catch (...) {
+    // unknown exception
+    rc = SQLITE_ERROR;
+  }
+        
+  return rc;
+}
+
+int mol_atom_pair_bfp(Mol *pMol, BitString **ppBits)
+{
+  assert(pMol);
+
+  int rc = SQLITE_OK;
+  *ppBits = 0;
+
+  try {
+    ExplicitBitVect *bv 
+      = RDKit::AtomPairs::getHashedAtomPairFingerprintAsBitVect(*pMol,
+								HASHED_PAIR_FP_SIZE);
+    if (bv) {
+      *ppBits = static_cast<BitString *>(bv);
+    }
+    else {
+      rc = SQLITE_ERROR;
+    }
+  } 
+  catch (...) {
+    // unknown exception
+    rc = SQLITE_ERROR;
+  }
+        
+  return rc;
+}
+
+int mol_topological_torsion_bfp(Mol *pMol, BitString **ppBits)
+{
+  assert(pMol);
+
+  int rc = SQLITE_OK;
+  *ppBits = 0;
+
+  try {
+    ExplicitBitVect *bv 
+      = RDKit::AtomPairs::getHashedTopologicalTorsionFingerprintAsBitVect(*pMol,
+									  HASHED_TORSION_FP_SIZE);
+    if (bv) {
+      *ppBits = static_cast<BitString *>(bv);
+    }
+    else {
+      rc = SQLITE_ERROR;
+    }
+  } 
+  catch (...) {
+    // unknown exception
+    rc = SQLITE_ERROR;
+  }
+        
+  return rc;
+}
+
+int mol_maccs_bfp(Mol *pMol, BitString **ppBits)
+{
+  assert(pMol);
+
+  int rc = SQLITE_OK;
+  *ppBits = 0;
+
+  try {
+    ExplicitBitVect *bv 
+      = RDKit::MACCSFingerprints::getFingerprintAsBitVect(*pMol);
+    if (bv) {
+      *ppBits = static_cast<BitString *>(bv);
+    }
+    else {
+      rc = SQLITE_ERROR;
+    }
+  } 
+  catch (...) {
+    // unknown exception
+    rc = SQLITE_ERROR;
+  }
+        
+  return rc;
+}
+
