@@ -17,7 +17,7 @@ static const int AS_SMARTS = 1;
 /*
 ** fetch Mol from text or blob argument of molobj type
 */
-static int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
+int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
 {
   int rc = SQLITE_MISMATCH;
 

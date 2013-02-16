@@ -6,10 +6,8 @@ extern "C" {
 #endif
   static const int MOL_SIGNATURE_SIZE = 128;
 
-  typedef struct Mol Mol;
-  typedef struct BitString BitString;
- 
   void free_mol(Mol *pMol);
+  void free_bfp(Bfp *pBfp);
 
   /* molecular data types interconversion */
   int txt_to_mol(const char * txt, int as_smarts, Mol **ppMol);
@@ -55,22 +53,22 @@ extern "C" {
   int mol_num_hetatms(Mol *pMol);
   int mol_num_rings(Mol *pMol);
 
-  /* bitstring data type interconversion */
-  int bitstring_to_blob(BitString *pBits, u8 **ppBlob, int *pLen);
-  int blob_to_bitstring(u8 *pBlob, int len, BitString **ppBits);
+  /* bfp data type interconversion */
+  int bfp_to_blob(Bfp *pBfp, u8 **ppBlob, int *pLen);
+  int blob_to_bfp(u8 *pBlob, int len, Bfp **ppBfp);
 
-  /* bitstring ops */
-  int bitstring_tanimoto(BitString *pBits1, BitString *pBits2, double *pSim);
-  int bitstring_dice(BitString *pBits1, BitString *pBits2, double *pSim);
+  /* bfp ops */
+  int bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2, double *pSim);
+  int bfp_dice(Bfp *pBfp1, Bfp *pBfp2, double *pSim);
 
-  /* mol -> bitstring */
-  int mol_layered_bfp(Mol *pMol, BitString **ppBits);
-  int mol_rdkit_bfp(Mol *pMol, BitString **ppBits);
-  int mol_morgan_bfp(Mol *pMol, int radius, BitString **ppBits);
-  int mol_feat_morgan_bfp(Mol *pMol, int radius, BitString **ppBits);
-  int mol_atom_pair_bfp(Mol *pMol, BitString **ppBits);
-  int mol_topological_torsion_bfp(Mol *pMol, BitString **ppBits);
-  int mol_maccs_bfp(Mol *pMol, BitString **ppBits);
+  /* mol -> bfp */
+  int mol_layered_bfp(Mol *pMol, Bfp **ppBfp);
+  int mol_rdkit_bfp(Mol *pMol, Bfp **ppBfp);
+  int mol_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp);
+  int mol_feat_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp);
+  int mol_atom_pairs_bfp(Mol *pMol, Bfp **ppBfp);
+  int mol_topological_torsion_bfp(Mol *pMol, Bfp **ppBfp);
+  int mol_maccs_bfp(Mol *pMol, Bfp **ppBfp);
 
 #ifdef __cplusplus
 } /* extern "C" { */

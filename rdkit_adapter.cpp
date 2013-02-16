@@ -31,13 +31,13 @@ void free_mol(Mol *pMol)
   delete static_cast<RDKit::ROMol *>(pMol);
 }
 
-struct BitString : ExplicitBitVect {
-  BitString(const char * d, const unsigned int n) : ExplicitBitVect(d, n) {}
+struct Bfp : ExplicitBitVect {
+  Bfp(const char * d, const unsigned int n) : ExplicitBitVect(d, n) {}
 };
 
-void free_bitstring(BitString *pBits)
+void free_bfp(Bfp *pBfp)
 {
-  delete static_cast<ExplicitBitVect *>(pBits);
+  delete static_cast<ExplicitBitVect *>(pBfp);
 }
 
 namespace {
@@ -194,14 +194,14 @@ int mol_signature(Mol *pMol, u8 **ppSign, int *pLen)
   *pLen = 0;
 
   int rc = SQLITE_OK;
-  BitString *pBits = 0;
+  Bfp *pBfp = 0;
 
   try {
     ExplicitBitVect *bv 
       = RDKit::LayeredFingerprintMol(*pMol, RDKit::substructLayers, 1, 6, 
 				     SSS_FP_SIZE);
     if (bv) {
-      rc = bitstring_to_blob(static_cast<BitString *>(bv), ppSign, pLen);
+      rc = bfp_to_blob(static_cast<Bfp *>(bv), ppSign, pLen);
       delete bv;
     }
     else {
@@ -303,47 +303,38 @@ int mol_num_hvyatms(Mol *pMol)
 }
 
 
-// BitString <-> Blob ///////////////////////////////////////////////////////
+// Bfp <-> Blob ///////////////////////////////////////////////////////
 
-int bitstring_to_blob(BitString *pBits, u8 **ppBlob, int *pLen)
+int bfp_to_blob(Bfp *pBfp, u8 **ppBlob, int *pLen)
 {
-  assert(pBits);
+  assert(pBfp);
   *ppBlob = 0;
   *pLen = 0;
 
   int rc = SQLITE_OK;
 
-  int num_bits = pBits->getNumBits();
-  int num_bytes = num_bits/8;
-  if (num_bits % 8) ++num_bytes;
-
-  *ppBlob = (u8 *)sqlite3_malloc(num_bytes);
-
-  u8 *s = *ppBlob;
-
-  if (!s) {
-    rc = SQLITE_NOMEM;
+  std::string blob = pBfp->toString();
+  
+  *ppBlob = (u8 *)sqlite3_malloc(blob.size());
+  if (*ppBlob) {
+    memcpy(*ppBlob, blob.data(), blob.size());
+    *pLen = blob.size();
   }
   else {
-    memset(s, 0, num_bytes);
-    *pLen = num_bytes;
-    for (int i = 0; i < num_bits; ++i) {
-      if (!pBits->getBit(i)) { continue; }
-      s[ i/8 ]  |= 1 << (i % 8);
-    }
+    rc = SQLITE_NOMEM;
   }
 
   return rc;
 }
 
-int blob_to_bitstring(u8 *pBlob, int len, BitString **ppBits)
+int blob_to_bfp(u8 *pBlob, int len, Bfp **ppBfp)
 {
   assert(pBlob);
   int rc = SQLITE_OK;
-  *ppBits = 0;
+  *ppBfp = 0;
         
   try {
-    if (!( *ppBits = new BitString((const char *)pBlob, len) )) {
+    if (!( *ppBfp = new Bfp((const char *)pBlob, len) )) {
       rc = SQLITE_NOMEM;
     }
   } catch (...) {
@@ -354,9 +345,9 @@ int blob_to_bitstring(u8 *pBlob, int len, BitString **ppBits)
   return rc;       
 }
 
-// BitString <-> Blob ///////////////////////////////////////////////////////
+// Bfp <-> Blob ///////////////////////////////////////////////////////
 
-int bitstring_tanimoto(BitString *pBits1, BitString *pBits2, double *pSim)
+int bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2, double *pSim)
 {
   int rc = SQLITE_OK;
   *pSim = 0.0;
@@ -364,8 +355,8 @@ int bitstring_tanimoto(BitString *pBits1, BitString *pBits2, double *pSim)
   // Nsame / (Na + Nb - Nsame)
         
   try {
-    *pSim = TanimotoSimilarity(*static_cast<ExplicitBitVect *>(pBits1), 
-			       *static_cast<ExplicitBitVect *>(pBits2));
+    *pSim = TanimotoSimilarity(*static_cast<ExplicitBitVect *>(pBfp1), 
+			       *static_cast<ExplicitBitVect *>(pBfp2));
   } 
   catch (ValueErrorException& e) {
     // TODO investigate possible causes for this exc
@@ -379,7 +370,7 @@ int bitstring_tanimoto(BitString *pBits1, BitString *pBits2, double *pSim)
   return rc;
 }
 
-int bitstring_dice(BitString *pBits1, BitString *pBits2, double *pSim)
+int bfp_dice(Bfp *pBfp1, Bfp *pBfp2, double *pSim)
 {
   int rc = SQLITE_OK;
   *pSim = 0.0;
@@ -387,8 +378,8 @@ int bitstring_dice(BitString *pBits1, BitString *pBits2, double *pSim)
   // 2 * Nsame / (Na + Nb)
         
   try {
-    *pSim = DiceSimilarity(*static_cast<ExplicitBitVect *>(pBits1), 
-			   *static_cast<ExplicitBitVect *>(pBits2));
+    *pSim = DiceSimilarity(*static_cast<ExplicitBitVect *>(pBfp1), 
+			   *static_cast<ExplicitBitVect *>(pBfp2));
   } 
   catch (ValueErrorException& e) {
     // TODO investigate possible causes for this exc
@@ -402,20 +393,20 @@ int bitstring_dice(BitString *pBits1, BitString *pBits2, double *pSim)
   return rc;
 }
 
-// Molecule -> BitString /////////////////////////////////////////////////////
+// Molecule -> Bfp /////////////////////////////////////////////////////
 
-int mol_layered_bfp(Mol *pMol, BitString **ppBits)
+int mol_layered_bfp(Mol *pMol, Bfp **ppBfp)
 {
   assert(pMol);
 
   int rc = SQLITE_OK;
-  *ppBits = 0;
+  *ppBfp = 0;
 
   try {
     ExplicitBitVect *bv 
       = RDKit::LayeredFingerprintMol(*pMol, 0xFFFFFFFF, 1, 7, LAYERED_FP_SIZE);
     if (bv) {
-      *ppBits = static_cast<BitString *>(bv);
+      *ppBfp = static_cast<Bfp *>(bv);
     }
     else {
       rc = SQLITE_ERROR;
@@ -429,18 +420,18 @@ int mol_layered_bfp(Mol *pMol, BitString **ppBits)
   return rc;
 }
 
-int mol_rdkit_bfp(Mol *pMol, BitString **ppBits)
+int mol_rdkit_bfp(Mol *pMol, Bfp **ppBfp)
 {
   assert(pMol);
 
   int rc = SQLITE_OK;
-  *ppBits = 0;
+  *ppBfp = 0;
 
   try {
     ExplicitBitVect *bv 
       = RDKit::RDKFingerprintMol(*pMol, 1, 7, LAYERED_FP_SIZE, 2);
     if (bv) {
-      *ppBits = static_cast<BitString *>(bv);
+      *ppBfp = static_cast<Bfp *>(bv);
     }
     else {
       rc = SQLITE_ERROR;
@@ -454,12 +445,12 @@ int mol_rdkit_bfp(Mol *pMol, BitString **ppBits)
   return rc;
 }
 
-int mol_morgan_bfp(Mol *pMol, int radius, BitString **ppBits)
+int mol_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp)
 {
   assert(pMol);
 
   int rc = SQLITE_OK;
-  *ppBits = 0;
+  *ppBfp = 0;
 
   try {
     std::vector<u32> invars(pMol->getNumAtoms());
@@ -469,7 +460,7 @@ int mol_morgan_bfp(Mol *pMol, int radius, BitString **ppBits)
 							   MORGAN_FP_SIZE,
 							   &invars);
     if (bv) {
-      *ppBits = static_cast<BitString *>(bv);
+      *ppBfp = static_cast<Bfp *>(bv);
     }
     else {
       rc = SQLITE_ERROR;
@@ -483,12 +474,12 @@ int mol_morgan_bfp(Mol *pMol, int radius, BitString **ppBits)
   return rc;
 }
 
-int mol_feat_morgan_bfp(Mol *pMol, int radius, BitString **ppBits)
+int mol_feat_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp)
 {
   assert(pMol);
 
   int rc = SQLITE_OK;
-  *ppBits = 0;
+  *ppBfp = 0;
 
   try {
     std::vector<u32> invars(pMol->getNumAtoms());
@@ -498,7 +489,7 @@ int mol_feat_morgan_bfp(Mol *pMol, int radius, BitString **ppBits)
 							   MORGAN_FP_SIZE,
 							   &invars);
     if (bv) {
-      *ppBits = static_cast<BitString *>(bv);
+      *ppBfp = static_cast<Bfp *>(bv);
     }
     else {
       rc = SQLITE_ERROR;
@@ -512,19 +503,19 @@ int mol_feat_morgan_bfp(Mol *pMol, int radius, BitString **ppBits)
   return rc;
 }
 
-int mol_atom_pair_bfp(Mol *pMol, BitString **ppBits)
+int mol_atom_pairs_bfp(Mol *pMol, Bfp **ppBfp)
 {
   assert(pMol);
 
   int rc = SQLITE_OK;
-  *ppBits = 0;
+  *ppBfp = 0;
 
   try {
     ExplicitBitVect *bv 
       = RDKit::AtomPairs::getHashedAtomPairFingerprintAsBitVect(*pMol,
 								HASHED_PAIR_FP_SIZE);
     if (bv) {
-      *ppBits = static_cast<BitString *>(bv);
+      *ppBfp = static_cast<Bfp *>(bv);
     }
     else {
       rc = SQLITE_ERROR;
@@ -538,19 +529,19 @@ int mol_atom_pair_bfp(Mol *pMol, BitString **ppBits)
   return rc;
 }
 
-int mol_topological_torsion_bfp(Mol *pMol, BitString **ppBits)
+int mol_topological_torsion_bfp(Mol *pMol, Bfp **ppBfp)
 {
   assert(pMol);
 
   int rc = SQLITE_OK;
-  *ppBits = 0;
+  *ppBfp = 0;
 
   try {
     ExplicitBitVect *bv 
       = RDKit::AtomPairs::getHashedTopologicalTorsionFingerprintAsBitVect(*pMol,
 									  HASHED_TORSION_FP_SIZE);
     if (bv) {
-      *ppBits = static_cast<BitString *>(bv);
+      *ppBfp = static_cast<Bfp *>(bv);
     }
     else {
       rc = SQLITE_ERROR;
@@ -564,18 +555,18 @@ int mol_topological_torsion_bfp(Mol *pMol, BitString **ppBits)
   return rc;
 }
 
-int mol_maccs_bfp(Mol *pMol, BitString **ppBits)
+int mol_maccs_bfp(Mol *pMol, Bfp **ppBfp)
 {
   assert(pMol);
 
   int rc = SQLITE_OK;
-  *ppBits = 0;
+  *ppBfp = 0;
 
   try {
     ExplicitBitVect *bv 
       = RDKit::MACCSFingerprints::getFingerprintAsBitVect(*pMol);
     if (bv) {
-      *ppBits = static_cast<BitString *>(bv);
+      *ppBfp = static_cast<Bfp *>(bv);
     }
     else {
       rc = SQLITE_ERROR;

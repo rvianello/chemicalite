@@ -1,6 +1,7 @@
 #include <sqlite3ext.h>
 SQLITE_EXTENSION_INIT1
 
+#include "chemicalite.h"
 #include "molecule.h"
 #include "bitstring.h"
 

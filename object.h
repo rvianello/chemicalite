@@ -3,6 +3,7 @@
 
 #define MOLOBJ  0x00000001
 #define QMOLOBJ 0x00000002
+#define BFPOBJ  0x00000004
  
 typedef struct Object Object;
 
