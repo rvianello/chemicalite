@@ -184,38 +184,6 @@ int blob_to_txt(u8 *blob, int len, int as_smarts, char **pTxt)
   return rc;
 }
 
-// Molecule -> signature /////////////////////////////////////////////////////
-
-int mol_signature(Mol *pMol, u8 **ppSign, int *pLen)
-{
-  assert(pMol);
-
-  *ppSign = 0;
-  *pLen = 0;
-
-  int rc = SQLITE_OK;
-  Bfp *pBfp = 0;
-
-  try {
-    ExplicitBitVect *bv 
-      = RDKit::LayeredFingerprintMol(*pMol, RDKit::substructLayers, 1, 6, 
-				     SSS_FP_SIZE);
-    if (bv) {
-      rc = bfp_to_blob(static_cast<Bfp *>(bv), ppSign, pLen);
-      delete bv;
-    }
-    else {
-      rc = SQLITE_ERROR;
-    }
-  } 
-  catch (...) {
-    // unknown exception
-    rc = SQLITE_ERROR;
-  }
-        
-  return rc;
-}
-
 // Molecules comparison //////////////////////////////////////////////////////
 
 int mol_is_substruct(Mol *p1, Mol *p2)
@@ -565,6 +533,35 @@ int mol_maccs_bfp(Mol *pMol, Bfp **ppBfp)
   try {
     ExplicitBitVect *bv 
       = RDKit::MACCSFingerprints::getFingerprintAsBitVect(*pMol);
+    if (bv) {
+      *ppBfp = static_cast<Bfp *>(bv);
+    }
+    else {
+      rc = SQLITE_ERROR;
+    }
+  } 
+  catch (...) {
+    // unknown exception
+    rc = SQLITE_ERROR;
+  }
+        
+  return rc;
+}
+
+// Molecule -> signature /////////////////////////////////////////////////////
+
+int mol_bfp_signature(Mol *pMol, Bfp **ppBfp)
+{
+  assert(pMol);
+
+  int rc = SQLITE_OK;
+  *ppBfp = 0;
+
+  try {
+    ExplicitBitVect *bv 
+      = RDKit::LayeredFingerprintMol2(*pMol,
+				      RDKit::substructLayers, 1, 4,
+				      SSS_FP_SIZE);
     if (bv) {
       *ppBfp = static_cast<Bfp *>(bv);
     }

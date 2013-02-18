@@ -116,6 +116,11 @@ MOL_TO_MORGAN_BFP(mol_morgan_bfp)
 MOL_TO_MORGAN_BFP(mol_feat_morgan_bfp)
 
 /*
+** Slightly different, but still a bfp
+*/
+MOL_TO_BFP(mol_bfp_signature)
+
+/*
 ** bitstring similarity
 */
 
@@ -171,6 +176,8 @@ int chemicalite_init_bitstring(sqlite3 *db)
 
   CREATE_SQLITE_BINARY_FUNCTION(mol_morgan_bfp, rc);
   CREATE_SQLITE_BINARY_FUNCTION(mol_feat_morgan_bfp, rc);
+
+  CREATE_SQLITE_UNARY_FUNCTION(mol_bfp_signature, rc);
 
   return rc;
 }

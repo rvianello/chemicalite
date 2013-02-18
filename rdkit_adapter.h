@@ -19,9 +19,6 @@ extern "C" {
   int txt_to_blob(const char * txt, int as_smarts, u8 **pBlob, int *pLen);
   int blob_to_txt(u8 *blob, int len, int as_smarts, char **pTxt);
 
-  /* generation of structural signature */
-  int mol_signature(Mol *pMol, u8 **ppSign, int *pLen);
-
   /* mol ops */
   int mol_cmp(Mol *p1, Mol *p2);
   int mol_is_substruct(Mol *p1, Mol *p2);
@@ -70,6 +67,9 @@ extern "C" {
   int mol_topological_torsion_bfp(Mol *pMol, Bfp **ppBfp);
   int mol_maccs_bfp(Mol *pMol, Bfp **ppBfp);
 
+  /* generation of structural signature */
+  int mol_bfp_signature(Mol *pMol, Bfp **ppBfp);
+  
 #ifdef __cplusplus
 } /* extern "C" { */
 #endif
