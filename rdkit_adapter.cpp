@@ -31,14 +31,14 @@ void free_mol(Mol *pMol)
   delete static_cast<RDKit::ROMol *>(pMol);
 }
 
-struct Bfp : ExplicitBitVect {
-  Bfp(const char * d, const unsigned int n) : ExplicitBitVect(d, n) {}
+struct Bfp : std::string {
+  Bfp() : std::string() {}
+  Bfp(const Bfp & other) : std::string(other) {}
+  Bfp(const std::string & other) : std::string(other) {}
+  Bfp(const char* s, size_t n) : std::string(s, n) {}
 };
 
-void free_bfp(Bfp *pBfp)
-{
-  delete static_cast<ExplicitBitVect *>(pBfp);
-}
+void free_bfp(Bfp *pBfp) { delete pBfp; }
 
 namespace {
   const unsigned int SSS_FP_SIZE            = 8*MOL_SIGNATURE_SIZE;
@@ -281,12 +281,10 @@ int bfp_to_blob(Bfp *pBfp, u8 **ppBlob, int *pLen)
 
   int rc = SQLITE_OK;
 
-  std::string blob = pBfp->toString();
-  
-  *ppBlob = (u8 *)sqlite3_malloc(blob.size());
+  *ppBlob = (u8 *)sqlite3_malloc(pBfp->size());
   if (*ppBlob) {
-    memcpy(*ppBlob, blob.data(), blob.size());
-    *pLen = blob.size();
+    memcpy(*ppBlob, pBfp->data(), pBfp->size());
+    *pLen = pBfp->size();
   }
   else {
     rc = SQLITE_NOMEM;
@@ -298,41 +296,51 @@ int bfp_to_blob(Bfp *pBfp, u8 **ppBlob, int *pLen)
 int blob_to_bfp(u8 *pBlob, int len, Bfp **ppBfp)
 {
   assert(pBlob);
-  int rc = SQLITE_OK;
-  *ppBfp = 0;
-        
-  try {
-    if (!( *ppBfp = new Bfp((const char *)pBlob, len) )) {
-      rc = SQLITE_NOMEM;
-    }
-  } catch (...) {
-    // Unknown exception
-    rc = SQLITE_ERROR;
-  }
-
-  return rc;       
+  *ppBfp = new Bfp(reinterpret_cast<const char *>(pBlob), len);
+  return SQLITE_OK;       
 }
 
 // Bfp <-> Blob ///////////////////////////////////////////////////////
 
+// the Tanimoto and Dice similarity code is adapted
+// from Gred Landrum's RDKit PostgreSQL cartridge code that in turn is
+// adapted from Andrew Dalke's chem-fingerprints code
+// http://code.google.com/p/chem-fingerprints/
+
+static int byte_popcounts[] = {
+  0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
+  1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+  1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+  2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+  1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
+  2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+  2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
+  3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8  
+};
+
 int bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2, double *pSim)
 {
+  assert(pBfp1 && pBfp2);
+  assert(pBfp1->size() == pBfp2->size());
+
   int rc = SQLITE_OK;
   *pSim = 0.0;
 
   // Nsame / (Na + Nb - Nsame)
-        
-  try {
-    *pSim = TanimotoSimilarity(*static_cast<ExplicitBitVect *>(pBfp1), 
-			       *static_cast<ExplicitBitVect *>(pBfp2));
-  } 
-  catch (ValueErrorException& e) {
-    // TODO investigate possible causes for this exc
-    rc = SQLITE_ERROR;
-  } 
-  catch (...) {
-    // unknown exception
-    rc = SQLITE_ERROR;
+  const u8 * afp = reinterpret_cast<const u8 *>(pBfp1->data());
+  const u8 * bfp = reinterpret_cast<const u8 *>(pBfp2->data());
+
+  int union_popcount = 0;
+  int intersect_popcount = 0;
+  int len = pBfp1->size();
+
+  for (int i = 0; i < len; ++i, ++afp, ++bfp) {
+    union_popcount += byte_popcounts[ *afp | *bfp ];
+    intersect_popcount += byte_popcounts[ *afp & *bfp ];
+  }
+  
+  if (union_popcount != 0) {
+    *pSim = (intersect_popcount + 0.0) / union_popcount;
   }
 
   return rc;
@@ -340,22 +348,27 @@ int bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2, double *pSim)
 
 int bfp_dice(Bfp *pBfp1, Bfp *pBfp2, double *pSim)
 {
+  assert(pBfp1 && pBfp2);
+  assert(pBfp1->size() == pBfp2->size());
+
   int rc = SQLITE_OK;
   *pSim = 0.0;
-
+  
   // 2 * Nsame / (Na + Nb)
-        
-  try {
-    *pSim = DiceSimilarity(*static_cast<ExplicitBitVect *>(pBfp1), 
-			   *static_cast<ExplicitBitVect *>(pBfp2));
-  } 
-  catch (ValueErrorException& e) {
-    // TODO investigate possible causes for this exc
-    rc = SQLITE_ERROR;
-  } 
-  catch (...) {
-    // unknown exception
-    rc = SQLITE_ERROR;
+  const u8 * afp = reinterpret_cast<const u8 *>(pBfp1->data());
+  const u8 * bfp = reinterpret_cast<const u8 *>(pBfp2->data());
+
+  int intersect_popcount = 0;
+  int total_popcount = 0; 
+  int len = pBfp1->size();
+
+  for (int i = 0; i < len; ++i, ++afp, ++bfp) {
+    total_popcount += byte_popcounts[*afp] + byte_popcounts[*bfp];
+    intersect_popcount += byte_popcounts[*afp & *bfp];
+  }
+
+  if (total_popcount != 0) {
+    *pSim = (2.0 * intersect_popcount) / (total_popcount);
   }
 
   return rc;
@@ -374,7 +387,8 @@ int mol_layered_bfp(Mol *pMol, Bfp **ppBfp)
     ExplicitBitVect *bv 
       = RDKit::LayeredFingerprintMol(*pMol, 0xFFFFFFFF, 1, 7, LAYERED_FP_SIZE);
     if (bv) {
-      *ppBfp = static_cast<Bfp *>(bv);
+      *ppBfp = new Bfp(BitVectToBinaryText(*bv));
+      delete bv;
     }
     else {
       rc = SQLITE_ERROR;
@@ -399,7 +413,8 @@ int mol_rdkit_bfp(Mol *pMol, Bfp **ppBfp)
     ExplicitBitVect *bv 
       = RDKit::RDKFingerprintMol(*pMol, 1, 7, LAYERED_FP_SIZE, 2);
     if (bv) {
-      *ppBfp = static_cast<Bfp *>(bv);
+      *ppBfp = new Bfp(BitVectToBinaryText(*bv));
+      delete bv;
     }
     else {
       rc = SQLITE_ERROR;
@@ -428,7 +443,8 @@ int mol_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp)
 							   MORGAN_FP_SIZE,
 							   &invars);
     if (bv) {
-      *ppBfp = static_cast<Bfp *>(bv);
+      *ppBfp = new Bfp(BitVectToBinaryText(*bv));
+      delete bv;
     }
     else {
       rc = SQLITE_ERROR;
@@ -457,7 +473,8 @@ int mol_feat_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp)
 							   MORGAN_FP_SIZE,
 							   &invars);
     if (bv) {
-      *ppBfp = static_cast<Bfp *>(bv);
+      *ppBfp = new Bfp(BitVectToBinaryText(*bv));
+      delete bv;
     }
     else {
       rc = SQLITE_ERROR;
@@ -483,7 +500,8 @@ int mol_atom_pairs_bfp(Mol *pMol, Bfp **ppBfp)
       = RDKit::AtomPairs::getHashedAtomPairFingerprintAsBitVect(*pMol,
 								HASHED_PAIR_FP_SIZE);
     if (bv) {
-      *ppBfp = static_cast<Bfp *>(bv);
+      *ppBfp = new Bfp(BitVectToBinaryText(*bv));
+      delete bv;
     }
     else {
       rc = SQLITE_ERROR;
@@ -509,7 +527,8 @@ int mol_topological_torsion_bfp(Mol *pMol, Bfp **ppBfp)
       = RDKit::AtomPairs::getHashedTopologicalTorsionFingerprintAsBitVect(*pMol,
 									  HASHED_TORSION_FP_SIZE);
     if (bv) {
-      *ppBfp = static_cast<Bfp *>(bv);
+      *ppBfp = new Bfp(BitVectToBinaryText(*bv));
+      delete bv;
     }
     else {
       rc = SQLITE_ERROR;
@@ -534,7 +553,8 @@ int mol_maccs_bfp(Mol *pMol, Bfp **ppBfp)
     ExplicitBitVect *bv 
       = RDKit::MACCSFingerprints::getFingerprintAsBitVect(*pMol);
     if (bv) {
-      *ppBfp = static_cast<Bfp *>(bv);
+      *ppBfp = new Bfp(BitVectToBinaryText(*bv));
+      delete bv;
     }
     else {
       rc = SQLITE_ERROR;
@@ -563,7 +583,8 @@ int mol_bfp_signature(Mol *pMol, Bfp **ppBfp)
 				      RDKit::substructLayers, 1, 4,
 				      SSS_FP_SIZE);
     if (bv) {
-      *ppBfp = static_cast<Bfp *>(bv);
+      *ppBfp = new Bfp(BitVectToBinaryText(*bv));
+      delete bv;
     }
     else {
       rc = SQLITE_ERROR;

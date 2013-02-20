@@ -27,7 +27,7 @@ int object_header_size()
 
 int is_object_type(Object * pObject, u32 type)
 {
-  return IS_OBJPTR(pObject) && (OBJTYPE(pObject) | type);
+  return IS_OBJPTR(pObject) && (OBJTYPE(pObject) & type);
 }
 
 u8* get_blob(Object *pObject) 
