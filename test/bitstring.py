@@ -105,7 +105,20 @@ class TestBitString(ChemicaLiteTestCase):
             "mol_feat_morgan_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12', 6)"
             ")").fetchone()[0]
         self.assertEqual(d, 1.0)
-        
+
+    def test_mol_arg_mismatch(self):
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute(
+                "select bfp_dice("
+                "mol('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), "
+                "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
+                ")")
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.db.execute(
+                "select bfp_tanimoto("
+                "mol('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), "
+                "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
+                ")")
 
 
 if __name__=="__main__":
