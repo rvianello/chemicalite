@@ -55,8 +55,8 @@ extern "C" {
   int blob_to_bfp(u8 *pBlob, int len, Bfp **ppBfp);
 
   /* bfp ops */
-  int bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2, double *pSim);
-  int bfp_dice(Bfp *pBfp1, Bfp *pBfp2, double *pSim);
+  double bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2);
+  double bfp_dice(Bfp *pBfp1, Bfp *pBfp2);
 
   /* mol -> bfp */
   int mol_layered_bfp(Mol *pMol, Bfp **ppBfp);

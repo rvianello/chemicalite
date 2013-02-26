@@ -318,13 +318,12 @@ static int byte_popcounts[] = {
   3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8  
 };
 
-int bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2, double *pSim)
+double bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2)
 {
   assert(pBfp1 && pBfp2);
   assert(pBfp1->size() == pBfp2->size());
 
-  int rc = SQLITE_OK;
-  *pSim = 0.0;
+  double sim = 0.0;
 
   // Nsame / (Na + Nb - Nsame)
   const u8 * afp = reinterpret_cast<const u8 *>(pBfp1->data());
@@ -340,19 +339,18 @@ int bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2, double *pSim)
   }
   
   if (union_popcount != 0) {
-    *pSim = (intersect_popcount + 0.0) / union_popcount;
+    sim = (intersect_popcount + 0.0) / union_popcount;
   }
 
-  return rc;
+  return sim;
 }
 
-int bfp_dice(Bfp *pBfp1, Bfp *pBfp2, double *pSim)
+double bfp_dice(Bfp *pBfp1, Bfp *pBfp2)
 {
   assert(pBfp1 && pBfp2);
   assert(pBfp1->size() == pBfp2->size());
 
-  int rc = SQLITE_OK;
-  *pSim = 0.0;
+  double sim = 0.0;
   
   // 2 * Nsame / (Na + Nb)
   const u8 * afp = reinterpret_cast<const u8 *>(pBfp1->data());
@@ -368,10 +366,10 @@ int bfp_dice(Bfp *pBfp1, Bfp *pBfp2, double *pSim)
   }
 
   if (total_popcount != 0) {
-    *pSim = (2.0 * intersect_popcount) / (total_popcount);
+    sim = (2.0 * intersect_popcount) / (total_popcount);
   }
 
-  return rc;
+  return sim;
 }
 
 // Molecule -> Bfp /////////////////////////////////////////////////////

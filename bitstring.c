@@ -140,8 +140,7 @@ MOL_TO_BFP(mol_bfp_signature)
     rc = fetch_bfp_arg(argv[1], &p2);					\
     if (rc != SQLITE_OK) goto sim##_f_free_bfp1;			\
 									\
-    double similarity;							\
-    rc = bfp_##sim(p1, p2, &similarity);				\
+    double similarity = bfp_##sim(p1, p2);				\
       									\
   sim##_f_free_bfp2: free_bfp(p2);					\
   sim##_f_free_bfp1: free_bfp(p1);					\
