@@ -120,6 +120,18 @@ class TestBitString(ChemicaLiteTestCase):
                 "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
                 ")")
 
+    def test_bfp_weight(self):
+        w = self.db.execute(
+            "select bfp_weight("
+            "mol_bfp_signature('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
+            ")").fetchone()[0]
+        self.assertEqual(w, 384)
+        w = self.db.execute(
+            "select bfp_weight("
+            "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
+            ")").fetchone()[0]
+        self.assertEqual(w, 46)
+
 
 if __name__=="__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestBitString)

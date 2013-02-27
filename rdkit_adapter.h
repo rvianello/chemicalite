@@ -58,6 +58,9 @@ extern "C" {
   double bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2);
   double bfp_dice(Bfp *pBfp1, Bfp *pBfp2);
 
+  int bfp_length(Bfp *pBfp);
+  int bfp_weight(Bfp *pBfp);
+
   /* mol -> bfp */
   int mol_layered_bfp(Mol *pMol, Bfp **ppBfp);
   int mol_rdkit_bfp(Mol *pMol, Bfp **ppBfp);

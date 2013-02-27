@@ -154,11 +154,52 @@ MOL_TO_BFP(mol_bfp_signature)
   }
 
 /*
-** substructure match and structural comparison (ordering)
+** bitstring similarity
 */
 COMPARE_BITSTRINGS(tanimoto)
 COMPARE_BITSTRINGS(dice)
 
+/*
+** bitstring length and weight
+*/
+
+static void bfp_length_f(sqlite3_context* ctx,
+			 int argc, sqlite3_value** argv)
+{
+  assert(argc == 1);
+  int rc = SQLITE_OK;
+  
+  Bfp *pBfp = 0;
+  rc = fetch_bfp_arg(argv[0], &pBfp);
+
+  if (rc == SQLITE_OK) {
+    int length = bfp_length(pBfp);
+    free_bfp(pBfp);
+    sqlite3_result_int(ctx, length);    
+  }
+  else {
+    sqlite3_result_error_code(ctx, rc);
+  }
+}
+
+static void bfp_weight_f(sqlite3_context* ctx,
+			 int argc, sqlite3_value** argv)
+{
+  assert(argc == 1);
+  int rc = SQLITE_OK;
+  
+  Bfp *pBfp = 0;
+  rc = fetch_bfp_arg(argv[0], &pBfp);
+
+  if (rc == SQLITE_OK) {
+    int weight = bfp_weight(pBfp);
+    free_bfp(pBfp);
+    sqlite3_result_int(ctx, weight);    
+  }
+  else {
+    sqlite3_result_error_code(ctx, rc);
+  }
+}
 
 int chemicalite_init_bitstring(sqlite3 *db)
 {
@@ -166,6 +207,9 @@ int chemicalite_init_bitstring(sqlite3 *db)
 
   CREATE_SQLITE_BINARY_FUNCTION(bfp_tanimoto, rc);
   CREATE_SQLITE_BINARY_FUNCTION(bfp_dice, rc);
+
+  CREATE_SQLITE_UNARY_FUNCTION(bfp_length, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(bfp_weight, rc);
 
   CREATE_SQLITE_UNARY_FUNCTION(mol_layered_bfp, rc);
   CREATE_SQLITE_UNARY_FUNCTION(mol_rdkit_bfp, rc);

@@ -372,6 +372,28 @@ double bfp_dice(Bfp *pBfp1, Bfp *pBfp2)
   return sim;
 }
 
+int bfp_length(Bfp *pBfp)
+{
+  assert(pBfp);
+  return 8*pBfp->size();
+}
+
+int bfp_weight(Bfp *pBfp)
+{
+  assert(pBfp);
+  const u8 * fp = reinterpret_cast<const u8 *>(pBfp->data());
+
+  int len = pBfp->size();
+
+  int total_popcount = 0; 
+  for (int i = 0; i < len; ++i, ++fp) {
+    total_popcount += byte_popcounts[*fp];
+  }
+
+  return total_popcount;
+}
+
+
 // Molecule -> Bfp /////////////////////////////////////////////////////
 
 int mol_layered_bfp(Mol *pMol, Bfp **ppBfp)
