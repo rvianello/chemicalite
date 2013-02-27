@@ -4,6 +4,7 @@ SQLITE_EXTENSION_INIT1
 #include "chemicalite.h"
 #include "molecule.h"
 #include "bitstring.h"
+#include "rdtree.h"
 
 /*
 ** Register the chemicalite module with database handle db.
@@ -18,6 +19,10 @@ int sqlite3_chemicalite_init(sqlite3 *db)
   
   if (rc == SQLITE_OK) {
     rc = chemicalite_init_bitstring(db);
+  }
+  
+  if (rc == SQLITE_OK) {
+    rc = chemicalite_init_rdtree(db);
   }
   
   /* if (rc == SQLITE_OK) { */

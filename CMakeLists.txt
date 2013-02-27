@@ -10,6 +10,7 @@ add_library(chemicalite MODULE
  	    molecule.c
  	    bitstring.c
             chemicalite.c
+	    rdtree.c
             rdkit_adapter.cpp)
 target_link_libraries(chemicalite 
                       Descriptors Fingerprints)
