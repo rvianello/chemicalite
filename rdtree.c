@@ -340,6 +340,29 @@ static int rdtreeDestroy(sqlite3_vtab *pVtab)
 }
 
 
+/*
+** The xRename method for rd-tree module virtual tables.
+*/
+static int rdtreeRename(sqlite3_vtab *pVtab, const char *zNewName)
+{
+  RDtree *pRDtree = (RDtree *)pVtab;
+  int rc = SQLITE_NOMEM;
+  char *zSql = sqlite3_mprintf(
+    "ALTER TABLE %Q.'%q_node'   RENAME TO \"%w_node\";"
+    "ALTER TABLE %Q.'%q_parent' RENAME TO \"%w_parent\";"
+    "ALTER TABLE %Q.'%q_rowid'  RENAME TO \"%w_rowid\";"
+    , pRDtree->zDb, pRDtree->zName, zNewName 
+    , pRDtree->zDb, pRDtree->zName, zNewName 
+    , pRDtree->zDb, pRDtree->zName, zNewName
+  );
+  if (zSql) {
+    rc = sqlite3_exec(pRDtree->db, zSql, 0, 0, 0);
+    sqlite3_free(zSql);
+  }
+  return rc;
+}
+
+
 static sqlite3_module rdtreeModule = {
   0,                           /* iVersion */
   rdtreeCreate,                /* xCreate - create a table */
@@ -360,7 +383,7 @@ static sqlite3_module rdtreeModule = {
   0,                           /* xCommit - commit transaction */
   0,                           /* xRollback - rollback transaction */
   0,                           /* xFindFunction - function overloading */
-  0, /* rdtreeRename,                /* xRename - rename the table */
+  rdtreeRename,                /* xRename - rename the table */
   0,                           /* xSavepoint */
   0,                           /* xRelease */
   0                            /* xRollbackTo */
