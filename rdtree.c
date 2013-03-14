@@ -6,6 +6,7 @@
 extern const sqlite3_api_routines *sqlite3_api;
 
 #include "chemicalite.h"
+#include "bitstring.h"
 #include "rdtree.h"
 
 /* 
@@ -160,6 +161,7 @@ struct RDtreeNode {
   u8 *zData;
   RDtreeNode *pNext;   /* Next node in this hash chain */
 };
+#define NITEM(pNode) readInt16(&(pNode)->zData[2])
 
 /* 
 ** Structure to store a deserialized rd-tree record.
@@ -240,6 +242,86 @@ static void nodeHashDelete(RDtree *pRDtree, RDtreeNode *pNode)
     *pp = pNode->pNext;
     pNode->pNext = 0;
   }
+}
+
+/*
+** Allocate and return new rd-tree node. Initially, (RDtreeNode.iNode==0),
+** indicating that node has not yet been assigned a node number. It is
+** assigned a node number when nodeWrite() is called to write the
+** node contents out to the database.
+*/
+static RDtreeNode *nodeNew(RDtree *pRDtree, RDtreeNode *pParent)
+{
+  RDtreeNode *pNode;
+  pNode = (RDtreeNode *)sqlite3_malloc(sizeof(RDtreeNode) + pRDtree->iNodeSize);
+  if( pNode ){
+    memset(pNode, 0, sizeof(RDtreeNode) + pRDtree->iNodeSize);
+    pNode->zData = (u8 *)&pNode[1];
+    pNode->nRef = 1;
+    pNode->pParent = pParent;
+    pNode->isDirty = 1;
+    nodeReference(pParent);
+  }
+  return pNode;
+}
+
+/*
+** Overwrite item iItem of node pNode with the contents of pItem.
+*/
+static void nodeOverwriteItem(RDtree *pRDtree, RDtreeNode *pNode,  
+			      RDtreeItem *pItem, int iItem) {
+  int ii;
+  /* FIXME FIXME FIXME AND DESPERATELY FIXME */
+  /*
+  u8 *p = &pNode->zData[4 + pRtree->nBytesPerCell*iCell];
+  p += writeInt64(p, pCell->iRowid);
+  for(ii=0; ii<(pRtree->nDim*2); ii++){
+    p += writeCoord(p, &pCell->aCoord[ii]);
+  }
+  */
+  pNode->isDirty = 1;
+}
+
+/*
+** Release a reference to a node. If the node is dirty and the reference
+** count drops to zero, the node data is written to the database.
+*/
+static int nodeRelease(RDtree *pRDtree, RDtreeNode *pNode)
+{
+  int rc = SQLITE_OK;
+  if (pNode) {
+    assert(pNode->nRef > 0);
+    pNode->nRef--;
+    if (pNode->nRef == 0) {
+      if (pNode->iNode == 1) {
+        pRDtree->iDepth = -1;
+      }
+      if (pNode->pParent) {
+        rc = nodeRelease(pRDtree, pNode->pParent);
+      }
+      if (rc == SQLITE_OK) {
+        rc = nodeWrite(pRDtree, pNode);
+      }
+      nodeHashDelete(pRDtree, pNode);
+      sqlite3_free(pNode);
+    }
+  }
+  return rc;
+}
+
+/*
+** Deserialize item iItem of node pNode. Populate the structure pointed
+** to by pItem with the results.
+*/
+static void nodeGetItem(RDtree *pRDtree, RDtreeNode *pNode, 
+			int iItem, RDtreeItem *pItem)
+{
+  int ii;
+  pItem->iRowid = nodeGetRowid(pRDtree, pNode, iItem);
+  /* FIXME FIXME FIXME
+  for(ii=0; ii<pRtree->nDim*2; ii++){
+    nodeGetCoord(pRtree, pNode, iItem, ii, &pItem->aCoord[ii]);
+    } */
 }
 
 /* Forward declaration for the function that does the work of
@@ -336,6 +418,743 @@ static int rdtreeDestroy(sqlite3_vtab *pVtab)
     rdtreeRelease(pRDtree);
   }
 
+  return rc;
+}
+
+/* 
+** Use nodeAcquire() to obtain the leaf node containing the record with 
+** rowid iRowid. If successful, set *ppLeaf to point to the node and
+** return SQLITE_OK. If there is no such record in the table, set
+** *ppLeaf to 0 and return SQLITE_OK. If an error occurs, set *ppLeaf
+** to zero and return an SQLite error code.
+*/
+static int findLeafNode(RDtree *pRDtree, i64 iRowid, RDtreeNode **ppLeaf)
+{
+  int rc;
+  *ppLeaf = 0;
+  sqlite3_bind_int64(pRDtree->pReadRowid, 1, iRowid);
+  if (sqlite3_step(pRDtree->pReadRowid) == SQLITE_ROW) {
+    i64 iNode = sqlite3_column_int64(pRDtree->pReadRowid, 0);
+    rc = nodeAcquire(pRDtree, iNode, 0, ppLeaf);
+    sqlite3_reset(pRDtree->pReadRowid);
+  }
+  else {
+    rc = sqlite3_reset(pRDtree->pReadRowid);
+  }
+  return rc;
+}
+
+/*
+** This function implements the ChooseLeaf algorithm from Gutman[84].
+** ChooseSubTree in r*tree terminology.
+*/
+static int ChooseLeaf(RDtree *pRDtree,
+		      RDtreeItem *pItem, /* Item to insert into rdtree */
+		      int iHeight, /* Height of sub-tree rooted at pCell */
+		      RDtreeNode **ppLeaf /* OUT: Selected leaf page */
+		      )
+{
+  int rc;
+  int ii;
+  RDtreeNode *pNode;
+  rc = nodeAcquire(pRDtree, 1, 0, &pNode);
+
+  for(ii = 0; rc == SQLITE_OK && ii < (pRDtree->iDepth - iHeight); ii++) {
+
+    /* FIXME FIXME FIXME */
+    /* Select the child node which will be enlarged the least if pItem
+    ** is inserted into it. Resolve ties by choosing the entry with
+    ** the smallest area.
+    */
+  }
+
+  *ppLeaf = pNode;
+  return rc;
+}
+
+/*
+** An item with the same content as pItem has just been inserted into
+** the node pNode. This function updates the bounds in
+** all ancestor elements.
+*/
+static int AdjustTree(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem)
+{
+  RDtreeNode *p = pNode;
+  while (p->pParent) {
+    RDtreeNode *pParent = p->pParent;
+    RDtreeItem item;
+    int iItem;
+
+    if (nodeParentIndex(pRDtree, p, &iItem)) {
+      return SQLITE_CORRUPT_VTAB;
+    }
+
+    nodeGetItem(pRDtree, pParent, iItem, &item);
+    if (!itemContains(pRDtree, &item, pItem) ){
+      cellUnion(pRDtree, &item, pItem);
+      nodeOverwriteItem(pRDtree, pParent, &item, iItem);
+    }
+ 
+    p = pParent;
+  }
+  return SQLITE_OK;
+}
+
+/*
+** Write mapping (iRowid->iNode) to the <rdtree>_rowid table.
+*/
+static int rowidWrite(RDtree *pRDtree, 
+		      sqlite3_int64 iRowid, sqlite3_int64 iNode)
+{
+  sqlite3_bind_int64(pRDtree->pWriteRowid, 1, iRowid);
+  sqlite3_bind_int64(pRDtree->pWriteRowid, 2, iNode);
+  sqlite3_step(pRDtree->pWriteRowid);
+  return sqlite3_reset(pRDtree->pWriteRowid);
+}
+
+/*
+** Write mapping (iNode->iPar) to the <rdtree>_parent table.
+*/
+static int parentWrite(RDtree *pRDtree, 
+		       sqlite3_int64 iNode, sqlite3_int64 iPar)
+{
+  sqlite3_bind_int64(pRDtree->pWriteParent, 1, iNode);
+  sqlite3_bind_int64(pRDtree->pWriteParent, 2, iPar);
+  sqlite3_step(pRDtree->pWriteParent);
+  return sqlite3_reset(pRDtree->pWriteParent);
+}
+
+/* forward decl */
+static int rdtreeInsertItem(RDtree *, RDtreeNode *, RDtreeItem *, int);
+
+static int updateMapping(RDtree *pRDtree, i64 iRowid, 
+			 RDtreeNode *pNode, int iHeight)
+{
+  int (*xSetMapping)(RDtree *, sqlite3_int64, sqlite3_int64);
+  xSetMapping = ((iHeight == 0) ? rowidWrite : parentWrite);
+
+  if (iHeight > 0) {
+    RDtreeNode *pChild = nodeHashLookup(pRDtree, iRowid);
+    if (pChild) {
+      nodeRelease(pRDtree, pChild->pParent);
+      nodeReference(pNode);
+      pChild->pParent = pNode;
+    }
+  }
+  return xSetMapping(pRDtree, iRowid, pNode->iNode);
+}
+
+
+static int SplitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
+		     int iHeight)
+{
+  int i;
+  int newItemIsRight = 0;
+
+  int rc = SQLITE_OK;
+  int nItem = NITEM(pNode);
+  RDtreeItem *aItem;
+  int *aiUsed;
+
+  RDtreeNode *pLeft = 0;
+  RDtreeNode *pRight = 0;
+
+  RDtreeItem leftbounds;
+  RDtreeItem rightbounds;
+
+  /* Allocate an array and populate it with a copy of pCell and 
+  ** all cells from node pLeft. Then zero the original node.
+  ** 
+  ** Actually, the same buffer will host both the above mentioned array
+  ** (aItem) and an array of integer flags (aiUsed).
+  */
+  int bufSize = sizeof(RDtreeItem) + pRDtree->iBfpSize + sizeof(int);
+  aItem = sqlite3_malloc(bufSize * (nItem + 1));
+  if (!aItem) {
+    rc = SQLITE_NOMEM;
+    goto splitnode_out;
+  }
+  aiUsed = (int *)&aItem[nItem + 1];
+  memset(aiUsed, 0, (sizeof(int) * (nItem + 1)));
+  for (i = 0; i < nItem; i++){
+    nodeGetItem(pRDtree, pNode, i, &aItem[i]);
+  }
+  nodeZero(pRDtree, pNode);
+  memcpy(&aItem[nItem], pItem, sizeof(RDtreeItem) + pRDtree->iBfpSize);
+  nItem += 1;
+
+  if (pNode->iNode == 1) { /* splitting the root node */
+    pRight = nodeNew(pRDtree, pNode);
+    pLeft = nodeNew(pRDtree, pNode);
+    pRDtree->iDepth++;
+    pNode->isDirty = 1;
+    writeInt16(pNode->zData, pRDtree->iDepth);
+  }
+  else {
+    pLeft = pNode;
+    pRight = nodeNew(pRDtree, pLeft->pParent);
+    nodeReference(pLeft);
+  }
+
+  if (!pLeft || !pRight) {
+    rc = SQLITE_NOMEM;
+    goto splitnode_out;
+  }
+
+  memset(pLeft->zData, 0, pRDtree->iNodeSize);
+  memset(pRight->zData, 0, pRDtree->iNodeSize);
+
+  rc = AssignItems(pRDtree, aItem, nItem, pLeft, pRight, 
+		   &leftbounds, &rightbounds);
+  if (rc != SQLITE_OK) {
+    goto splitnode_out;
+  }
+
+  /* Ensure both child nodes have node numbers assigned to them by calling
+  ** nodeWrite(). Node pRight always needs a node number, as it was created
+  ** by nodeNew() above. But node pLeft sometimes already has a node number.
+  ** In this case avoid the all to nodeWrite().
+  */
+  if ((SQLITE_OK != (rc = nodeWrite(pRDtree, pRight))) || 
+      (0 == pLeft->iNode && SQLITE_OK!=(rc = nodeWrite(pRDtree, pLeft)))) {
+    goto splitnode_out;
+  }
+
+  rightbounds.iRowid = pRight->iNode;
+  leftbounds.iRowid = pLeft->iNode;
+
+  if (pNode->iNode == 1) {
+    rc = rdtreeInsertItem(pRDtree, pLeft->pParent, &leftbounds, iHeight+1);
+    if (rc != SQLITE_OK) {
+      goto splitnode_out;
+    }
+  }
+  else{
+    RDtreeNode *pParent = pLeft->pParent;
+    int iItem;
+    rc = nodeParentIndex(pRDtree, pLeft, &iItem);
+    if (rc == SQLITE_OK) {
+      nodeOverwriteItem(pRDtree, pParent, &leftbounds, iItem);
+      rc = AdjustTree(pRDtree, pParent, &leftbounds);
+    }
+    if (rc != SQLITE_OK) {
+      goto splitnode_out;
+    }
+  }
+
+  if ((rc = 
+       rdtreeInsertItem(pRDtree, pRight->pParent, &rightbounds, iHeight+1))) {
+    goto splitnode_out;
+  }
+
+  for(i = 0; i < NITEM(pRight); i++){
+    i64 iRowid = nodeGetRowid(pRDtree, pRight, i);
+    rc = updateMapping(pRDtree, iRowid, pRight, iHeight);
+    if (iRowid == pItem->iRowid) {
+      newItemIsRight = 1;
+    }
+    if (rc != SQLITE_OK) {
+      goto splitnode_out;
+    }
+  }
+
+  if (pNode->iNode == 1) {
+    for (i = 0; i < NITEM(pLeft); i++) {
+      i64 iRowid = nodeGetRowid(pRDtree, pLeft, i);
+      rc = updateMapping(pRDtree, iRowid, pLeft, iHeight);
+      if (rc != SQLITE_OK) {
+        goto splitnode_out;
+      }
+    }
+  }
+  else if (newItemIsRight == 0) {
+    rc = updateMapping(pRDtree, pItem->iRowid, pLeft, iHeight);
+  }
+
+  if (rc == SQLITE_OK) {
+    rc = nodeRelease(pRDtree, pRight);
+    pRight = 0;
+  }
+
+  if (rc == SQLITE_OK) {
+    rc = nodeRelease(pRDtree, pLeft);
+    pLeft = 0;
+  }
+
+splitnode_out:
+  nodeRelease(pRDtree, pRight);
+  nodeRelease(pRDtree, pLeft);
+  sqlite3_free(aItem);
+  return rc;
+}
+
+/*
+** If node pLeaf is not the root of the rd-tree and its pParent pointer is 
+** still NULL, load all ancestor nodes of pLeaf into memory and populate
+** the pLeaf->pParent chain all the way up to the root node.
+**
+** This operation is required when a row is deleted (or updated - an update
+** is implemented as a delete followed by an insert). SQLite provides the
+** rowid of the row to delete, which can be used to find the leaf on which
+** the entry resides (argument pLeaf). Once the leaf is located, this 
+** function is called to determine its ancestry.
+*/
+static int fixLeafParent(RDtree *pRDtree, RDtreeNode *pLeaf)
+{
+  int rc = SQLITE_OK;
+  RDtreeNode *pChild = pLeaf;
+  while (rc == SQLITE_OK && pChild->iNode != 1 && pChild->pParent == 0) {
+    int rc2 = SQLITE_OK;          /* sqlite3_reset() return code */
+    sqlite3_bind_int64(pRDtree->pReadParent, 1, pChild->iNode);
+    rc = sqlite3_step(pRDtree->pReadParent);
+    if (rc == SQLITE_ROW) {
+      RDtreeNode *pTest;           /* Used to test for reference loops */
+      i64 iNode;                   /* Node number of parent node */
+
+      /* Before setting pChild->pParent, test that we are not creating a
+      ** loop of references (as we would if, say, pChild==pParent). We don't
+      ** want to do this as it leads to a memory leak when trying to delete
+      ** the reference counted node structures.
+      */
+      iNode = sqlite3_column_int64(pRDtree->pReadParent, 0);
+      for (pTest = pLeaf; 
+	   pTest && pTest->iNode != iNode; pTest = pTest->pParent)
+	; /* loop from pLeaf up towards pChild looking for iNode.. */
+
+      if (!pTest) { /* Ok */
+        rc2 = nodeAcquire(pRDtree, iNode, 0, &pChild->pParent);
+      }
+    }
+    rc = sqlite3_reset(pRDtree->pReadParent);
+    if (rc == SQLITE_OK) rc = rc2;
+    if (rc == SQLITE_OK && !pChild->pParent) rc = SQLITE_CORRUPT_VTAB;
+    pChild = pChild->pParent;
+  }
+  return rc;
+}
+
+/* forward decl */
+static int deleteItem(RDtree *pRDtree, RDtreeNode *pNode, 
+		      int iItem, int iHeight);
+
+static int removeNode(RDtree *pRDtree, RDtreeNode *pNode, int iHeight)
+{
+  int rc;
+  int rc2;
+  RDtreeNode *pParent = 0;
+  int iItem;
+
+  assert( pNode->nRef == 1 );
+
+  /* Remove the entry in the parent item. */
+  rc = nodeParentIndex(pRDtree, pNode, &iItem);
+  if (rc == SQLITE_OK) {
+    pParent = pNode->pParent;
+    pNode->pParent = 0;
+    rc = deleteItem(pRDtree, pParent, iItem, iHeight+1);
+  }
+  rc2 = nodeRelease(pRDtree, pParent);
+  if (rc == SQLITE_OK) {
+    rc = rc2;
+  }
+  if (rc != SQLITE_OK) {
+    return rc;
+  }
+
+  /* Remove the xxx_node entry. */
+  sqlite3_bind_int64(pRDtree->pDeleteNode, 1, pNode->iNode);
+  sqlite3_step(pRDtree->pDeleteNode);
+  if (SQLITE_OK != (rc = sqlite3_reset(pRDtree->pDeleteNode))) {
+    return rc;
+  }
+
+  /* Remove the xxx_parent entry. */
+  sqlite3_bind_int64(pRDtree->pDeleteParent, 1, pNode->iNode);
+  sqlite3_step(pRDtree->pDeleteParent);
+  if (SQLITE_OK != (rc = sqlite3_reset(pRDtree->pDeleteParent))) {
+    return rc;
+  }
+  
+  /* Remove the node from the in-memory hash table and link it into
+  ** the RDtree.pDeleted list. Its contents will be re-inserted later on.
+  */
+  nodeHashDelete(pRDtree, pNode);
+  pNode->iNode = iHeight;
+  pNode->pNext = pRDtree->pDeleted;
+  pNode->nRef++;
+  pRDtree->pDeleted = pNode;
+
+  return SQLITE_OK;
+}
+
+static int fixNodeBounds(RDtree *pRDtree, RDtreeNode *pNode)
+{
+  int rc = SQLITE_OK; 
+  RDtreeNode *pParent = pNode->pParent;
+  if (pParent) {
+    int ii; 
+    int nItem = NITEM(pNode);
+    RDtreeItem bounds;  /* Bounding box for pNode */
+    nodeGetItem(pRDtree, pNode, 0, &bounds);
+    for (ii = 1; ii < nItem; ii++) {
+      RDtreeItem item;
+      nodeGetItem(pRDtree, pNode, ii, &item);
+      itemUnion(pRDtree, &bounds, &item);
+    }
+    bounds.iRowid = pNode->iNode;
+    rc = nodeParentIndex(pRDtree, pNode, &ii);
+    if (rc == SQLITE_OK) {
+      nodeOverwriteItem(pRDtree, pParent, &bounds, ii);
+      rc = fixNodeBounds(pRDtree, pParent);
+    }
+  }
+  return rc;
+}
+
+/*
+** Delete the item at index iItem of node pNode. After removing the
+** cell, adjust the rd-tree data structure if required.
+*/
+static int deleteItem(RDtree *pRDtree, RDtreeNode *pNode, 
+		      int iItem, int iHeight)
+{
+  RDtreeNode *pParent;
+  int rc;
+
+  if ((rc = fixLeafParent(pRDtree, pNode)) != SQLITE_OK) {
+    return rc;
+  }
+
+  /* Remove the item from the node. This call just moves bytes around
+  ** the in-memory node image, so it cannot fail.
+  */
+  nodeDeleteItem(pRDtree, pNode, iItem);
+
+  /* If the node is not the tree root and now has less than the minimum
+  ** number of cells, remove it from the tree. Otherwise, update the
+  ** cell in the parent node so that it tightly contains the updated
+  ** node.
+  */
+  pParent = pNode->pParent;
+  assert(pParent || pNode->iNode == 1);
+  if (pParent) {
+    /* FIXME */
+    if (NCELL(pNode) < RTREE_MINCELLS(pRDtree)) {
+      rc = removeNode(pRDtree, pNode, iHeight);
+    }
+    else {
+      rc = fixNodeBounds(pRDtree, pNode);
+    }
+  }
+
+  return rc;
+}
+
+
+/*
+** Insert item pItem into node pNode. Node pNode is the head of a 
+** subtree iHeight high (leaf nodes have iHeight==0).
+*/
+static int rdtreeInsertItem(RDtree *pRDtree, RDtreeNode *pNode,
+			    RDtreeItem *pItem, int iHeight)
+{
+  int rc = SQLITE_OK;
+
+  if (iHeight > 0) {
+    RDtreeNode *pChild = nodeHashLookup(pRDtree, pItem->iRowid);
+    if (pChild) {
+      nodeRelease(pRDtree, pChild->pParent);
+      nodeReference(pNode);
+      pChild->pParent = pNode;
+    }
+  }
+
+  if (nodeInsertItem(pRDtree, pNode, pItem)) {
+    rc = SplitNode(pRDtree, pNode, pItem, iHeight);
+  }
+  else {
+    rc = AdjustTree(pRDtree, pNode, pItem);
+    if (rc == SQLITE_OK) {
+      if (iHeight == 0) {
+        rc = rowidWrite(pRDtree, pItem->iRowid, pNode->iNode);
+      }
+      else {
+        rc = parentWrite(pRDtree, pItem->iRowid, pNode->iNode);
+      }
+    }
+  }
+
+  return rc;
+}
+
+static int reinsertNodeContent(RDtree *pRDtree, RDtreeNode *pNode)
+{
+  int ii;
+  int rc = SQLITE_OK;
+  int nItem = NITEM(pNode);
+
+  for (ii = 0; rc == SQLITE_OK && ii < nItem; ii++) {
+    RDtreeItem item;
+    nodeGetItem(pRDtree, pNode, ii, &item);
+
+    /* Find a node to store this cell in. pNode->iNode currently contains
+    ** the height of the sub-tree headed by the cell.
+    */
+    RDtreeNode *pInsert;
+    rc = ChooseLeaf(pRDtree, &item, (int)pNode->iNode, &pInsert);
+    if (rc == SQLITE_OK) {
+      int rc2;
+      rc = rdtreeInsertItem(pRDtree, pInsert, &item, (int)pNode->iNode);
+      rc2 = nodeRelease(pRDtree, pInsert);
+      if (rc==SQLITE_OK) {
+        rc = rc2;
+      }
+    }
+  }
+  return rc;
+}
+
+/*
+** Select a currently unused rowid for a new rd-tree record.
+*/
+static int newRowid(RDtree *pRDtree, i64 *piRowid)
+{
+  int rc;
+  sqlite3_bind_null(pRDtree->pWriteRowid, 1);
+  sqlite3_bind_null(pRDtree->pWriteRowid, 2);
+  sqlite3_step(pRDtree->pWriteRowid);
+  rc = sqlite3_reset(pRDtree->pWriteRowid);
+  *piRowid = sqlite3_last_insert_rowid(pRDtree->db);
+  return rc;
+}
+
+
+/*
+** Remove the entry with rowid=iDelete from the rd-tree structure.
+*/
+static int rdtreeDeleteRowid(RDtree *pRDtree, sqlite3_int64 iDelete) 
+{
+  int rc;                         /* Return code */
+  RDtreeNode *pLeaf = 0;          /* Leaf node containing record iDelete */
+  int iItem;                      /* Index of iDelete item in pLeaf */
+  RDtreeNode *pRoot;              /* Root node of rtree structure */
+
+
+  /* Obtain a reference to the root node to initialise Rtree.iDepth */
+  rc = nodeAcquire(pRDtree, 1, 0, &pRoot);
+
+  /* Obtain a reference to the leaf node that contains the entry 
+  ** about to be deleted. 
+  */
+  if (rc == SQLITE_OK) {
+    rc = findLeafNode(pRDtree, iDelete, &pLeaf);
+  }
+
+  /* Delete the cell in question from the leaf node. */
+  if (rc == SQLITE_OK) {
+    int rc2;
+    rc = nodeRowidIndex(pRDtree, pLeaf, iDelete, &iItem);
+    if (rc == SQLITE_OK) {
+      rc = deleteItem(pRDtree, pLeaf, iItem, 0);
+    }
+    rc2 = nodeRelease(pRDtree, pLeaf);
+    if( rc==SQLITE_OK ){
+      rc = rc2;
+    }
+  }
+
+  /* Delete the corresponding entry in the <rdtree>_rowid table. */
+  if (rc == SQLITE_OK) {
+    sqlite3_bind_int64(pRDtree->pDeleteRowid, 1, iDelete);
+    sqlite3_step(pRDtree->pDeleteRowid);
+    rc = sqlite3_reset(pRDtree->pDeleteRowid);
+  }
+
+  /* Check if the root node now has exactly one child. If so, remove
+  ** it, schedule the contents of the child for reinsertion and 
+  ** reduce the tree height by one.
+  **
+  ** This is equivalent to copying the contents of the child into
+  ** the root node (the operation that Gutman's paper says to perform 
+  ** in this scenario).
+  */
+  if (rc == SQLITE_OK && pRDtree->iDepth > 0 && NCELL(pRoot) == 1) {
+    int rc2;
+    RDtreeNode *pChild;
+    i64 iChild = nodeGetRowid(pRDtree, pRoot, 0);
+    rc = nodeAcquire(pRDtree, iChild, pRoot, &pChild);
+    if( rc==SQLITE_OK ){
+      rc = removeNode(pRDtree, pChild, pRDtree->iDepth - 1);
+    }
+    rc2 = nodeRelease(pRDtree, pChild);
+    if (rc == SQLITE_OK) {
+      rc = rc2;
+    }
+    if (rc == SQLITE_OK) {
+      pRDtree->iDepth--;
+      writeInt16(pRoot->zData, pRDtree->iDepth);
+      pRoot->isDirty = 1;
+    }
+  }
+
+  /* Re-insert the contents of any underfull nodes removed from the tree. */
+  for (pLeaf = pRDtree->pDeleted; pLeaf; pLeaf = pRDtree->pDeleted) {
+    if (rc == SQLITE_OK) {
+      rc = reinsertNodeContent(pRDtree, pLeaf);
+    }
+    pRDtree->pDeleted = pLeaf->pNext;
+    sqlite3_free(pLeaf);
+  }
+
+  /* Release the reference to the root node. */
+  if (rc == SQLITE_OK) {
+    rc = nodeRelease(pRDtree, pRoot);
+  }
+  else {
+    nodeRelease(pRDtree, pRoot);
+  }
+
+  return rc;
+}
+
+
+/*
+** The xUpdate method for rdtree module virtual tables.
+*/
+static int rdtreeUpdate(sqlite3_vtab *pVtab, 
+			int argc, sqlite3_value **argv, 
+			sqlite_int64 *pRowid)
+{
+  RDtree *pRDtree = (RDtree *)pVtab;
+  int rc = SQLITE_OK;
+  RDtreeItem *pItem;              /* New item to insert if argc>1 */
+  int bHaveRowid = 0;             /* Set to 1 after new rowid is determined */
+
+  rdtreeReference(pRDtree);
+  assert(argc >= 1);
+
+  /* Constraint handling. A write operation on an rd-tree table may return
+  ** SQLITE_CONSTRAINT in case of a duplicate rowid value or in case the 
+  ** argument type doesn't correspond to a binary fingerprint.
+  **
+  ** TODO/FIXME also enforce the correct number of arguments.
+  **
+  ** In the case of duplicate rowid, if the conflict-handling mode is REPLACE,
+  ** then the conflicting row can be removed before proceeding.
+  */
+
+  /* If the argv[] array contains more than one element, elements
+  ** (argv[2]..argv[argc-1]) contain a new record to insert into
+  ** the rd-tree structure.
+  */
+  if (argc > 1) { 
+
+    i64 rowid = 0;
+
+    /* If a rowid value was supplied, check if it is already present in 
+    ** the table. If so, the constraint has failed. */
+    if (sqlite3_value_type(argv[1]) != SQLITE_NULL ) {
+
+      rowid = sqlite3_value_int64(argv[1]);
+
+      if ((sqlite3_value_type(argv[0]) == SQLITE_NULL) ||
+	  (sqlite3_value_int64(argv[0]) != rowid)) {
+        sqlite3_bind_int64(pRDtree->pReadRowid, 1, rowid);
+        int steprc = sqlite3_step(pRDtree->pReadRowid);
+        rc = sqlite3_reset(pRDtree->pReadRowid);
+        if (SQLITE_ROW == steprc) { /* rowid already exists */
+          if (sqlite3_vtab_on_conflict(pRDtree->db) == SQLITE_REPLACE) {
+            rc = rdtreeDeleteRowid(pRDtree, rowid);
+          }
+	  else {
+            rc = SQLITE_CONSTRAINT;
+            goto update_end;
+          }
+        }
+      }
+
+      bHaveRowid = 1;
+    }
+
+    /* Allocate the RDtreeItem and copy the binary fingerprint data  */
+    pItem 
+      = (RDtreeItem *)sqlite3_malloc(sizeof(RDtreeItem) + pRDtree->iBfpSize);
+
+    Bfp *pBfp = 0;
+    u8 *pBlob = 0; int len;
+
+    if (!pItem) {
+      rc = SQLITE_NOMEM;
+      goto update_end;
+    }
+    else if ((rc = fetch_bfp_arg(argv[2], &pBfp)) != SQLITE_OK) {
+      goto update_build_item_end;
+    }
+    else if ((rc = bfp_to_blob(pBfp, &pBlob, &len)) != SQLITE_OK) {
+      goto update_free_bfp;
+    }
+    else if (len != pRDtree->iBfpSize) {
+      rc = SQLITE_CONSTRAINT;
+      goto update_free_blob;
+    }
+    else {
+      if (bHaveRowid) {
+	pItem->iRowid = rowid;
+      }
+      memcpy(pItem->aBfp, pBlob, pRDtree->iBfpSize);
+    }
+
+  update_free_blob:
+    sqlite3_free(pBlob);
+  update_free_bfp:
+    free_bfp(pBfp);
+  update_build_item_end:
+    if (rc != SQLITE_OK) {
+      goto update_end;
+    }
+  }
+
+  /* If argv[0] is not an SQL NULL value, it is the rowid of a
+  ** record to delete from the r-tree table. The following block does
+  ** just that.
+  */
+  if (sqlite3_value_type(argv[0]) != SQLITE_NULL) {
+    rc = rdtreeDeleteRowid(pRDtree, sqlite3_value_int64(argv[0]));
+  }
+
+  /* If the argv[] array contains more than one element, elements
+  ** (argv[2]..argv[argc-1]) contain a new record to insert into
+  ** the rd-tree structure.
+  */
+  if ((rc == SQLITE_OK) && (argc > 1)) {
+    /* Insert the new record into the r-tree */
+    RDtreeNode *pLeaf = 0;
+
+    /* Figure out the rowid of the new row. */
+    if (bHaveRowid == 0) {
+      rc = newRowid(pRDtree, &pItem->iRowid);
+    }
+    *pRowid = pItem->iRowid;
+
+    if (rc == SQLITE_OK) {
+      rc = ChooseLeaf(pRDtree, pItem, 0, &pLeaf);
+    }
+
+    if (rc == SQLITE_OK) {
+      int rc2;
+      pRDtree->iReinsertHeight = -1;
+      rc = rdtreeInsertItem(pRDtree, pLeaf, pItem, 0);
+      rc2 = nodeRelease(pRDtree, pLeaf);
+      if (rc == SQLITE_OK) {
+        rc = rc2;
+      }
+    }
+  }
+
+  /* FIXME free pItem or done elsewhere ? */
+
+update_end:
+  rdtreeRelease(pRDtree);
   return rc;
 }
 
