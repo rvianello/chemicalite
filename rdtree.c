@@ -150,6 +150,20 @@ struct RDtree {
   sqlite3_stmt *pDeleteParent;
 };
 
+/*
+** The minimum number of cells allowed for a node is a third of the 
+** maximum. In Gutman's notation:
+**
+**     m = M/3
+**
+** If an RD-tree "Reinsert" operation is required, the same number of
+** cells are removed from the overfull node and reinserted into the tree.
+*/
+/* #define RDTREE_MINITEMS(p) ((((p)->iNodeSize-4)/(p)->nBytesPerCell)/3) */
+#define RDTREE_MINITEMS(p) 3 /* FIXME FIXME FIXME */
+#define RDTREE_REINSERT(p) RDTREE_MINITEMS(p)
+#define RTREE_MAXITEMS 51
+
 /* 
 ** An rd-tree structure node.
 */
@@ -491,7 +505,7 @@ static int AdjustTree(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem)
 
     nodeGetItem(pRDtree, pParent, iItem, &item);
     if (!itemContains(pRDtree, &item, pItem) ){
-      cellUnion(pRDtree, &item, pItem);
+      itemUnion(pRDtree, &item, pItem);
       nodeOverwriteItem(pRDtree, pParent, &item, iItem);
     }
  
@@ -524,8 +538,115 @@ static int parentWrite(RDtree *pRDtree,
   return sqlite3_reset(pRDtree->pWriteParent);
 }
 
-/* forward decl */
-static int rdtreeInsertItem(RDtree *, RDtreeNode *, RDtreeItem *, int);
+static int itemWeight(RDtree *pRDtree, RDtreeItem *pItem)
+{
+  /* FIXME FIXME FIXME */
+  return 0;
+}
+
+static int itemGrowth(RDtree *pRDtree, RDtreeItem *pBase, RDtreeItem *pAdded)
+{
+  /* FIXME FIXME FIXME */
+  return 0;
+}
+
+/*
+** Quadratic variant.
+*/
+static RDtreeItem *pickNext(RDtree *pRDtree,
+			    RDtreeItem *aItem, int nItem, 
+			    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
+			    int *aiUsed)
+{
+
+  int iSelect = -1;
+  int iMaxDiff;
+  int ii;
+  for(ii = 0; ii < nItem; ii++){
+    if( aiUsed[ii]==0 ){
+      int left = itemGrowth(pRDtree, pLeftBounds, &aItem[ii]);
+      int right = itemGrowth(pRDtree, pRightBounds, &aItem[ii]);
+      int diff = abs(right-left);
+      if (iSelect < 0 || diff > iMaxDiff) {
+        iMaxDiff = diff;
+        iSelect = ii;
+      }
+    }
+  }
+  aiUsed[iSelect] = 1;
+  return &aItem[iSelect];
+}
+
+/*
+** Quadratic variant.
+*/
+static void pickSeeds(RDtree *pRDtree, RDtreeItem *aItem, int nItem, 
+		      int *piLeftSeed, int *piRightSeed)
+{
+  int ii;
+  int jj;
+
+  int iLeftSeed = 0;
+  int iRightSeed = 1;
+  int iMaxWaste = 0.0;
+
+  for (ii = 0; ii < nItem; ii++) {
+    for (jj = ii + 1; jj < nItem; jj++) {
+      int right = itemWeight(pRDtree, &aItem[jj]);
+      int growth = itemGrowth(pRDtree, &aItem[ii], &aItem[jj]);
+      int waste = growth - right;
+
+      if (waste > iMaxWaste) {
+        iLeftSeed = ii;
+        iRightSeed = jj;
+        iMaxWaste = waste;
+      }
+    }
+  }
+
+  *piLeftSeed = iLeftSeed;
+  *piRightSeed = iRightSeed;
+}
+
+static int assignItems(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
+		       RDtreeNode *pLeft, RDtreeNode *pRight,
+		       RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds)
+{
+  int iLeftSeed = 0;
+  int iRightSeed = 1;
+  int i;
+
+  int *aiUsed = sqlite3_malloc(sizeof(int) * nItem);
+  if (!aiUsed) {
+    return SQLITE_NOMEM;
+  }
+  memset(aiUsed, 0, sizeof(int) * nItem);
+
+  pickSeeds(pRDtree, aItem, nItem, &iLeftSeed, &iRightSeed);
+
+  memcpy(pLeftBounds, &aItem[iLeftSeed], sizeof(RDtreeItem));
+  memcpy(pRightBounds, &aItem[iRightSeed], sizeof(RDtreeItem));
+  nodeInsertItem(pRDtree, pLeft, &aItem[iLeftSeed]);
+  nodeInsertItem(pRDtree, pRight, &aItem[iRightSeed]);
+  aiUsed[iLeftSeed] = 1;
+  aiUsed[iRightSeed] = 1;
+
+  for(i = nItem - 2; i > 0; i--) {
+    RDtreeItem *pNext;
+    pNext = pickNext(pRDtree, aItem, nItem, pLeftBounds, pRightBounds, aiUsed);
+    if( /* some criteria */ 1) {
+      nodeInsertItem(pRDtree, pRight, pNext);
+      itemUnion(pRDtree, pRightBounds, pNext);
+    }
+    else {
+      nodeInsertItem(pRDtree, pLeft, pNext);
+      itemUnion(pRDtree, pLeftBounds, pNext);
+    }
+  }
+
+  sqlite3_free(aiUsed);
+  return SQLITE_OK;
+}
 
 static int updateMapping(RDtree *pRDtree, i64 iRowid, 
 			 RDtreeNode *pNode, int iHeight)
@@ -544,6 +665,8 @@ static int updateMapping(RDtree *pRDtree, i64 iRowid,
   return xSetMapping(pRDtree, iRowid, pNode->iNode);
 }
 
+/* forward decl */
+static int rdtreeInsertItem(RDtree *, RDtreeNode *, RDtreeItem *, int);
 
 static int SplitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
 		     int iHeight)
@@ -604,7 +727,7 @@ static int SplitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
   memset(pLeft->zData, 0, pRDtree->iNodeSize);
   memset(pRight->zData, 0, pRDtree->iNodeSize);
 
-  rc = AssignItems(pRDtree, aItem, nItem, pLeft, pRight, 
+  rc = assignItems(pRDtree, aItem, nItem, pLeft, pRight, 
 		   &leftbounds, &rightbounds);
   if (rc != SQLITE_OK) {
     goto splitnode_out;
@@ -839,7 +962,7 @@ static int deleteItem(RDtree *pRDtree, RDtreeNode *pNode,
   assert(pParent || pNode->iNode == 1);
   if (pParent) {
     /* FIXME */
-    if (NCELL(pNode) < RTREE_MINCELLS(pRDtree)) {
+    if (NITEM(pNode) < RDTREE_MINITEMS(pRDtree)) {
       rc = removeNode(pRDtree, pNode, iHeight);
     }
     else {
@@ -978,7 +1101,7 @@ static int rdtreeDeleteRowid(RDtree *pRDtree, sqlite3_int64 iDelete)
   ** the root node (the operation that Gutman's paper says to perform 
   ** in this scenario).
   */
-  if (rc == SQLITE_OK && pRDtree->iDepth > 0 && NCELL(pRoot) == 1) {
+  if (rc == SQLITE_OK && pRDtree->iDepth > 0 && NITEM(pRoot) == 1) {
     int rc2;
     RDtreeNode *pChild;
     i64 iChild = nodeGetRowid(pRDtree, pRoot, 0);
