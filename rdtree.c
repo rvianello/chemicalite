@@ -164,6 +164,16 @@ struct RDtree {
 #define RDTREE_REINSERT(p) RDTREE_MINITEMS(p)
 #define RTREE_MAXITEMS 51
 
+/*
+** The smallest possible node-size is (512-64)==448 bytes. And the largest
+** supported cell size is 48 bytes (8 byte rowid + ten 4 byte coordinates).
+** Therefore all non-root nodes must contain at least 3 entries. Since 
+** 3^40 is greater than 2^64, an r-tree structure always has a depth of
+** 40 or less.
+*/
+/* FIXME FIXME FIXME */
+#define RDTREE_MAX_DEPTH 40
+
 /* 
 ** An rd-tree structure node.
 */
@@ -186,6 +196,38 @@ struct RDtreeItem {
 };
 
 #define RDTREE_MAXITEMS 8
+
+static int itemWeight(RDtree *pRDtree, RDtreeItem *pItem)
+{
+  /* FIXME FIXME FIXME */
+  return 0;
+}
+
+/*
+** Store the union of items p1 and p2 in p1.
+*/
+static void itemUnion(RDtree *pRDtree, RDtreeItem *p1, RDtreeItem *p2)
+{
+  /* FIXME FIXME FIXME */
+}
+
+/*
+** Return true if item p2 is a subset of item p1. False otherwise.
+*/
+static int itemContains(RDtree *pRDtree, RDtreeItem *p1, RDtreeItem *p2)
+{
+  /* FIXME FIXME FIXME */
+  return 0;
+}
+
+/*
+** Return the amount item pBase would grow by if it were unioned with pAdded.
+*/
+static int itemGrowth(RDtree *pRDtree, RDtreeItem *pBase, RDtreeItem *pAdded)
+{
+  /* FIXME FIXME FIXME */
+  return 0;
+}
 
 /*
 ** Increment the reference count of node p.
@@ -280,6 +322,100 @@ static RDtreeNode *nodeNew(RDtree *pRDtree, RDtreeNode *pParent)
 }
 
 /*
+** Obtain a reference to an rd-tree node.
+*/
+static int nodeAcquire(RDtree *pRDtree,     /* R-tree structure */
+		       i64 iNode,           /* Node number to load */
+		       RDtreeNode *pParent, /* Either the parent node or NULL */
+		       RDtreeNode **ppNode) /* OUT: Acquired node */
+{
+  int rc;
+  int rc2 = SQLITE_OK;
+  RDtreeNode *pNode;
+
+  /* Check if the requested node is already in the hash table. If so,
+  ** increase its reference count and return it.
+  */
+  if ((pNode = nodeHashLookup(pRDtree, iNode))) {
+    assert( !pParent || !pNode->pParent || pNode->pParent == pParent );
+    if (pParent && !pNode->pParent) {
+      nodeReference(pParent);
+      pNode->pParent = pParent;
+    }
+    nodeReference(pNode);
+    *ppNode = pNode;
+    return SQLITE_OK;
+  }
+
+  sqlite3_bind_int64(pRDtree->pReadNode, 1, iNode);
+  rc = sqlite3_step(pRDtree->pReadNode);
+
+  if (rc == SQLITE_ROW) {
+    const u8 *zBlob = sqlite3_column_blob(pRDtree->pReadNode, 0);
+    if (pRDtree->iNodeSize == sqlite3_column_bytes(pRDtree->pReadNode, 0)) {
+      pNode = /* FIXME */
+	(RDtreeNode *)sqlite3_malloc(sizeof(RDtreeNode) + pRDtree->iNodeSize);
+      if (!pNode) {
+        rc2 = SQLITE_NOMEM;
+      }
+      else{
+        pNode->pParent = pParent;
+        pNode->zData = (u8 *)&pNode[1];
+        pNode->nRef = 1;
+        pNode->iNode = iNode;
+        pNode->isDirty = 0;
+        pNode->pNext = 0;
+        memcpy(pNode->zData, zBlob, pRDtree->iNodeSize);
+        nodeReference(pParent);
+      }
+    }
+  }
+  rc = sqlite3_reset(pRDtree->pReadNode);
+  if (rc == SQLITE_OK) rc = rc2;
+
+  /* If the root node was just loaded, set pRDtree->iDepth to the height
+  ** of the rd-tree structure. A height of zero means all data is stored on
+  ** the root node. A height of one means the children of the root node
+  ** are the leaves, and so on. If the depth as specified on the root node
+  ** is greater than RDTREE_MAX_DEPTH, the rd-tree structure must be corrupt.
+  */
+  if (pNode && iNode == 1) {
+    pRDtree->iDepth = readInt16(pNode->zData);
+    if (pRDtree->iDepth > RDTREE_MAX_DEPTH) {
+      rc = SQLITE_CORRUPT_VTAB;
+    }
+  }
+
+  /* If no error has occurred so far, check if the "number of entries"
+  ** field on the node is too large. If so, set the return code to 
+  ** SQLITE_CORRUPT_VTAB.
+  */
+  if (pNode && rc == SQLITE_OK) {
+    /* if (NITEM(pNode) > ((pRDtree->iNodeSize-4)/pRtree->nBytesPerCell)) { */
+    /* FIXME */
+    if (NITEM(pNode) > 0) {
+      rc = SQLITE_CORRUPT_VTAB;
+    }
+  }
+  
+  if (rc == SQLITE_OK) {
+    if (pNode != 0) {
+      nodeHashInsert(pRDtree, pNode);
+    }
+    else {
+      rc = SQLITE_CORRUPT_VTAB;
+    }
+    *ppNode = pNode;
+  }
+  else {
+    sqlite3_free(pNode);
+    *ppNode = 0;
+  }
+
+  return rc;
+}
+
+/*
 ** Overwrite item iItem of node pNode with the contents of pItem.
 */
 static void nodeOverwriteItem(RDtree *pRDtree, RDtreeNode *pNode,  
@@ -294,6 +430,72 @@ static void nodeOverwriteItem(RDtree *pRDtree, RDtreeNode *pNode,
   }
   */
   pNode->isDirty = 1;
+}
+
+/*
+** Remove the item with index iItem from node pNode.
+*/
+static void nodeDeleteItem(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
+{
+  /* FIXME FIXME FIXME */
+  u8 *pDst = 0; /* &pNode->zData[4 + pRtree->nBytesPerCell*iCell]; */
+  u8 *pSrc = 0; /* &pDst[pRtree->nBytesPerCell]; */
+  int nByte = (NITEM(pNode) - iItem - 1) * 0; /* pRtree->nBytesPerCell; */
+  memmove(pDst, pSrc, nByte);
+  writeInt16(&pNode->zData[2], NITEM(pNode)-1);
+  pNode->isDirty = 1;
+}
+
+/*
+** Insert the contents of item pItem into node pNode. If the insert
+** is successful, return SQLITE_OK.
+**
+** If there is not enough free space in pNode, return SQLITE_FULL.
+*/
+static int nodeInsertItem(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem)
+{
+  int nItem;    /* Current number of items in pNode */
+  int nMaxItem; /* Maximum number of items for pNode */
+
+  /* FIXME FIXME FIXME */
+  nMaxItem = 0; /* (pRDtree->iNodeSize-4)/pRtree->nBytesPerCell; */
+  nItem = NITEM(pNode);
+
+  assert(nItem <= nMaxItem);
+
+  if (nItem < nMaxItem) {
+    nodeOverwriteItem(pRDtree, pNode, pItem, nItem);
+    writeInt16(&pNode->zData[2], nItem+1);
+    pNode->isDirty = 1;
+  }
+
+  return (nItem == nMaxItem);
+}
+
+/*
+** If the node is dirty, write it out to the database.
+*/
+static int nodeWrite(RDtree *pRDtree, RDtreeNode *pNode)
+{
+  int rc = SQLITE_OK;
+  if (pNode->isDirty) {
+    sqlite3_stmt *p = pRDtree->pWriteNode;
+    if (pNode->iNode) {
+      sqlite3_bind_int64(p, 1, pNode->iNode);
+    }
+    else {
+      sqlite3_bind_null(p, 1);
+    }
+    sqlite3_bind_blob(p, 2, pNode->zData, pRDtree->iNodeSize, SQLITE_STATIC);
+    sqlite3_step(p);
+    pNode->isDirty = 0;
+    rc = sqlite3_reset(p);
+    if (pNode->iNode == 0 && rc == SQLITE_OK) {
+      pNode->iNode = sqlite3_last_insert_rowid(pRDtree->db);
+      nodeHashInsert(pRDtree, pNode);
+    }
+  }
+  return rc;
 }
 
 /*
@@ -321,6 +523,18 @@ static int nodeRelease(RDtree *pRDtree, RDtreeNode *pNode)
     }
   }
   return rc;
+}
+
+/*
+** Return the 64-bit integer value associated with item iItem of
+** node pNode. If pNode is a leaf node, this is a rowid. If it is
+** an internal node, then the 64-bit integer is a child page number.
+*/
+static i64 nodeGetRowid(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
+{
+  assert(iItem < NITEM(pNode));
+  /* FIXME FIXME FIXME */
+  return readInt64(&pNode->zData[4]); /* + pRtree->nBytesPerCell*iCell]); */
 }
 
 /*
@@ -435,6 +649,38 @@ static int rdtreeDestroy(sqlite3_vtab *pVtab)
   return rc;
 }
 
+/*
+** One of the items in node pNode is guaranteed to have a 64-bit 
+** integer value equal to iRowid. Return the index of this item.
+*/
+static int nodeRowidIndex(RDtree *pRDtree, RDtreeNode *pNode, i64 iRowid,
+			  int *piIndex)
+{
+  int ii;
+  int nItem = NITEM(pNode);
+  for (ii = 0; ii < nItem; ii++) {
+    if (nodeGetRowid(pRDtree, pNode, ii) == iRowid) {
+      *piIndex = ii;
+      return SQLITE_OK;
+    }
+  }
+  return SQLITE_CORRUPT_VTAB;
+}
+
+/*
+** Return the index of the parent's item containing a pointer to node pNode.
+** If pNode is the root node, return -1.
+*/
+static int nodeParentIndex(RDtree *pRDtree, RDtreeNode *pNode, int *piIndex)
+{
+  RDtreeNode *pParent = pNode->pParent;
+  if (pParent) {
+    return nodeRowidIndex(pRDtree, pParent, pNode->iNode, piIndex);
+  }
+  *piIndex = -1;
+  return SQLITE_OK;
+}
+
 /* 
 ** Use nodeAcquire() to obtain the leaf node containing the record with 
 ** rowid iRowid. If successful, set *ppLeaf to point to the node and
@@ -536,18 +782,6 @@ static int parentWrite(RDtree *pRDtree,
   sqlite3_bind_int64(pRDtree->pWriteParent, 2, iPar);
   sqlite3_step(pRDtree->pWriteParent);
   return sqlite3_reset(pRDtree->pWriteParent);
-}
-
-static int itemWeight(RDtree *pRDtree, RDtreeItem *pItem)
-{
-  /* FIXME FIXME FIXME */
-  return 0;
-}
-
-static int itemGrowth(RDtree *pRDtree, RDtreeItem *pBase, RDtreeItem *pAdded)
-{
-  /* FIXME FIXME FIXME */
-  return 0;
 }
 
 /*
@@ -936,7 +1170,7 @@ static int fixNodeBounds(RDtree *pRDtree, RDtreeNode *pNode)
 
 /*
 ** Delete the item at index iItem of node pNode. After removing the
-** cell, adjust the rd-tree data structure if required.
+** item, adjust the rd-tree data structure if required.
 */
 static int deleteItem(RDtree *pRDtree, RDtreeNode *pNode, 
 		      int iItem, int iHeight)
