@@ -192,9 +192,8 @@ struct RDtreeNode {
 */
 struct RDtreeItem {
   i64 iRowid;
-  u8 aBfp[];
+  u8 aBfp[MAX_BITSTRING_SIZE];
 };
-
 #define RDTREE_MAXITEMS 8
 
 static int itemWeight(RDtree *pRDtree, RDtreeItem *pItem)
@@ -421,11 +420,7 @@ static void nodeOverwriteItem(RDtree *pRDtree, RDtreeNode *pNode,
   int ii;
   u8 *p = &pNode->zData[4 + pRDtree->nBytesPerItem*iItem];
   p += writeInt64(p, pItem->iRowid);
-  /* FIXME FIXME FIXME 
-  for (ii = 0; ii < (pRtree->nDim*2); ii++){
-    p += writeCoord(p, &pCell->aCoord[ii]);
-  }
-  */
+  memcpy(p, pItem->aBfp, pRDtree->iBfpSize);
   pNode->isDirty = 1;
 }
 
@@ -532,18 +527,28 @@ static i64 nodeGetRowid(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
 }
 
 /*
+** Return pointer to the binary fingerprint associated with item iItem of
+** node pNode. If pNode is a leaf node, this is a virtual table element.
+** If it is an internal node, then the binary fingerprint defines the 
+** bounds of a child node
+*/
+static u8 *nodeGetBfp(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
+{
+  assert(iItem < NITEM(pNode));
+  return &pNode->zData[4 + pRDtree->nBytesPerItem*iItem + 8];
+}
+
+/*
 ** Deserialize item iItem of node pNode. Populate the structure pointed
 ** to by pItem with the results.
 */
 static void nodeGetItem(RDtree *pRDtree, RDtreeNode *pNode, 
 			int iItem, RDtreeItem *pItem)
 {
-  int ii;
-  pItem->iRowid = nodeGetRowid(pRDtree, pNode, iItem);
-  /* FIXME FIXME FIXME
-  for(ii=0; ii<pRtree->nDim*2; ii++){
-    nodeGetCoord(pRtree, pNode, iItem, ii, &pItem->aCoord[ii]);
-    } */
+  i64 iRowid = nodeGetRowid(pRDtree, pNode, iItem);
+  u8 *pBfp = nodeGetBfp(pRDtree, pNode, iItem);
+  pItem->iRowid = iRowid;
+  memcpy(pItem->aBfp, pBfp, pRDtree->iBfpSize);
 }
 
 /* Forward declaration for the function that does the work of
@@ -852,7 +857,6 @@ static int assignItems(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
 
   pickSeeds(pRDtree, aItem, nItem, &iLeftSeed, &iRightSeed);
 
-  /* FIXME FIXME FIXME */
   memcpy(pLeftBounds, &aItem[iLeftSeed], sizeof(RDtreeItem));
   memcpy(pRightBounds, &aItem[iRightSeed], sizeof(RDtreeItem));
   nodeInsertItem(pRDtree, pLeft, &aItem[iLeftSeed]);
@@ -863,7 +867,14 @@ static int assignItems(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
   for(i = nItem - 2; i > 0; i--) {
     RDtreeItem *pNext;
     pNext = pickNext(pRDtree, aItem, nItem, pLeftBounds, pRightBounds, aiUsed);
-    if( /* some criteria */ 1) {
+
+    int diff =  
+      itemGrowth(pRDtree, pLeftBounds, pNext) - 
+      itemGrowth(pRDtree, pRightBounds, pNext)
+      ;
+
+    if ((RDTREE_MINITEMS(pRDtree) - NITEM(pRight) == i)
+	|| (diff > 0 && (RDTREE_MINITEMS(pRDtree) - NITEM(pLeft) != i))) {
       nodeInsertItem(pRDtree, pRight, pNext);
       itemUnion(pRDtree, pRightBounds, pNext);
     }
@@ -897,7 +908,7 @@ static int updateMapping(RDtree *pRDtree, i64 iRowid,
 /* forward decl */
 static int rdtreeInsertItem(RDtree *, RDtreeNode *, RDtreeItem *, int);
 
-static int SplitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
+static int splitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
 		     int iHeight)
 {
   int i;
@@ -920,9 +931,7 @@ static int SplitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
   ** Actually, the same buffer will host both the above mentioned array
   ** (aItem) and an array of integer flags (aiUsed).
   */
-  /* FIXME FIXME FIXME */
-  int bufSize = sizeof(RDtreeItem) + pRDtree->iBfpSize + sizeof(int);
-  aItem = sqlite3_malloc(bufSize * (nItem + 1));
+  aItem = sqlite3_malloc((sizeof(RDtreeItem) + sizeof(int)) * (nItem + 1));
   if (!aItem) {
     rc = SQLITE_NOMEM;
     goto splitnode_out;
@@ -933,8 +942,7 @@ static int SplitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
     nodeGetItem(pRDtree, pNode, i, &aItem[i]);
   }
   nodeZero(pRDtree, pNode);
-  /* FIXME FIXME FIXME */
-  memcpy(&aItem[nItem], pItem, sizeof(RDtreeItem) + pRDtree->iBfpSize);
+  memcpy(&aItem[nItem], pItem, sizeof(RDtreeItem));
   nItem += 1;
 
   if (pNode->iNode == 1) { /* splitting the root node */
@@ -1226,7 +1234,7 @@ static int rdtreeInsertItem(RDtree *pRDtree, RDtreeNode *pNode,
   }
 
   if (nodeInsertItem(pRDtree, pNode, pItem)) {
-    rc = SplitNode(pRDtree, pNode, pItem, iHeight);
+    rc = splitNode(pRDtree, pNode, pItem, iHeight);
   }
   else {
     rc = adjustTree(pRDtree, pNode, pItem);
@@ -1565,71 +1573,6 @@ static sqlite3_module rdtreeModule = {
   0                            /* xRollbackTo */
 };
 
-/*
-** The second argument to this function contains the text of an SQL statement
-** that returns a single integer value. The statement is compiled and executed
-** using database connection db. If successful, the integer value returned
-** is written to *piVal and SQLITE_OK returned. Otherwise, an SQLite error
-** code is returned and the value of *piVal after returning is not defined.
-*/
-static int getIntFromStmt(sqlite3 *db, const char *zSql, int *piVal)
-{
-  int rc = SQLITE_NOMEM;
-  if (zSql) {
-    sqlite3_stmt *pStmt = 0;
-    rc = sqlite3_prepare_v2(db, zSql, -1, &pStmt, 0);
-    if (rc == SQLITE_OK) {
-      if (SQLITE_ROW == sqlite3_step(pStmt)) {
-        *piVal = sqlite3_column_int(pStmt, 0);
-      }
-      rc = sqlite3_finalize(pStmt);
-    }
-  }
-  return rc;
-}
-
-
-/*
-** This function is called from within the xConnect() or xCreate() method to
-** determine the node-size used by the rdtree table being created or connected
-** to. If successful, pRDtree->iNodeSize is populated and SQLITE_OK returned.
-** Otherwise, an SQLite error code is returned.
-**
-** If this function is being called as part of an xConnect(), then the rdtree
-** table already exists. In this case the node-size is determined by inspecting
-** the root node of the tree.
-**
-** Otherwise, for an xCreate(), use 64 bytes less than the database page-size. 
-** This ensures that each node is stored on a single database page. If the 
-** database page-size is so large that more than RDTREE_MAXITEMS entries 
-** would fit in a single node, use a smaller node-size.
-*/
-static int getNodeSize(RDtree *pRDtree, int isCreate)
-{
-  int rc;
-  char *zSql;
-  if (isCreate) {
-    int iPageSize = 0;
-    zSql = sqlite3_mprintf("PRAGMA %Q.page_size", pRDtree->zDb);
-    rc = getIntFromStmt(pRDtree->db, zSql, &iPageSize);
-    if (rc==SQLITE_OK) {
-      pRDtree->iNodeSize = iPageSize - 64;
-      /* FIXME FIXME FIXME */
-      if ((4 + sizeof(RDtreeItem) + pRDtree->iBfpSize) < pRDtree->iNodeSize ) {
-        pRDtree->iNodeSize = 4 + sizeof(RDtreeItem) + pRDtree->iBfpSize;
-      }
-    }
-  }
-  else{
-    zSql = sqlite3_mprintf("SELECT length(data) FROM '%q'.'%q_node' "
-			   "WHERE nodeno=1", pRDtree->zDb, pRDtree->zName);
-    rc = getIntFromStmt(pRDtree->db, zSql, &pRDtree->iNodeSize);
-  }
-
-  sqlite3_free(zSql);
-  return rc;
-}
-
 static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
 {
   int rc = SQLITE_OK;
@@ -1700,6 +1643,70 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
   return rc;
 }
 
+/*
+** The second argument to this function contains the text of an SQL statement
+** that returns a single integer value. The statement is compiled and executed
+** using database connection db. If successful, the integer value returned
+** is written to *piVal and SQLITE_OK returned. Otherwise, an SQLite error
+** code is returned and the value of *piVal after returning is not defined.
+*/
+static int getIntFromStmt(sqlite3 *db, const char *zSql, int *piVal)
+{
+  int rc = SQLITE_NOMEM;
+  if (zSql) {
+    sqlite3_stmt *pStmt = 0;
+    rc = sqlite3_prepare_v2(db, zSql, -1, &pStmt, 0);
+    if (rc == SQLITE_OK) {
+      if (SQLITE_ROW == sqlite3_step(pStmt)) {
+        *piVal = sqlite3_column_int(pStmt, 0);
+      }
+      rc = sqlite3_finalize(pStmt);
+    }
+  }
+  return rc;
+}
+
+
+/*
+** This function is called from within the xConnect() or xCreate() method to
+** determine the node-size used by the rdtree table being created or connected
+** to. If successful, pRDtree->iNodeSize is populated and SQLITE_OK returned.
+** Otherwise, an SQLite error code is returned.
+**
+** If this function is being called as part of an xConnect(), then the rdtree
+** table already exists. In this case the node-size is determined by inspecting
+** the root node of the tree.
+**
+** Otherwise, for an xCreate(), use 64 bytes less than the database page-size. 
+** This ensures that each node is stored on a single database page. If the 
+** database page-size is so large that more than RDTREE_MAXITEMS entries 
+** would fit in a single node, use a smaller node-size.
+*/
+static int getNodeSize(RDtree *pRDtree, int isCreate)
+{
+  int rc;
+  char *zSql;
+  if (isCreate) {
+    int iPageSize = 0;
+    zSql = sqlite3_mprintf("PRAGMA %Q.page_size", pRDtree->zDb);
+    rc = getIntFromStmt(pRDtree->db, zSql, &iPageSize);
+    if (rc==SQLITE_OK) {
+      pRDtree->iNodeSize = iPageSize - 64;
+      if ((4 + pRDtree->nBytesPerItem*RDTREE_MAXITEMS) < pRDtree->iNodeSize) {
+        pRDtree->iNodeSize = 4 + pRDtree->nBytesPerItem*RDTREE_MAXITEMS;
+      }
+    }
+  }
+  else{
+    zSql = sqlite3_mprintf("SELECT length(data) FROM '%q'.'%q_node' "
+			   "WHERE nodeno=1", pRDtree->zDb, pRDtree->zName);
+    rc = getIntFromStmt(pRDtree->db, zSql, &pRDtree->iNodeSize);
+  }
+
+  sqlite3_free(zSql);
+  return rc;
+}
+
 /* 
 ** This function is the implementation of both the xConnect and xCreate
 ** methods of the rd-tree virtual table.
@@ -1719,7 +1726,7 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
   int nDb;              /* Length of string argv[1] */
   int nName;            /* Length of string argv[2] */
 
-  int iBfpSize = 128;   /* Default size of binary fingerprint FIXME */
+  int iBfpSize = 128;   /* Default size of binary fingerprint */
 
   /* perform arg checking */
   if (argc != 5) {
@@ -1746,6 +1753,7 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
 
   pRDtree->db = db;
   pRDtree->iBfpSize = iBfpSize;
+  pRDtree->nBytesPerItem = 8 + iBfpSize; 
   pRDtree->nBusy = 1;
   pRDtree->zDb = (char *)&pRDtree[1];
   pRDtree->zName = &pRDtree->zDb[nDb+1];

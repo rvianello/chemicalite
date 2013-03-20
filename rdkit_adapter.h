@@ -4,8 +4,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-  static const int MOL_SIGNATURE_SIZE = 128;
-
   void free_mol(Mol *pMol);
   void free_bfp(Bfp *pBfp);
 
