@@ -277,7 +277,7 @@ static RDtreeNode *nodeHashLookup(RDtree *pRDtree, i64 iNode)
 */
 static void nodeHashInsert(RDtree *pRDtree, RDtreeNode *pNode)
 {
-  assert( pNode->pNext==0 );
+  assert( pNode->pNext==0 ); /* not already cached */
   int iHash = nodeHash(pNode->iNode);
   pNode->pNext = pRDtree->aHash[iHash];
   pRDtree->aHash[iHash] = pNode;
@@ -369,8 +369,11 @@ static int nodeAcquire(RDtree *pRDtree,     /* R-tree structure */
       }
     }
   }
+
   rc = sqlite3_reset(pRDtree->pReadNode);
-  if (rc == SQLITE_OK) rc = rc2;
+  if (rc == SQLITE_OK) {
+    rc = rc2;
+  }
 
   /* If the root node was just loaded, set pRDtree->iDepth to the height
   ** of the rd-tree structure. A height of zero means all data is stored on
@@ -689,16 +692,16 @@ static int nodeParentIndex(RDtree *pRDtree, RDtreeNode *pNode, int *piIndex)
 */
 static int findLeafNode(RDtree *pRDtree, i64 iRowid, RDtreeNode **ppLeaf)
 {
-  int rc;
+  int rc = SQLITE_OK;
   *ppLeaf = 0;
   sqlite3_bind_int64(pRDtree->pReadRowid, 1, iRowid);
   if (sqlite3_step(pRDtree->pReadRowid) == SQLITE_ROW) {
     i64 iNode = sqlite3_column_int64(pRDtree->pReadRowid, 0);
     rc = nodeAcquire(pRDtree, iNode, 0, ppLeaf);
-    sqlite3_reset(pRDtree->pReadRowid);
   }
-  else {
-    rc = sqlite3_reset(pRDtree->pReadRowid);
+  int rc2 = sqlite3_reset(pRDtree->pReadRowid);
+  if (rc == SQLITE_OK) {
+    rc = rc2;
   }
   return rc;
 }
@@ -709,7 +712,7 @@ static int findLeafNode(RDtree *pRDtree, i64 iRowid, RDtreeNode **ppLeaf)
 */
 static int chooseLeaf(RDtree *pRDtree,
 		      RDtreeItem *pItem, /* Item to insert into rdtree */
-		      int iHeight, /* Height of sub-tree rooted at pCell */
+		      int iHeight, /* Height of sub-tree rooted at pItem */
 		      RDtreeNode **ppLeaf /* OUT: Selected leaf page */
 		      )
 {
@@ -718,7 +721,7 @@ static int chooseLeaf(RDtree *pRDtree,
   RDtreeNode *pNode;
   rc = nodeAcquire(pRDtree, 1, 0, &pNode);
 
-  for(ii = 0; rc == SQLITE_OK && ii < (pRDtree->iDepth - iHeight); ii++) {
+  for (ii = 0; rc == SQLITE_OK && ii < (pRDtree->iDepth - iHeight); ii++) {
 
     /* FIXME FIXME FIXME */
     /* Select the child node which will be enlarged the least if pItem
@@ -873,6 +876,7 @@ static int assignItems(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
       itemGrowth(pRDtree, pRightBounds, pNext)
       ;
 
+    /* TODO investigate and understand */
     if ((RDTREE_MINITEMS(pRDtree) - NITEM(pRight) == i)
 	|| (diff > 0 && (RDTREE_MINITEMS(pRDtree) - NITEM(pLeft) != i))) {
       nodeInsertItem(pRDtree, pRight, pNext);
@@ -976,7 +980,7 @@ static int splitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
   /* Ensure both child nodes have node numbers assigned to them by calling
   ** nodeWrite(). Node pRight always needs a node number, as it was created
   ** by nodeNew() above. But node pLeft sometimes already has a node number.
-  ** In this case avoid the all to nodeWrite().
+  ** In this case avoid the call to nodeWrite().
   */
   if ((SQLITE_OK != (rc = nodeWrite(pRDtree, pRight))) || 
       (0 == pLeft->iNode && SQLITE_OK != (rc = nodeWrite(pRDtree, pLeft)))) {
@@ -1010,7 +1014,7 @@ static int splitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
     goto splitnode_out;
   }
 
-  for(i = 0; i < NITEM(pRight); i++){
+  for (i = 0; i < NITEM(pRight); i++) {
     i64 iRowid = nodeGetRowid(pRDtree, pRight, i);
     rc = updateMapping(pRDtree, iRowid, pRight, iHeight);
     if (iRowid == pItem->iRowid) {
@@ -1109,6 +1113,7 @@ static int removeNode(RDtree *pRDtree, RDtreeNode *pNode, int iHeight)
   RDtreeNode *pParent = 0;
   int iItem;
 
+  /* TODO investigate and understand */
   assert( pNode->nRef == 1 );
 
   /* Remove the entry in the parent item. */
@@ -1186,6 +1191,10 @@ static int deleteItem(RDtree *pRDtree, RDtreeNode *pNode,
   RDtreeNode *pParent;
   int rc;
 
+  /*
+  ** If node is not the root and its parent is null, load all the ancestor
+  ** nodes into memory
+  */
   if ((rc = fixLeafParent(pRDtree, pNode)) != SQLITE_OK) {
     return rc;
   }
@@ -1234,9 +1243,11 @@ static int rdtreeInsertItem(RDtree *pRDtree, RDtreeNode *pNode,
   }
 
   if (nodeInsertItem(pRDtree, pNode, pItem)) {
+    /* node was full */
     rc = splitNode(pRDtree, pNode, pItem, iHeight);
   }
   else {
+    /* insertion succeded */
     rc = adjustTree(pRDtree, pNode, pItem);
     if (rc == SQLITE_OK) {
       if (iHeight == 0) {
@@ -1298,13 +1309,13 @@ static int newRowid(RDtree *pRDtree, i64 *piRowid)
 */
 static int rdtreeDeleteRowid(RDtree *pRDtree, sqlite3_int64 iDelete) 
 {
-  int rc;                         /* Return code */
+  int rc, rc2;                    /* Return code */
   RDtreeNode *pLeaf = 0;          /* Leaf node containing record iDelete */
   int iItem;                      /* Index of iDelete item in pLeaf */
   RDtreeNode *pRoot;              /* Root node of rtree structure */
 
 
-  /* Obtain a reference to the root node to initialise Rtree.iDepth */
+  /* Obtain a reference to the root node to initialise RDtree.iDepth */
   rc = nodeAcquire(pRDtree, 1, 0, &pRoot);
 
   /* Obtain a reference to the leaf node that contains the entry 
@@ -1316,13 +1327,12 @@ static int rdtreeDeleteRowid(RDtree *pRDtree, sqlite3_int64 iDelete)
 
   /* Delete the cell in question from the leaf node. */
   if (rc == SQLITE_OK) {
-    int rc2;
     rc = nodeRowidIndex(pRDtree, pLeaf, iDelete, &iItem);
     if (rc == SQLITE_OK) {
       rc = deleteItem(pRDtree, pLeaf, iItem, 0);
     }
     rc2 = nodeRelease(pRDtree, pLeaf);
-    if( rc==SQLITE_OK ){
+    if (rc == SQLITE_OK) {
       rc = rc2;
     }
   }
@@ -1343,7 +1353,6 @@ static int rdtreeDeleteRowid(RDtree *pRDtree, sqlite3_int64 iDelete)
   ** in this scenario).
   */
   if (rc == SQLITE_OK && pRDtree->iDepth > 0 && NITEM(pRoot) == 1) {
-    int rc2;
     RDtreeNode *pChild;
     i64 iChild = nodeGetRowid(pRDtree, pRoot, 0);
     rc = nodeAcquire(pRDtree, iChild, pRoot, &pChild);
@@ -1371,11 +1380,9 @@ static int rdtreeDeleteRowid(RDtree *pRDtree, sqlite3_int64 iDelete)
   }
 
   /* Release the reference to the root node. */
+  rc2 = nodeRelease(pRDtree, pRoot);
   if (rc == SQLITE_OK) {
-    rc = nodeRelease(pRDtree, pRoot);
-  }
-  else {
-    nodeRelease(pRDtree, pRoot);
+    rc = rc2;
   }
 
   return rc;
@@ -1441,9 +1448,7 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
     }
 
     /* Allocate the RDtreeItem and copy the binary fingerprint data  */
-    /* FIXME FIXME FIXME */
-    pItem 
-      = (RDtreeItem *)sqlite3_malloc(sizeof(RDtreeItem) + pRDtree->iBfpSize);
+    pItem = (RDtreeItem *)sqlite3_malloc(sizeof(RDtreeItem));
 
     Bfp *pBfp = 0;
     u8 *pBlob = 0; int len;
@@ -1492,7 +1497,7 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
   ** the rd-tree structure.
   */
   if ((rc == SQLITE_OK) && (argc > 1)) {
-    /* Insert the new record into the r-tree */
+    /* Insert the new record into the rd-tree */
     RDtreeNode *pLeaf = 0;
 
     /* Figure out the rowid of the new row. */
