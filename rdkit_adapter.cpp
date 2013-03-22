@@ -20,6 +20,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <DataStructs/BitOps.h>
 
 #include "chemicalite.h"
+#include "bfp_ops.h"
 #include "rdkit_adapter.h"
 
 struct Mol : RDKit::ROMol {
@@ -302,47 +303,16 @@ int blob_to_bfp(u8 *pBlob, int len, Bfp **ppBfp)
 
 // Bfp <-> Blob ///////////////////////////////////////////////////////
 
-// the Tanimoto and Dice similarity code is adapted
-// from Gred Landrum's RDKit PostgreSQL cartridge code that in turn is
-// adapted from Andrew Dalke's chem-fingerprints code
-// http://code.google.com/p/chem-fingerprints/
-
-static int byte_popcounts[] = {
-  0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
-  1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
-  1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
-  2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
-  1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,
-  2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
-  2,3,3,4,3,4,4,5,3,4,4,5,4,5,5,6,3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,
-  3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8  
-};
-
 double bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2)
 {
   assert(pBfp1 && pBfp2);
   assert(pBfp1->size() == pBfp2->size());
 
-  double sim = 0.0;
-
-  // Nsame / (Na + Nb - Nsame)
   const u8 * afp = reinterpret_cast<const u8 *>(pBfp1->data());
   const u8 * bfp = reinterpret_cast<const u8 *>(pBfp2->data());
-
-  int union_popcount = 0;
-  int intersect_popcount = 0;
   int len = pBfp1->size();
 
-  for (int i = 0; i < len; ++i, ++afp, ++bfp) {
-    union_popcount += byte_popcounts[ *afp | *bfp ];
-    intersect_popcount += byte_popcounts[ *afp & *bfp ];
-  }
-  
-  if (union_popcount != 0) {
-    sim = (intersect_popcount + 0.0) / union_popcount;
-  }
-
-  return sim;
+  return bfp_op_tanimoto(len, const_cast<u8 *>(afp), const_cast<u8 *>(bfp));
 }
 
 double bfp_dice(Bfp *pBfp1, Bfp *pBfp2)
@@ -350,26 +320,11 @@ double bfp_dice(Bfp *pBfp1, Bfp *pBfp2)
   assert(pBfp1 && pBfp2);
   assert(pBfp1->size() == pBfp2->size());
 
-  double sim = 0.0;
-  
-  // 2 * Nsame / (Na + Nb)
   const u8 * afp = reinterpret_cast<const u8 *>(pBfp1->data());
   const u8 * bfp = reinterpret_cast<const u8 *>(pBfp2->data());
-
-  int intersect_popcount = 0;
-  int total_popcount = 0; 
   int len = pBfp1->size();
 
-  for (int i = 0; i < len; ++i, ++afp, ++bfp) {
-    total_popcount += byte_popcounts[*afp] + byte_popcounts[*bfp];
-    intersect_popcount += byte_popcounts[*afp & *bfp];
-  }
-
-  if (total_popcount != 0) {
-    sim = (2.0 * intersect_popcount) / (total_popcount);
-  }
-
-  return sim;
+  return bfp_op_dice(len, const_cast<u8 *>(afp), const_cast<u8 *>(bfp));
 }
 
 int bfp_length(Bfp *pBfp)
@@ -382,15 +337,9 @@ int bfp_weight(Bfp *pBfp)
 {
   assert(pBfp);
   const u8 * fp = reinterpret_cast<const u8 *>(pBfp->data());
-
   int len = pBfp->size();
 
-  int total_popcount = 0; 
-  for (int i = 0; i < len; ++i, ++fp) {
-    total_popcount += byte_popcounts[*fp];
-  }
-
-  return total_popcount;
+  return bfp_op_weight(len, const_cast<u8 *>(fp));
 }
 
 

@@ -8,6 +8,7 @@ include_directories(${RDKit_INCLUDE_DIRS})
 add_library(chemicalite MODULE 
             object.c
  	    molecule.c
+	    bfp_ops.c
  	    bitstring.c
             chemicalite.c
 	    rdtree.c
