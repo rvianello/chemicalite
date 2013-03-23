@@ -122,6 +122,7 @@ struct RDtree {
   int iBfpSize;                /* Size (bytes) of the binary fingerprint */
   int nBytesPerItem;           /* Bytes consumed per item */
   int iNodeSize;               /* Size (bytes) of each node in the node table */
+  int iNodeCapacity;           /* Size (items) of each node */
   int iDepth;                  /* Current depth of the rd-tree structure */
   char *zDb;                   /* Name of database containing rd-tree table */
   char *zName;                 /* Name of rd-tree table */ 
@@ -390,8 +391,7 @@ static int nodeAcquire(RDtree *pRDtree,     /* R-tree structure */
   ** SQLITE_CORRUPT_VTAB.
   */
   if (pNode && rc == SQLITE_OK) {
-    /* FIXME */
-    if (NITEM(pNode) > ((pRDtree->iNodeSize-4)/pRDtree->nBytesPerItem)) {
+    if (NITEM(pNode) > pRDtree->iNodeCapacity) {
       rc = SQLITE_CORRUPT_VTAB;
     }
   }
@@ -446,21 +446,17 @@ static void nodeDeleteItem(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
 */
 static int nodeInsertItem(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem)
 {
-  int nItem;    /* Current number of items in pNode */
-  int nMaxItem; /* Maximum number of items for pNode */
+  int nItem = NITEM(pNode);  /* Current number of items in pNode */
 
-  nMaxItem = (pRDtree->iNodeSize - 4)/pRDtree->nBytesPerItem; /* FIXME */
-  nItem = NITEM(pNode);
+  assert(nItem <= pRDtree->iNodeCapacity);
 
-  assert(nItem <= nMaxItem);
-
-  if (nItem < nMaxItem) {
+  if (nItem < pRDtree->iNodeCapacity) {
     nodeOverwriteItem(pRDtree, pNode, pItem, nItem);
     writeInt16(&pNode->zData[2], nItem+1);
     pNode->isDirty = 1;
-  }
+  } 
 
-  return (nItem == nMaxItem);
+  return (nItem == pRDtree->iNodeCapacity);
 }
 
 /*
@@ -1704,6 +1700,8 @@ static int getNodeSize(RDtree *pRDtree, int isCreate)
 			   "WHERE nodeno=1", pRDtree->zDb, pRDtree->zName);
     rc = getIntFromStmt(pRDtree->db, zSql, &pRDtree->iNodeSize);
   }
+
+  pRDtree->iNodeCapacity = (pRDtree->iNodeSize - 4)/pRDtree->nBytesPerItem;
 
   sqlite3_free(zSql);
   return rc;
