@@ -1426,7 +1426,7 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
 {
   RDtree *pRDtree = (RDtree *)pVtab;
   int rc = SQLITE_OK;
-  RDtreeItem *pItem;              /* New item to insert if argc>1 */
+  RDtreeItem item;                /* New item to insert if argc>1 */
   int bHaveRowid = 0;             /* Set to 1 after new rowid is determined */
 
   rdtreeReference(pRDtree);
@@ -1475,17 +1475,10 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
       bHaveRowid = 1;
     }
 
-    /* Allocate the RDtreeItem and copy the binary fingerprint data  */
-    pItem = (RDtreeItem *)sqlite3_malloc(sizeof(RDtreeItem));
-
     Bfp *pBfp = 0;
     u8 *pBlob = 0; int len;
 
-    if (!pItem) {
-      rc = SQLITE_NOMEM;
-      goto update_end;
-    }
-    else if ((rc = fetch_bfp_arg(argv[2], &pBfp)) != SQLITE_OK) {
+    if ((rc = fetch_bfp_arg(argv[2], &pBfp)) != SQLITE_OK) {
       goto update_build_item_end;
     }
     else if ((rc = bfp_to_blob(pBfp, &pBlob, &len)) != SQLITE_OK) {
@@ -1497,9 +1490,9 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
     }
     else {
       if (bHaveRowid) {
-	pItem->iRowid = rowid;
+	item.iRowid = rowid;
       }
-      memcpy(pItem->aBfp, pBlob, pRDtree->iBfpSize);
+      memcpy(item.aBfp, pBlob, pRDtree->iBfpSize);
     }
 
   update_free_blob:
@@ -1530,26 +1523,24 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
 
     /* Figure out the rowid of the new row. */
     if (bHaveRowid == 0) {
-      rc = newRowid(pRDtree, &pItem->iRowid);
+      rc = newRowid(pRDtree, &item.iRowid);
     }
-    *pRowid = pItem->iRowid;
+    *pRowid = item.iRowid;
 
     if (rc == SQLITE_OK) {
-      rc = chooseLeaf(pRDtree, pItem, 0, &pLeaf);
+      rc = chooseLeaf(pRDtree, &item, 0, &pLeaf);
     }
 
     if (rc == SQLITE_OK) {
       int rc2;
       pRDtree->iReinsertHeight = -1;
-      rc = rdtreeInsertItem(pRDtree, pLeaf, pItem, 0);
+      rc = rdtreeInsertItem(pRDtree, pLeaf, &item, 0);
       rc2 = nodeRelease(pRDtree, pLeaf);
       if (rc == SQLITE_OK) {
         rc = rc2;
       }
     }
   }
-
-  /* FIXME free pItem or done elsewhere ? */
 
 update_end:
   rdtreeRelease(pRDtree);
