@@ -720,12 +720,43 @@ static int chooseLeaf(RDtree *pRDtree,
   rc = nodeAcquire(pRDtree, 1, 0, &pNode);
 
   for (ii = 0; rc == SQLITE_OK && ii < (pRDtree->iDepth - iHeight); ii++) {
+    int iItem;
+    sqlite3_int64 iBest = 0;
 
-    /* FIXME FIXME FIXME */
+    int iMinGrowth = 0;
+    int iMinWeight = 0;
+
+    int nItem = NITEM(pNode);
+    RDtreeItem item;
+    RDtreeNode *pChild;
+
+    RDtreeItem *aItem = 0;
+
     /* Select the child node which will be enlarged the least if pItem
     ** is inserted into it. Resolve ties by choosing the entry with
-    ** the smallest area.
+    ** the smallest weight.
     */
+    for (iItem = 0; iItem < nItem; iItem++) {
+      int bBest = 0;
+      int growth;
+      int weight;
+      nodeGetItem(pRDtree, pNode, iItem, &item);
+      growth = itemGrowth(pRDtree, &item, pItem);
+      weight = itemWeight(pRDtree, &item);
+
+      if (iItem == 0 || 
+	  growth < iMinGrowth || 
+	  (growth == iMinGrowth && weight < iMinWeight) ) {
+        iMinGrowth = growth;
+        iMinWeight = weight;
+        iBest = item.iRowid;
+      }
+    }
+
+    sqlite3_free(aItem);
+    rc = nodeAcquire(pRDtree, iBest, pNode, &pChild);
+    nodeRelease(pRDtree, pNode);
+    pNode = pChild;
   }
 
   *ppLeaf = pNode;
