@@ -1436,8 +1436,6 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
   ** SQLITE_CONSTRAINT in case of a duplicate rowid value or in case the 
   ** argument type doesn't correspond to a binary fingerprint.
   **
-  ** TODO/FIXME also enforce the correct number of arguments.
-  **
   ** In the case of duplicate rowid, if the conflict-handling mode is REPLACE,
   ** then the conflicting row can be removed before proceeding.
   */
