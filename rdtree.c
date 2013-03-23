@@ -162,19 +162,23 @@ struct RDtree {
 ** If an RD-tree "Reinsert" operation is required, the same number of
 ** cells are removed from the overfull node and reinserted into the tree.
 */
-#define RDTREE_MINITEMS(p) ((((p)->iNodeSize-4)/(p)->nBytesPerItem)/3)
+#define RDTREE_MINITEMS(p) ((p)->iNodeCapacity/3)
 #define RDTREE_REINSERT(p) RDTREE_MINITEMS(p)
 #define RDTREE_MAXITEMS 51
 
 /*
-** The smallest possible node-size is (512-64)==448 bytes. And the largest
-** supported cell size is 48 bytes (8 byte rowid + ten 4 byte coordinates).
-** Therefore all non-root nodes must contain at least 3 entries. Since 
-** 3^40 is greater than 2^64, an rd-tree structure always has a depth of
-** 40 or less.
+** The largest supported item size is 264 bytes (8 byte rowid + 256 bytes 
+** fingerprint). Assuming that a database page size of at least 2048 bytes is
+** in use, then all non-root nodes must contain at least 2 entries.
+** An rd-tree structure therefore always has a depth of 64 or less.
+**
+** The same proportion holds for the default bfp size (128 bytes) and the 
+** most common database default page size on unix workstations (1024 bytes).
+**
+** While these look like the minimal lower bounds, the optimal page size is to 
+** be investigated.
 */
-/* FIXME FIXME FIXME */
-#define RDTREE_MAX_DEPTH 40
+#define RDTREE_MAX_DEPTH 64
 
 /* 
 ** An rd-tree structure node.
