@@ -1457,7 +1457,7 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
       goto update_free_bfp;
     }
     else if (len != pRDtree->iBfpSize) {
-      rc = SQLITE_CONSTRAINT;
+      rc = SQLITE_MISMATCH;
       goto update_free_blob;
     }
     else {
@@ -1740,7 +1740,7 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
       iBfpSize = sz;
   }
 
-  sqlite3_vtab_config(db, SQLITE_VTAB_CONSTRAINT_SUPPORT, 1); /* WAT? FIXME */
+  sqlite3_vtab_config(db, SQLITE_VTAB_CONSTRAINT_SUPPORT, 1);
 
   /* Allocate the sqlite3_vtab structure */
   nDb = (int)strlen(argv[1]);
