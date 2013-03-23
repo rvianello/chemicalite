@@ -163,7 +163,7 @@ struct RDtree {
 */
 #define RDTREE_MINITEMS(p) ((((p)->iNodeSize-4)/(p)->nBytesPerItem)/3)
 #define RDTREE_REINSERT(p) RDTREE_MINITEMS(p)
-#define RTREE_MAXITEMS 51
+#define RDTREE_MAXITEMS 51
 
 /*
 ** The smallest possible node-size is (512-64)==448 bytes. And the largest
@@ -195,7 +195,6 @@ struct RDtreeItem {
   i64 iRowid;
   u8 aBfp[MAX_BITSTRING_SIZE];
 };
-#define RDTREE_MAXITEMS 8
 
 static int itemWeight(RDtree *pRDtree, RDtreeItem *pItem)
 {
@@ -231,7 +230,7 @@ static int itemGrowth(RDtree *pRDtree, RDtreeItem *pBase, RDtreeItem *pAdded)
 */
 static void nodeReference(RDtreeNode *p)
 {
-  if (p) { /* FIXME (assert p?) */
+  if (p) {
     p->nRef++; 
   }
 }
@@ -241,7 +240,7 @@ static void nodeReference(RDtreeNode *p)
 */
 static void nodeZero(RDtree *pRDtree, RDtreeNode *p)
 {
-  /* FIXME (assert p?) */
+  assert(p);
   memset(&p->zData[2], 0, pRDtree->iNodeSize-2);
   p->isDirty = 1;
 }
@@ -391,6 +390,7 @@ static int nodeAcquire(RDtree *pRDtree,     /* R-tree structure */
   ** SQLITE_CORRUPT_VTAB.
   */
   if (pNode && rc == SQLITE_OK) {
+    /* FIXME */
     if (NITEM(pNode) > ((pRDtree->iNodeSize-4)/pRDtree->nBytesPerItem)) {
       rc = SQLITE_CORRUPT_VTAB;
     }
@@ -449,7 +449,7 @@ static int nodeInsertItem(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem)
   int nItem;    /* Current number of items in pNode */
   int nMaxItem; /* Maximum number of items for pNode */
 
-  nMaxItem = (pRDtree->iNodeSize - 4)/pRDtree->nBytesPerItem;
+  nMaxItem = (pRDtree->iNodeSize - 4)/pRDtree->nBytesPerItem; /* FIXME */
   nItem = NITEM(pNode);
 
   assert(nItem <= nMaxItem);
@@ -626,7 +626,7 @@ static int rdtreeDestroy(sqlite3_vtab *pVtab)
 {
   RDtree *pRDtree = (RDtree *)pVtab;
   int rc = SQLITE_OK;
-
+ 
   char *zCreate = sqlite3_mprintf("DROP TABLE '%q'.'%q_node';"
 				  "DROP TABLE '%q'.'%q_rowid';"
 				  "DROP TABLE '%q'.'%q_parent';",
@@ -1111,7 +1111,6 @@ static int removeNode(RDtree *pRDtree, RDtreeNode *pNode, int iHeight)
   RDtreeNode *pParent = 0;
   int iItem;
 
-  /* TODO investigate and understand */
   assert( pNode->nRef == 1 );
 
   /* Remove the entry in the parent item. */
