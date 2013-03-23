@@ -1430,7 +1430,7 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
   int bHaveRowid = 0;             /* Set to 1 after new rowid is determined */
 
   rdtreeReference(pRDtree);
-  assert(argc >= 1);
+  assert(argc == 1 || argc == 4);
 
   /* Constraint handling. A write operation on an rd-tree table may return
   ** SQLITE_CONSTRAINT in case of a duplicate rowid value or in case the 
@@ -1447,14 +1447,14 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
   ** the rd-tree structure.
   */
   if (argc > 1) { 
-
+    
     i64 rowid = 0;
 
     /* If a rowid value was supplied, check if it is already present in 
     ** the table. If so, the constraint has failed. */
-    if (sqlite3_value_type(argv[1]) != SQLITE_NULL ) {
+    if (sqlite3_value_type(argv[2]) != SQLITE_NULL ) {
 
-      rowid = sqlite3_value_int64(argv[1]);
+      rowid = sqlite3_value_int64(argv[2]);
 
       if ((sqlite3_value_type(argv[0]) == SQLITE_NULL) ||
 	  (sqlite3_value_int64(argv[0]) != rowid)) {
@@ -1475,31 +1475,19 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
       bHaveRowid = 1;
     }
 
-    Bfp *pBfp = 0;
-    u8 *pBlob = 0; int len;
-
-    if ((rc = fetch_bfp_arg(argv[2], &pBfp)) != SQLITE_OK) {
-      goto update_build_item_end;
-    }
-    else if ((rc = bfp_to_blob(pBfp, &pBlob, &len)) != SQLITE_OK) {
-      goto update_free_bfp;
-    }
-    else if (len != pRDtree->iBfpSize) {
+    if (sqlite3_value_type(argv[3]) != SQLITE_BLOB) {
       rc = SQLITE_MISMATCH;
-      goto update_free_blob;
+    }
+    else if (sqlite3_value_bytes(argv[3]) != pRDtree->iBfpSize) {
+      rc = SQLITE_MISMATCH;
     }
     else {
       if (bHaveRowid) {
 	item.iRowid = rowid;
       }
-      memcpy(item.aBfp, pBlob, pRDtree->iBfpSize);
+      memcpy(item.aBfp, sqlite3_value_blob(argv[3]), pRDtree->iBfpSize);
     }
 
-  update_free_blob:
-    sqlite3_free(pBlob);
-  update_free_bfp:
-    free_bfp(pBfp);
-  update_build_item_end:
     if (rc != SQLITE_OK) {
       goto update_end;
     }

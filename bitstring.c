@@ -7,7 +7,6 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "chemicalite.h"
 #include "rdkit_adapter.h"
 #include "utils.h"
-#include "object.h"
 #include "bitstring.h"
 
 /*
@@ -16,16 +15,10 @@ extern const sqlite3_api_routines *sqlite3_api;
 int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
 {
   int rc = SQLITE_MISMATCH;
-
   /* Check that value is a blob */
   if (sqlite3_value_type(arg) == SQLITE_BLOB) {
     int sz = sqlite3_value_bytes(arg);
-    Object * pObj = (Object *)sqlite3_value_blob(arg);
-    int hdr_sz = object_header_size();
-    if ( (sz > hdr_sz) && is_object_type(pObj, BFPOBJ) ) {
-      sz -= hdr_sz;
-      rc = blob_to_bfp(get_blob(pObj), sz, ppBfp);
-    }
+    rc = blob_to_bfp(sqlite3_value_blob(arg), sz, ppBfp);
   }
   return rc;
 }
@@ -50,18 +43,12 @@ int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
     u8 * pBlob = 0;                                                     \
     int sz = 0;								\
     rc = bfp_to_blob(pBfp, &pBlob, &sz);				\
-    if (rc != SQLITE_OK) goto func##_f_free_bfp;			\
 									\
-    Object *pObject = 0;						\
-    int objSz = 0;							\
-    rc = wrap_blob(pBlob, sz, BFPOBJ, &pObject, &objSz);		\
-									\
-  func##_f_free_blob: sqlite3_free(pBlob);				\
   func##_f_free_bfp: free_bfp(pBfp);					\
   func##_f_free_mol: free_mol(pMol);					\
   func##_f_end:								\
     if (rc == SQLITE_OK) {						\
-      sqlite3_result_blob(ctx, pObject, objSz, sqlite3_free);		\
+      sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free);		\
     }									\
     else {								\
       sqlite3_result_error_code(ctx, rc);				\
@@ -94,18 +81,12 @@ MOL_TO_BFP(mol_maccs_bfp)
     u8 * pBlob = 0;                                                     \
     int sz = 0;								\
     rc = bfp_to_blob(pBfp, &pBlob, &sz);				\
-    if (rc != SQLITE_OK) goto func##_f_free_bfp;			\
 									\
-    Object *pObject = 0;						\
-    int objSz = 0;							\
-    rc = wrap_blob(pBlob, sz, BFPOBJ, &pObject, &objSz);		\
-									\
-  func##_f_free_blob: sqlite3_free(pBlob);				\
   func##_f_free_bfp: free_bfp(pBfp);					\
   func##_f_free_mol: free_mol(pMol);					\
   func##_f_end:								\
     if (rc == SQLITE_OK) {						\
-      sqlite3_result_blob(ctx, pObject, objSz, sqlite3_free);		\
+      sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free);		\
     }									\
     else {								\
       sqlite3_result_error_code(ctx, rc);				\
@@ -129,6 +110,7 @@ MOL_TO_BFP(mol_bfp_signature)
 			     int argc, sqlite3_value** argv)		\
   {									\
     assert(argc == 2);							\
+    double similarity = 0.;						\
     int rc = SQLITE_OK;							\
 									\
     Bfp *p1 = 0;							\
@@ -140,7 +122,12 @@ MOL_TO_BFP(mol_bfp_signature)
     rc = fetch_bfp_arg(argv[1], &p2);					\
     if (rc != SQLITE_OK) goto sim##_f_free_bfp1;			\
 									\
-    double similarity = bfp_##sim(p1, p2);				\
+    if (bfp_length(p1) != bfp_length(p2)) {				\
+      rc = SQLITE_MISMATCH;						\
+    }									\
+    else {								\
+      similarity = bfp_##sim(p1, p2);					\
+    }									\
       									\
   sim##_f_free_bfp2: free_bfp(p2);					\
   sim##_f_free_bfp1: free_bfp(p1);					\

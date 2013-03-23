@@ -105,7 +105,7 @@ int mol_to_txt(Mol *pMol, int as_smarts, char **pTxt)
 
 // Blob <-> Molecule /////////////////////////////////////////////////////////
 
-int blob_to_mol(u8 *pBlob, int len, Mol **ppMol)
+int blob_to_mol(const u8 *pBlob, int len, Mol **ppMol)
 {
   assert(pBlob);
   *ppMol = 0;
@@ -294,7 +294,7 @@ int bfp_to_blob(Bfp *pBfp, u8 **ppBlob, int *pLen)
   return rc;
 }
 
-int blob_to_bfp(u8 *pBlob, int len, Bfp **ppBfp)
+int blob_to_bfp(const u8 *pBlob, int len, Bfp **ppBfp)
 {
   assert(pBlob);
   *ppBfp = new Bfp(reinterpret_cast<const char *>(pBlob), len);

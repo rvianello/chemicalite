@@ -11,7 +11,7 @@ extern "C" {
   int txt_to_mol(const char * txt, int as_smarts, Mol **ppMol);
   int mol_to_txt(Mol *pMol, int as_smarts, char **pTxt);
 
-  int blob_to_mol(u8 *blob, int len, Mol **ppMol);
+  int blob_to_mol(const u8 *blob, int len, Mol **ppMol);
   int mol_to_blob(Mol *pMol, u8 **ppBlob, int *pLen);
 
   int txt_to_blob(const char * txt, int as_smarts, u8 **pBlob, int *pLen);
@@ -50,7 +50,7 @@ extern "C" {
 
   /* bfp data type interconversion */
   int bfp_to_blob(Bfp *pBfp, u8 **ppBlob, int *pLen);
-  int blob_to_bfp(u8 *pBlob, int len, Bfp **ppBfp);
+  int blob_to_bfp(const u8 *pBlob, int len, Bfp **ppBfp);
 
   /* bfp ops */
   double bfp_tanimoto(Bfp *pBfp1, Bfp *pBfp2);

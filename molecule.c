@@ -7,7 +7,6 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "chemicalite.h"
 #include "rdkit_adapter.h"
 #include "utils.h"
-#include "object.h"
 #include "molecule.h"
 
 static const int MOL_MAX_TXT_LENGTH = 2048;
@@ -20,23 +19,16 @@ static const int AS_SMARTS = 1;
 int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
 {
   int rc = SQLITE_MISMATCH;
-
   /* Check that value is a blob */
   if (sqlite3_value_type(arg) == SQLITE_BLOB) {
     int sz = sqlite3_value_bytes(arg);
-    Object * pObj = (Object *)sqlite3_value_blob(arg);
-    int hdr_sz = object_header_size();
-    if ( (sz > hdr_sz) && is_object_type(pObj, MOLOBJ | QMOLOBJ) ) {
-      sz -= hdr_sz;
-      rc = blob_to_mol(get_blob(pObj), sz, ppMol);
-    }
+    rc = blob_to_mol(sqlite3_value_blob(arg), sz, ppMol);
   }
   /* or a text string - by default assumed to be a SMILES */
   else if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
     rc = sqlite3_value_bytes(arg) <= MOL_MAX_TXT_LENGTH ?
       txt_to_mol(sqlite3_value_text(arg), AS_SMILES, ppMol) : SQLITE_TOOBIG;
   }
-
   return rc;
 }
 
@@ -48,9 +40,6 @@ static void cast_to_molecule(sqlite3_context* ctx,
 {
   assert(argc == 1);
   sqlite3_value *arg = argv[0];
-
-  /* select the destination object type */
-  u32 type = (mode == AS_SMILES) ? MOLOBJ : QMOLOBJ;
 
   /* build the molecule binary repr from a text string */
   if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
@@ -68,44 +57,10 @@ static void cast_to_molecule(sqlite3_context* ctx,
       return;
     }
 
-    int objSz = 0;
-    Object *pObject = 0;
-    rc = wrap_blob(pBlob, sz, type, &pObject, &objSz);
-    if (rc == SQLITE_OK) {
-      sqlite3_result_blob(ctx, pObject, objSz, sqlite3_free);
-    }
-    else {
-      sqlite3_result_error_code(ctx, rc);
-    }
-
-    sqlite3_free(pBlob);
-    
-  }
-  /* building a binary molecule repr from another binary blob */
-  else if (sqlite3_value_type(arg) == SQLITE_BLOB) {
-    
-    int sz = sqlite3_value_bytes(arg);
-    Object * pObject = (Object *)sqlite3_value_blob(arg);
-    if (sz > object_header_size() && is_object_type(pObject, type)) {
-      /* 
-      ** the input argument is already a mol/qmol blob of the expected type
-      ** just make a copy (almost a no-op)
-      */
-      u8 *pCopy = sqlite3_malloc(sz);
-      if (pCopy) {
-	memcpy(pCopy, pObject, sz);
-	sqlite3_result_blob(ctx, pCopy, sz, sqlite3_free);
-      }
-      else {
-	sqlite3_result_error_nomem(ctx);
-      }
-    }
-    else {
-      sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
-    }
+    sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free);
 
   }
-  /* neither a string nor a blob */
+  /* not a string */
   else {
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
   }
