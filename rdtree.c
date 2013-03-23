@@ -6,6 +6,7 @@
 extern const sqlite3_api_routines *sqlite3_api;
 
 #include "chemicalite.h"
+#include "bfp_ops.h"
 #include "bitstring.h"
 #include "rdtree.h"
 
@@ -198,8 +199,7 @@ struct RDtreeItem {
 
 static int itemWeight(RDtree *pRDtree, RDtreeItem *pItem)
 {
-  /* FIXME FIXME FIXME */
-  return 0;
+  return bfp_op_weight(pRDtree->iBfpSize, pItem->aBfp);
 }
 
 /*
@@ -207,7 +207,7 @@ static int itemWeight(RDtree *pRDtree, RDtreeItem *pItem)
 */
 static void itemUnion(RDtree *pRDtree, RDtreeItem *p1, RDtreeItem *p2)
 {
-  /* FIXME FIXME FIXME */
+  bfp_op_union(pRDtree->iBfpSize, p1->aBfp, p2->aBfp);
 }
 
 /*
@@ -215,8 +215,7 @@ static void itemUnion(RDtree *pRDtree, RDtreeItem *p1, RDtreeItem *p2)
 */
 static int itemContains(RDtree *pRDtree, RDtreeItem *p1, RDtreeItem *p2)
 {
-  /* FIXME FIXME FIXME */
-  return 0;
+  return bfp_op_contains(pRDtree->iBfpSize, p1->aBfp, p2->aBfp);
 }
 
 /*
@@ -224,8 +223,7 @@ static int itemContains(RDtree *pRDtree, RDtreeItem *p1, RDtreeItem *p2)
 */
 static int itemGrowth(RDtree *pRDtree, RDtreeItem *pBase, RDtreeItem *pAdded)
 {
-  /* FIXME FIXME FIXME */
-  return 0;
+  return bfp_op_growth(pRDtree->iBfpSize, pBase->aBfp, pAdded->aBfp);
 }
 
 /*
