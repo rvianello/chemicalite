@@ -781,7 +781,7 @@ static int adjustTree(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem)
     }
 
     nodeGetItem(pRDtree, pParent, iItem, &item);
-    if (!itemContains(pRDtree, &item, pItem) ){
+    if (!itemContains(pRDtree, &item, pItem)) {
       itemUnion(pRDtree, &item, pItem);
       nodeOverwriteItem(pRDtree, pParent, &item, iItem);
     }
@@ -816,34 +816,47 @@ static int parentWrite(RDtree *pRDtree,
 }
 
 /*
-** Quadratic variant.
+** Pick the next item to be inserted into one of the two subsets. Select the
+** one associated to a strongest "preference" for one of the two.
 */
-static RDtreeItem *pickNext(RDtree *pRDtree,
-			    RDtreeItem *aItem, int nItem, 
-			    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
-			    int *aiUsed)
+static void pickNext(RDtree *pRDtree,
+		     RDtreeItem *aItem, int nItem, int *aiUsed,
+		     RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+		     RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
+		     RDtreeItem **ppNext, int *pPreferRight)
 {
 
   int iSelect = -1;
-  int iMaxDiff;
+  int preferRight = 0;
+  double dMaxPreference = -1.;
   int ii;
   for(ii = 0; ii < nItem; ii++){
     if( aiUsed[ii]==0 ){
-      int left = itemGrowth(pRDtree, pLeftBounds, &aItem[ii]);
-      int right = itemGrowth(pRDtree, pRightBounds, &aItem[ii]);
-      int diff = abs(right-left);
-      if (iSelect < 0 || diff > iMaxDiff) {
-        iMaxDiff = diff;
+      double left 
+	= 1. - bfp_op_tanimoto(pRDtree->iBfpSize, 
+			       aItem[ii].aBfp, pLeftSeed->aBfp);
+      double right 
+	= 1. - bfp_op_tanimoto(pRDtree->iBfpSize, 
+			       aItem[ii].aBfp, pRightSeed->aBfp);
+      double diff = left - right;
+      double preference = 0.;
+      if ((left + right) > 0.) {
+	preference = abs(diff)/(left + right);
+      }
+      if (iSelect < 0 || preference > dMaxPreference) {
+        dMaxPreference = preference;
         iSelect = ii;
+	preferRight = diff > 0.;
       }
     }
   }
   aiUsed[iSelect] = 1;
-  return &aItem[iSelect];
+  *ppNext = &aItem[iSelect];
+  *pPreferRight = preferRight;
 }
 
 /*
-** Quadratic variant.
+** Pick the two most dissimilar fingerprints.
 */
 static void pickSeeds(RDtree *pRDtree, RDtreeItem *aItem, int nItem, 
 		      int *piLeftSeed, int *piRightSeed)
@@ -853,18 +866,18 @@ static void pickSeeds(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
 
   int iLeftSeed = 0;
   int iRightSeed = 1;
-  int iMaxWaste = 0.0;
+  double dMaxDistance = 0.;
 
   for (ii = 0; ii < nItem; ii++) {
     for (jj = ii + 1; jj < nItem; jj++) {
-      int right = itemWeight(pRDtree, &aItem[jj]);
-      int growth = itemGrowth(pRDtree, &aItem[ii], &aItem[jj]);
-      int waste = growth - right;
+      double tanimoto 
+	= bfp_op_tanimoto(pRDtree->iBfpSize, aItem[ii].aBfp, aItem[jj].aBfp);
+      double distance = 1. - tanimoto;
 
-      if (waste > iMaxWaste) {
+      if (distance > dMaxDistance) {
         iLeftSeed = ii;
         iRightSeed = jj;
-        iMaxWaste = waste;
+        dMaxDistance = distance;
       }
     }
   }
@@ -897,17 +910,14 @@ static int assignItems(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
   aiUsed[iRightSeed] = 1;
 
   for(i = nItem - 2; i > 0; i--) {
+    int iPreferRight;
     RDtreeItem *pNext;
-    pNext = pickNext(pRDtree, aItem, nItem, pLeftBounds, pRightBounds, aiUsed);
+    pickNext(pRDtree, aItem, nItem, aiUsed, 
+	     &aItem[iLeftSeed], &aItem[iRightSeed], pLeftBounds, pRightBounds,
+	     &pNext, &iPreferRight);
 
-    int diff =  
-      itemGrowth(pRDtree, pLeftBounds, pNext) - 
-      itemGrowth(pRDtree, pRightBounds, pNext)
-      ;
-
-    /* TODO investigate and understand */
-    if ((RDTREE_MINITEMS(pRDtree) - NITEM(pRight) == i)
-	|| (diff > 0 && (RDTREE_MINITEMS(pRDtree) - NITEM(pLeft) != i))) {
+    if ((RDTREE_MINITEMS(pRDtree) - NITEM(pRight) == i) ||
+	(iPreferRight > 0 && (RDTREE_MINITEMS(pRDtree) - NITEM(pLeft) != i))) {
       nodeInsertItem(pRDtree, pRight, pNext);
       itemUnion(pRDtree, pRightBounds, pNext);
     }
