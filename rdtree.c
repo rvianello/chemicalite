@@ -57,6 +57,8 @@ extern const sqlite3_api_routines *sqlite3_api;
 typedef sqlite3_int64 i64;
 
 typedef struct RDtree RDtree;
+typedef struct RDtreeCursor RDtreeCursor;
+typedef struct RDtreeConstraint RDtreeConstraint;
 typedef struct RDtreeNode RDtreeNode;
 typedef struct RDtreeItem RDtreeItem;
 
@@ -179,6 +181,43 @@ struct RDtree {
 ** be investigated.
 */
 #define RDTREE_MAX_DEPTH 64
+
+/* 
+** An rdtree cursor object.
+*/
+struct RDtreeCursor {
+  sqlite3_vtab_cursor base;
+  RDtreeNode *pNode;                /* Node cursor is currently pointing at */
+  int iItem;                        /* Index of current item in pNode */
+  int iStrategy;                    /* Copy of idxNum search parameter */
+  int nConstraint;                  /* Number of entries in aConstraint */
+  RDtreeConstraint *aConstraint;    /* Search constraints. */
+};
+
+/*
+** A search constraint.
+**
+** Currently this is not making much sense for bitstrings
+*/
+struct RDtreeConstraint {
+  /* FIXME FIXME FIXME
+  int iCoord;                     # Index of constrained coordinate 
+  int op;                         # Constraining operation 
+  RtreeDValue rValue;             # Constraint value. 
+  int (*xGeom)(sqlite3_rtree_geometry*, int, RtreeDValue*, int*);
+  sqlite3_rtree_geometry *pGeom;  # Constraint callback argument for a MATCH 
+  */
+};
+
+/* Possible values for RDtreeConstraint.op */
+/* To be revisited */
+#define RDTREE_EQ    0x41
+#define RDTREE_LE    0x42
+#define RDTREE_LT    0x43
+#define RDTREE_GE    0x44
+#define RDTREE_GT    0x45
+#define RDTREE_MATCH 0x46
+
 
 /* 
 ** An rd-tree structure node.
@@ -649,6 +688,242 @@ static int rdtreeDestroy(sqlite3_vtab *pVtab)
   return rc;
 }
 
+/* 
+** RDtree virtual table module xOpen method.
+*/
+static int rdtreeOpen(sqlite3_vtab *pVTab, sqlite3_vtab_cursor **ppCursor)
+{
+  int rc = SQLITE_NOMEM;
+  RDtreeCursor *pCsr;
+
+  pCsr = (RDtreeCursor *)sqlite3_malloc(sizeof(RDtreeCursor));
+  if( pCsr ){
+    memset(pCsr, 0, sizeof(RDtreeCursor));
+    pCsr->base.pVtab = pVTab;
+    rc = SQLITE_OK;
+  }
+  *ppCursor = (sqlite3_vtab_cursor *)pCsr;
+
+  return rc;
+}
+
+/*
+** Free the RDtreeCursor.aConstraint[] array and its contents.
+*/
+static void freeCursorConstraints(RDtreeCursor *pCsr)
+{
+  if (pCsr->aConstraint) {
+    int i;  /* Used to iterate through constraint array */
+    for (i=0; i < pCsr->nConstraint; i++) {
+      /* FIXME FIXME FIXME
+      sqlite3_rtree_geometry *pGeom = pCsr->aConstraint[i].pGeom;
+        if( pGeom ){
+	  if( pGeom->xDelUser ) pGeom->xDelUser(pGeom->pUser);
+	  sqlite3_free(pGeom);
+	} 
+      */
+    }
+    sqlite3_free(pCsr->aConstraint);
+    pCsr->aConstraint = 0;
+  }
+}
+
+/* 
+** RDtree virtual table module xClose method.
+*/
+static int rdtreeClose(sqlite3_vtab_cursor *cur)
+{
+  RDtree *pRDtree = (RDtree *)(cur->pVtab);
+  int rc;
+  RDtreeCursor *pCsr = (RDtreeCursor *)cur;
+  freeCursorConstraints(pCsr);
+  rc = nodeRelease(pRDtree, pCsr->pNode);
+  sqlite3_free(pCsr);
+  return rc;
+}
+
+/*
+** RDtree virtual table module xEof method.
+**
+** Return non-zero if the cursor does not currently point to a valid 
+** record (i.e if the scan has finished), or zero otherwise.
+*/
+static int rdtreeEof(sqlite3_vtab_cursor *cur)
+{
+  RDtreeCursor *pCsr = (RDtreeCursor *)cur;
+  return (pCsr->pNode == 0);
+}
+
+/* 
+** Cursor pCursor currently points to a item in a non-leaf page.
+** Set *pbEof to true if the sub-tree headed by the item is filtered
+** (excluded) by the constraints in the pCursor->aConstraint[] 
+** array, or false otherwise.
+**
+** Return SQLITE_OK if successful or an SQLite error code if an error
+** occurs within a geometry callback. # FIXME #
+*/
+static int testRDtreeItem(RDtree *pRDtree, RDtreeCursor *pCursor, int *pbEof)
+{
+  RDtreeItem item;
+  int ii;
+  int bRes = 0;
+  int rc = SQLITE_OK;
+
+  nodeGetItem(pRDtree, pCursor->pNode, pCursor->iItem, &item);
+
+  for (ii = 0; bRes == 0 && ii < pCursor->nConstraint; ii++) {
+    RDtreeConstraint *p = &pCursor->aConstraint[ii];
+    /* FIXME FIXME FIXME
+    RtreeDValue cell_min = DCOORD(cell.aCoord[(p->iCoord>>1)*2]);
+    RtreeDValue cell_max = DCOORD(cell.aCoord[(p->iCoord>>1)*2+1]);
+
+    assert(p->op==RTREE_LE || p->op==RTREE_LT || p->op==RTREE_GE 
+        || p->op==RTREE_GT || p->op==RTREE_EQ || p->op==RTREE_MATCH
+    );
+
+    switch( p->op ){
+      case RTREE_LE: case RTREE_LT: 
+        bRes = p->rValue<cell_min; 
+        break;
+
+      case RTREE_GE: case RTREE_GT: 
+        bRes = p->rValue>cell_max; 
+        break;
+
+      case RTREE_EQ:
+        bRes = (p->rValue>cell_max || p->rValue<cell_min);
+        break;
+
+      default: {
+        assert( p->op==RTREE_MATCH );
+        rc = testRtreeGeom(pRtree, p, &cell, &bRes); <<<<<<<<<<<<<<<
+        bRes = !bRes;
+        break;
+      }
+    }
+    */
+  }
+
+  *pbEof = bRes;
+  return rc;
+}
+
+/* 
+** Test if the item that cursor pCursor currently points to
+** would be filtered (excluded) by the constraints in the 
+** pCursor->aConstraint[] array. If so, set *pbEof to true before
+** returning. If the item is not filtered (excluded) by the constraints,
+** set pbEof to zero.
+**
+** Return SQLITE_OK if successful or an SQLite error code if an error
+** occurs within a geometry callback. # FIXME #
+**
+** This function assumes that the cell is part of a leaf node.
+*/
+static int testRDtreeEntry(RDtree *pRDtree, RDtreeCursor *pCursor, int *pbEof)
+{
+  RDtreeItem item;
+  int ii;
+  *pbEof = 0;
+
+  nodeGetItem(pRDtree, pCursor->pNode, pCursor->iItem, &item);
+  for (ii = 0; ii < pCursor->nConstraint; ii++) {
+    RDtreeConstraint *p = &pCursor->aConstraint[ii];
+    int res;
+    /* FIXME FIXME FIXME
+    RDtreeDValue coord = DCOORD(cell.aCoord[p->iCoord]);
+    assert(p->op==RTREE_LE || p->op==RTREE_LT || p->op==RTREE_GE 
+        || p->op==RTREE_GT || p->op==RTREE_EQ || p->op==RTREE_MATCH
+    );
+    switch( p->op ){
+      case RTREE_LE: res = (coord<=p->rValue); break;
+      case RTREE_LT: res = (coord<p->rValue);  break;
+      case RTREE_GE: res = (coord>=p->rValue); break;
+      case RTREE_GT: res = (coord>p->rValue);  break;
+      case RTREE_EQ: res = (coord==p->rValue); break;
+      default: {
+        int rc;
+        assert( p->op==RTREE_MATCH );
+        rc = testRtreeGeom(pRtree, p, &cell, &res); <<<<<<<<<<<<<<
+        if( rc!=SQLITE_OK ){
+          return rc;
+        }
+        break;
+      }
+    }
+    */
+    if (!res) {
+      *pbEof = 1;
+      return SQLITE_OK;
+    }
+  }
+
+  return SQLITE_OK;
+}
+
+/*
+** Cursor pCursor currently points at a node that heads a sub-tree of
+** height iHeight (if iHeight==0, then the node is a leaf). Descend
+** to point to the left-most cell of the sub-tree that matches the 
+** configured constraints.
+*/
+static int descendToItem(RDtree *pRDtree, 
+			 RDtreeCursor *pCursor, 
+			 int iHeight,
+			 int *pEof) /* OUT: Set to true if cannot descend */
+{
+  int isEof;
+  int rc;
+  int ii;
+  RDtreeNode *pChild;
+  sqlite3_int64 iRowid;
+
+  RDtreeNode *pSavedNode = pCursor->pNode;
+  int iSavedItem = pCursor->iItem;
+
+  assert( iHeight >= 0 );
+
+  if (iHeight == 0) {
+    rc = testRDtreeEntry(pRDtree, pCursor, &isEof);
+  }
+  else {
+    rc = testRDtreeItem(pRDtree, pCursor, &isEof);
+  }
+  if (rc != SQLITE_OK || isEof || iHeight==0) {
+    goto descend_to_cell_out;
+  }
+
+  iRowid = nodeGetRowid(pRDtree, pCursor->pNode, pCursor->iItem);
+  rc = nodeAcquire(pRDtree, iRowid, pCursor->pNode, &pChild);
+  if (rc != SQLITE_OK) {
+    goto descend_to_cell_out;
+  }
+
+  nodeRelease(pRDtree, pCursor->pNode);
+  pCursor->pNode = pChild;
+  isEof = 1;
+  for (ii=0; isEof && ii < NITEM(pChild); ii++) {
+    pCursor->iItem = ii;
+    rc = descendToItem(pRDtree, pCursor, iHeight-1, &isEof);
+    if (rc != SQLITE_OK) {
+      goto descend_to_cell_out;
+    }
+  }
+
+  if (isEof) {
+    assert( pCursor->pNode == pChild );
+    nodeReference(pSavedNode);
+    nodeRelease(pRDtree, pChild);
+    pCursor->pNode = pSavedNode;
+    pCursor->iItem = iSavedItem;
+  }
+
+descend_to_cell_out:
+  *pEof = isEof;
+  return rc;
+}
+
 /*
 ** One of the items in node pNode is guaranteed to have a 64-bit 
 ** integer value equal to iRowid. Return the index of this item.
@@ -678,6 +953,87 @@ static int nodeParentIndex(RDtree *pRDtree, RDtreeNode *pNode, int *piIndex)
     return nodeRowidIndex(pRDtree, pParent, pNode->iNode, piIndex);
   }
   *piIndex = -1;
+  return SQLITE_OK;
+}
+
+/* 
+** RDtree virtual table module xNext method.
+*/
+static int rdtreeNext(sqlite3_vtab_cursor *pVtabCursor)
+{
+  RDtree *pRDtree = (RDtree *)(pVtabCursor->pVtab);
+  RDtreeCursor *pCsr = (RDtreeCursor *)pVtabCursor;
+  int rc = SQLITE_OK;
+
+  /* RDtreeCursor.pNode must not be NULL. If it is NULL, then this cursor is
+  ** already at EOF. It is against the rules to call the xNext() method of
+  ** a cursor that has already reached EOF.
+  */
+  assert( pCsr->pNode );
+
+  if (pCsr->iStrategy == 1) {
+    /* This "scan" is a direct lookup by rowid. There is no next entry. */
+    nodeRelease(pRDtree, pCsr->pNode);
+    pCsr->pNode = 0;
+  }
+  else {
+    /* Move to the next entry that matches the configured constraints. */
+    int iHeight = 0;
+    while (pCsr->pNode) {
+      RDtreeNode *pNode = pCsr->pNode;
+      int nItem = NITEM(pNode);
+      for (pCsr->iItem++; pCsr->iItem < nItem; pCsr->iItem++) {
+        int isEof;
+        rc = descendToItem(pRDtree, pCsr, iHeight, &isEof);
+        if (rc != SQLITE_OK || !isEof) {
+          return rc;
+        }
+      }
+      pCsr->pNode = pNode->pParent;
+      rc = nodeParentIndex(pRDtree, pNode, &pCsr->iItem);
+      if (rc != SQLITE_OK) {
+        return rc;
+      }
+      nodeReference(pCsr->pNode);
+      nodeRelease(pRDtree, pNode);
+      iHeight++;
+    }
+  }
+
+  return rc;
+}
+
+/* 
+** RDtree virtual table module xRowid method.
+*/
+static int rdtreeRowid(sqlite3_vtab_cursor *pVtabCursor, sqlite_int64 *pRowid)
+{
+  RDtree *pRDtree = (RDtree *)pVtabCursor->pVtab;
+  RDtreeCursor *pCsr = (RDtreeCursor *)pVtabCursor;
+
+  assert(pCsr->pNode);
+  *pRowid = nodeGetRowid(pRDtree, pCsr->pNode, pCsr->iItem);
+
+  return SQLITE_OK;
+}
+
+/* 
+** RDtree virtual table module xColumn method.
+*/
+static int rdtreeColumn(sqlite3_vtab_cursor *cur, sqlite3_context *ctx, int i)
+{
+  RDtree *pRDtree = (RDtree *)cur->pVtab;
+  RDtreeCursor *pCsr = (RDtreeCursor *)cur;
+
+  if (i == 0) {
+    i64 iRowid = nodeGetRowid(pRDtree, pCsr->pNode, pCsr->iItem);
+    sqlite3_result_int64(ctx, iRowid);
+  }
+  else {
+    u8 *aBfp = nodeGetBfp(pRDtree, pCsr->pNode, pCsr->iItem);
+    sqlite3_result_blob(ctx, aBfp, pRDtree->iBfpSize, NULL); /*SQLITE_STATIC?*/ 
+  }
+
   return SQLITE_OK;
 }
 
@@ -1574,13 +1930,13 @@ static sqlite3_module rdtreeModule = {
   0, /* rdtreeBestIndex,             /* xBestIndex - Determine search strategy */
   rdtreeDisconnect,            /* xDisconnect - Disconnect from a table */
   rdtreeDestroy,               /* xDestroy - Drop a table */
-  0, /* rdtreeOpen,                  /* xOpen - open a cursor */
-  0, /* rdtreeClose,                 /* xClose - close a cursor */
+  rdtreeOpen,                  /* xOpen - open a cursor */
+  rdtreeClose,                 /* xClose - close a cursor */
   0, /* rdtreeFilter,                /* xFilter - configure scan constraints */
-  0, /* rdtreeNext,                  /* xNext - advance a cursor */
-  0, /* rdtreeEof,                   /* xEof */
-  0, /* rdtreeColumn,                /* xColumn - read data */
-  0, /* rdtreeRowid,                 /* xRowid - read data */
+  rdtreeNext,                  /* xNext - advance a cursor */
+  rdtreeEof,                   /* xEof */
+  rdtreeColumn,                /* xColumn - read data */
+  rdtreeRowid,                 /* xRowid - read data */
   rdtreeUpdate,                /* xUpdate - write data */
   0,                           /* xBegin - begin transaction */
   0,                           /* xSync - sync transaction */
