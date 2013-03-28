@@ -147,6 +147,58 @@ COMPARE_BITSTRINGS(tanimoto)
 COMPARE_BITSTRINGS(dice)
 
 /*
+** build a simple bitstring (mostly for testing)
+*/
+static void bfp_dummy_f(sqlite3_context* ctx,
+			int argc, sqlite3_value** argv)
+{
+  assert(argc == 2);
+  int rc = SQLITE_OK;
+  int len, value;
+
+  u8 * pBlob = 0;
+
+  /* Check that value is a blob */
+  if (sqlite3_value_type(argv[0]) != SQLITE_INTEGER) {
+    rc = SQLITE_MISMATCH;
+  }
+  else if (sqlite3_value_type(argv[1]) != SQLITE_INTEGER) {
+    rc = SQLITE_MISMATCH;
+  }
+  else {
+
+    len = sqlite3_value_int(argv[0]);
+    if (len <= 0) { len = 1; }
+    if (len > MAX_BITSTRING_SIZE) { len = MAX_BITSTRING_SIZE; }
+
+    value = sqlite3_value_int(argv[1]);
+    if (value < 0) { value = 0; }
+    if (value > 255) { value = 255; }
+
+    pBlob = (u8 *)sqlite3_malloc(len);
+    if (!pBlob) {
+      rc = SQLITE_NOMEM;
+    }
+    else {
+      u8 *p = pBlob; 
+      int ii;
+      for (ii = 0; ii < len; ++ii) {
+	*p++ = value;
+      }
+    }
+
+  }
+
+  if (rc == SQLITE_OK) {
+    sqlite3_result_blob(ctx, pBlob, len, sqlite3_free);
+  }	
+  else {
+    sqlite3_result_error_code(ctx, rc);
+  }
+
+}
+
+/*
 ** bitstring length and weight
 */
 
@@ -208,6 +260,8 @@ int chemicalite_init_bitstring(sqlite3 *db)
   CREATE_SQLITE_BINARY_FUNCTION(mol_feat_morgan_bfp, rc);
 
   CREATE_SQLITE_UNARY_FUNCTION(mol_bfp_signature, rc);
+
+  CREATE_SQLITE_BINARY_FUNCTION(bfp_dummy, rc);
 
   return rc;
 }
