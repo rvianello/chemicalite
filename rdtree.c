@@ -8,6 +8,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "chemicalite.h"
 #include "bfp_ops.h"
 #include "bitstring.h"
+#include "utils.h"
 #include "rdtree.h"
 
 /* 
@@ -2294,6 +2295,62 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
   return rc;
 }
 
+/**
+*** Subset match operator
+**/
+
+/*
+** xTestInternal/xTestLeaf implementation for subset search/filtering
+** same test is used for both internal and leaf nodes.
+**
+** If the item doesn't contain the constraint's bfp, then it's discarded (for
+** internal nodes it means that if the bfp is not in the union of the child 
+** nodes then it's in none of them). 
+*/
+static int subsetTest(RDtree* pRDtree, 
+		      RDtreeConstraint* pCons, RDtreeItem* pItem, int* pEof)
+{
+  *pEof = bfp_op_contains(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp) ? 0 : 1;
+  return SQLITE_OK;
+}
+
+static RDtreeMatchOp subsetMatchOp = { subsetTest, subsetTest };
+
+static void rdtree_subset_f(sqlite3_context* ctx, 
+			    int argc, sqlite3_value** argv)
+{
+  assert(argc == 1);
+
+  int sz;
+  RDtreeMatchArg *pMatchArg;
+  int rc = SQLITE_OK;
+
+  /* Check that value is a blob */
+  if (sqlite3_value_type(argv[0]) != SQLITE_BLOB) {
+    rc = SQLITE_MISMATCH;
+  }
+  /* Check that the blob is not bigger than the max allowed bfp */
+  else if ((sz = sqlite3_value_bytes(argv[0])) > MAX_BITSTRING_SIZE) {
+    rc = SQLITE_TOOBIG;
+  }
+  else if (!(pMatchArg = 
+	     (RDtreeMatchArg *)sqlite3_malloc(sizeof(RDtreeMatchArg)))) {
+    rc = SQLITE_NOMEM;
+  }
+  else {
+    pMatchArg->magic = RDTREE_MATCH_MAGIC;
+    pMatchArg->constraint.op = &subsetMatchOp;
+    memcpy(pMatchArg->constraint.aBfp, sqlite3_value_blob(argv[0]), sz);
+  }
+
+  if (rc == SQLITE_OK) {
+    sqlite3_result_blob(ctx, pMatchArg, sizeof(RDtreeMatchArg), sqlite3_free);
+  }	
+  else {
+    sqlite3_result_error_code(ctx, rc);
+  }
+}
+
 
 int chemicalite_init_rdtree(sqlite3 *db)
 {
@@ -2305,6 +2362,8 @@ int chemicalite_init_rdtree(sqlite3 *db)
 				  0   /* Module destructor function */
 				  );
   }
+
+  CREATE_SQLITE_UNARY_FUNCTION(rdtree_subset, rc);
 
   return rc;
 }
