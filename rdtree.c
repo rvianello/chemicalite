@@ -11,9 +11,10 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "rdtree.h"
 
 /* 
-** This index data structure is *heavily* copied from the SQLite's
-** r-tree and r*-tree implementation, with the necessary variation on the 
-** algorithms which are required to turn it into an rd-tree.
+** This index data structure is *heavily* and *shamelessly* copied from the
+** SQLite's r-tree and r*-tree implementation, with the necessary variation
+** on the algorithms and search constraints definition which were required to
+** turn it into an rd-tree.
 */
 
 /*
@@ -59,6 +60,8 @@ typedef sqlite3_int64 i64;
 typedef struct RDtree RDtree;
 typedef struct RDtreeCursor RDtreeCursor;
 typedef struct RDtreeConstraint RDtreeConstraint;
+typedef struct RDtreeMatchOp RDtreeMatchOp;
+typedef struct RDtreeMatchArg RDtreeMatchArg;
 typedef struct RDtreeNode RDtreeNode;
 typedef struct RDtreeItem RDtreeItem;
 
@@ -200,24 +203,32 @@ struct RDtreeCursor {
 ** Currently this is not making much sense for bitstrings
 */
 struct RDtreeConstraint {
-  /* FIXME FIXME FIXME
-  int iCoord;                     # Index of constrained coordinate 
-  int op;                         # Constraining operation 
-  RtreeDValue rValue;             # Constraint value. 
-  int (*xGeom)(sqlite3_rtree_geometry*, int, RtreeDValue*, int*);
-  sqlite3_rtree_geometry *pGeom;  # Constraint callback argument for a MATCH 
-  */
+  u8 aBfp[MAX_BITSTRING_SIZE];    /* Constraint value. */
+  double dParam;
+  RDtreeMatchOp *op;
 };
 
-/* Possible values for RDtreeConstraint.op */
-/* To be revisited */
-#define RDTREE_EQ    0x41
-#define RDTREE_LE    0x42
-#define RDTREE_LT    0x43
-#define RDTREE_GE    0x44
-#define RDTREE_GT    0x45
-#define RDTREE_MATCH 0x46
+/*
+** Value for the first field of every RDtreeMatchArg object. The MATCH
+** operator tests that the first field of a blob operand matches this
+** value to avoid operating on invalid blobs (which could cause a segfault).
+*/
+#define RDTREE_MATCH_MAGIC 0xA355FA97
 
+/*
+** An instance of this structure must be supplied as a blob argument to
+** the right-hand-side of an SQL MATCH operator used to constrain an
+** rd-tree query.
+*/
+struct RDtreeMatchArg {
+  u32 magic;                      /* Always RDTREE_MATCH_MAGIC */
+  RDtreeConstraint constraint;
+};
+
+struct RDtreeMatchOp {
+  int (*xTestInternal)(RDtree*, RDtreeConstraint*, RDtreeItem*, int*); 
+  int (*xTestLeaf)(RDtree*, RDtreeConstraint*, RDtreeItem*, int*);
+};
 
 /* 
 ** An rd-tree structure node.
@@ -713,16 +724,6 @@ static int rdtreeOpen(sqlite3_vtab *pVTab, sqlite3_vtab_cursor **ppCursor)
 static void freeCursorConstraints(RDtreeCursor *pCsr)
 {
   if (pCsr->aConstraint) {
-    int i;  /* Used to iterate through constraint array */
-    for (i=0; i < pCsr->nConstraint; i++) {
-      /* FIXME FIXME FIXME
-      sqlite3_rtree_geometry *pGeom = pCsr->aConstraint[i].pGeom;
-        if( pGeom ){
-	  if( pGeom->xDelUser ) pGeom->xDelUser(pGeom->pUser);
-	  sqlite3_free(pGeom);
-	} 
-      */
-    }
     sqlite3_free(pCsr->aConstraint);
     pCsr->aConstraint = 0;
   }
@@ -754,112 +755,26 @@ static int rdtreeEof(sqlite3_vtab_cursor *cur)
   return (pCsr->pNode == 0);
 }
 
-/* 
-** Cursor pCursor currently points to a item in a non-leaf page.
-** Set *pbEof to true if the sub-tree headed by the item is filtered
-** (excluded) by the constraints in the pCursor->aConstraint[] 
-** array, or false otherwise.
-**
-** Return SQLITE_OK if successful or an SQLite error code if an error
-** occurs within a geometry callback. # FIXME #
-*/
-static int testRDtreeItem(RDtree *pRDtree, RDtreeCursor *pCursor, int *pbEof)
+static int testRDtreeItem(RDtree *pRDtree, RDtreeCursor *pCursor, int iHeight,
+			  int *pbEof)
 {
   RDtreeItem item;
   int ii;
-  int bRes = 0;
+  int bEof = 0;
   int rc = SQLITE_OK;
 
   nodeGetItem(pRDtree, pCursor->pNode, pCursor->iItem, &item);
 
-  for (ii = 0; bRes == 0 && ii < pCursor->nConstraint; ii++) {
+  for (ii = 0; 
+       bEof == 0 && rc == SQLITE_OK && ii < pCursor->nConstraint; ii++) {
     RDtreeConstraint *p = &pCursor->aConstraint[ii];
-    /* FIXME FIXME FIXME
-    RtreeDValue cell_min = DCOORD(cell.aCoord[(p->iCoord>>1)*2]);
-    RtreeDValue cell_max = DCOORD(cell.aCoord[(p->iCoord>>1)*2+1]);
-
-    assert(p->op==RTREE_LE || p->op==RTREE_LT || p->op==RTREE_GE 
-        || p->op==RTREE_GT || p->op==RTREE_EQ || p->op==RTREE_MATCH
-    );
-
-    switch( p->op ){
-      case RTREE_LE: case RTREE_LT: 
-        bRes = p->rValue<cell_min; 
-        break;
-
-      case RTREE_GE: case RTREE_GT: 
-        bRes = p->rValue>cell_max; 
-        break;
-
-      case RTREE_EQ:
-        bRes = (p->rValue>cell_max || p->rValue<cell_min);
-        break;
-
-      default: {
-        assert( p->op==RTREE_MATCH );
-        rc = testRtreeGeom(pRtree, p, &cell, &bRes); <<<<<<<<<<<<<<<
-        bRes = !bRes;
-        break;
-      }
-    }
-    */
+    int (*xTestItem)(RDtree*, RDtreeConstraint*, RDtreeItem*, int*)
+      = (iHeight == 0) ? p->op->xTestLeaf : p->op->xTestInternal;
+    rc = xTestItem(pRDtree, p, &item, &bEof);
   }
 
-  *pbEof = bRes;
+  *pbEof = bEof;
   return rc;
-}
-
-/* 
-** Test if the item that cursor pCursor currently points to
-** would be filtered (excluded) by the constraints in the 
-** pCursor->aConstraint[] array. If so, set *pbEof to true before
-** returning. If the item is not filtered (excluded) by the constraints,
-** set pbEof to zero.
-**
-** Return SQLITE_OK if successful or an SQLite error code if an error
-** occurs within a geometry callback. # FIXME #
-**
-** This function assumes that the cell is part of a leaf node.
-*/
-static int testRDtreeEntry(RDtree *pRDtree, RDtreeCursor *pCursor, int *pbEof)
-{
-  RDtreeItem item;
-  int ii;
-  *pbEof = 0;
-
-  nodeGetItem(pRDtree, pCursor->pNode, pCursor->iItem, &item);
-  for (ii = 0; ii < pCursor->nConstraint; ii++) {
-    RDtreeConstraint *p = &pCursor->aConstraint[ii];
-    int res;
-    /* FIXME FIXME FIXME
-    RDtreeDValue coord = DCOORD(cell.aCoord[p->iCoord]);
-    assert(p->op==RTREE_LE || p->op==RTREE_LT || p->op==RTREE_GE 
-        || p->op==RTREE_GT || p->op==RTREE_EQ || p->op==RTREE_MATCH
-    );
-    switch( p->op ){
-      case RTREE_LE: res = (coord<=p->rValue); break;
-      case RTREE_LT: res = (coord<p->rValue);  break;
-      case RTREE_GE: res = (coord>=p->rValue); break;
-      case RTREE_GT: res = (coord>p->rValue);  break;
-      case RTREE_EQ: res = (coord==p->rValue); break;
-      default: {
-        int rc;
-        assert( p->op==RTREE_MATCH );
-        rc = testRtreeGeom(pRtree, p, &cell, &res); <<<<<<<<<<<<<<
-        if( rc!=SQLITE_OK ){
-          return rc;
-        }
-        break;
-      }
-    }
-    */
-    if (!res) {
-      *pbEof = 1;
-      return SQLITE_OK;
-    }
-  }
-
-  return SQLITE_OK;
 }
 
 /*
@@ -884,12 +799,8 @@ static int descendToItem(RDtree *pRDtree,
 
   assert( iHeight >= 0 );
 
-  if (iHeight == 0) {
-    rc = testRDtreeEntry(pRDtree, pCursor, &isEof);
-  }
-  else {
-    rc = testRDtreeItem(pRDtree, pCursor, &isEof);
-  }
+  rc = testRDtreeItem(pRDtree, pCursor, iHeight, &isEof);
+
   if (rc != SQLITE_OK || isEof || iHeight==0) {
     goto descend_to_cell_out;
   }
@@ -1057,6 +968,208 @@ static int findLeafNode(RDtree *pRDtree, i64 iRowid, RDtreeNode **ppLeaf)
   if (rc == SQLITE_OK) {
     rc = rc2;
   }
+  return rc;
+}
+
+
+/*
+** This function is called to configure the RDtreeConstraint object passed
+** as the second argument for a MATCH constraint. The value passed as the
+** first argument to this function is the right-hand operand to the MATCH
+** operator.
+*/
+static int deserializeMatchArg(sqlite3_value *pValue, RDtreeConstraint *pCons)
+{
+  RDtreeMatchArg *p;
+  int nBlob;
+
+  /* Check that value is actually a blob. */
+  if( sqlite3_value_type(pValue) != SQLITE_BLOB ) {
+    return SQLITE_ERROR;
+  }
+
+  /* Check that the blob is the right size. */
+  nBlob = sqlite3_value_bytes(pValue);
+  if (nBlob != sizeof(RDtreeMatchArg)) {
+    return SQLITE_ERROR;
+  }
+
+  RDtreeMatchArg matchArg;
+  memcpy(&matchArg, sqlite3_value_blob(pValue), nBlob);
+
+  if (matchArg.magic != RDTREE_MATCH_MAGIC) {
+    return SQLITE_ERROR;
+  }
+
+  *pCons = matchArg.constraint;
+
+  return SQLITE_OK;
+}
+
+
+/* 
+** RDtree virtual table module xFilter method.
+*/
+static int rdtreeFilter(sqlite3_vtab_cursor *pVtabCursor, 
+			int idxNum, const char *idxStr,
+			int argc, sqlite3_value **argv)
+{
+  RDtree *pRDtree = (RDtree *)pVtabCursor->pVtab;
+  RDtreeCursor *pCsr = (RDtreeCursor *)pVtabCursor;
+
+  RDtreeNode *pRoot = 0;
+  int ii;
+  int rc = SQLITE_OK;
+
+  rdtreeReference(pRDtree);
+
+  freeCursorConstraints(pCsr);
+  pCsr->iStrategy = idxNum;
+
+  if (idxNum == 1) {
+    /* Special case - lookup by rowid. */
+    RDtreeNode *pLeaf;        /* Leaf on which the required item resides */
+    i64 iRowid = sqlite3_value_int64(argv[0]);
+    rc = findLeafNode(pRDtree, iRowid, &pLeaf);
+    pCsr->pNode = pLeaf; 
+    if (pLeaf) {
+      assert(rc == SQLITE_OK);
+      rc = nodeRowidIndex(pRDtree, pLeaf, iRowid, &pCsr->iItem);
+    }
+  }
+  else {
+    /* Normal case - rd-tree scan. Set up the RDtreeCursor.aConstraint array 
+    ** with the configured constraints. 
+    */
+    if (argc > 0) {
+      pCsr->aConstraint = sqlite3_malloc(sizeof(RDtreeConstraint) * argc);
+      pCsr->nConstraint = argc;
+      if (!pCsr->aConstraint) {
+        rc = SQLITE_NOMEM;
+      }
+      else {
+        memset(pCsr->aConstraint, 0, sizeof(RDtreeConstraint) * argc);
+        for (ii = 0; ii < argc; ii++) {
+          RDtreeConstraint *p = &pCsr->aConstraint[ii];
+	  /* A MATCH operator. The right-hand-side must be a blob that
+	  ** can be cast into an RDtreeMatchArg object.
+	  */
+	  rc = deserializeMatchArg(argv[ii], p);
+	  if (rc != SQLITE_OK) {
+	    break;
+	  }
+        }
+      }
+    }
+  
+    if (rc == SQLITE_OK) {
+      pCsr->pNode = 0;
+      rc = nodeAcquire(pRDtree, 1, 0, &pRoot);
+    }
+    if (rc == SQLITE_OK) {
+      int isEof = 1;
+      int nItem = NITEM(pRoot);
+      pCsr->pNode = pRoot;
+      for (pCsr->iItem = 0; 
+	   rc == SQLITE_OK && pCsr->iItem < nItem; pCsr->iItem++) {
+        assert(pCsr->pNode == pRoot);
+        rc = descendToItem(pRDtree, pCsr, pRDtree->iDepth, &isEof);
+        if (!isEof) {
+          break;
+        }
+      }
+      if (rc == SQLITE_OK && isEof) {
+        assert( pCsr->pNode == pRoot );
+        nodeRelease(pRDtree, pRoot);
+        pCsr->pNode = 0;
+      }
+      assert(rc != SQLITE_OK || !pCsr->pNode || 
+	     pCsr->iItem < NITEM(pCsr->pNode));
+    }
+  }
+
+  rdtreeRelease(pRDtree);
+  return rc;
+}
+
+
+/*
+** RDtree virtual table module xBestIndex method. There are three
+** table scan strategies to choose from (in order from most to 
+** least desirable):
+**
+**   idxNum     idxStr        Strategy
+**   ------------------------------------------------
+**     1        Unused        Direct lookup by rowid.
+**     2        See below     RD-tree query or full-table scan.
+**   ------------------------------------------------
+**
+** If strategy 1 is used, then idxStr is not meaningful. If strategy
+** 2 is used, idxStr is formatted to contain 2 bytes for each 
+** constraint used. The first two bytes of idxStr correspond to 
+** the constraint in sqlite3_index_info.aConstraintUsage[] with
+** (argvIndex==1) etc.
+**
+** The first of each pair of bytes in idxStr identifies the constraint
+** operator as follows:
+**
+**   Operator    Byte Value
+**   ----------------------
+**      =        0x41 ('A')
+**     <=        0x42 ('B')
+**      <        0x43 ('C')
+**     >=        0x44 ('D')
+**      >        0x45 ('E')
+**   MATCH       0x46 ('F')
+**   ----------------------
+**
+** The second of each pair of bytes identifies the coordinate column
+** to which the constraint applies. The leftmost coordinate column
+** is 'a', the second from the left 'b' etc.
+*/
+static int rdtreeBestIndex(sqlite3_vtab *tab, sqlite3_index_info *pIdxInfo)
+{
+  int rc = SQLITE_OK;
+  int ii;
+
+  assert( pIdxInfo->idxStr==0 );
+
+  for(ii = 0; ii < pIdxInfo->nConstraint; ii++) {
+
+    struct sqlite3_index_constraint *p = &pIdxInfo->aConstraint[ii];
+
+    if (!p->usable) { 
+      continue; 
+    }
+    else if (p->iColumn == 0 && p->op == SQLITE_INDEX_CONSTRAINT_EQ) {
+      /* We have an equality constraint on the rowid. Use strategy 1. */
+      int jj;
+      for (jj = 0; jj < ii; jj++){
+        pIdxInfo->aConstraintUsage[jj].argvIndex = 0;
+        pIdxInfo->aConstraintUsage[jj].omit = 0;
+      }
+      pIdxInfo->idxNum = 1;
+      pIdxInfo->aConstraintUsage[ii].argvIndex = 1;
+      pIdxInfo->aConstraintUsage[ii].omit = 1; /* don't double check */
+
+      /* This strategy involves a two rowid lookups on an B-Tree structures
+      ** and then a linear search of an RD-Tree node. This should be 
+      ** considered almost as quick as a direct rowid lookup (for which 
+      ** sqlite uses an internal cost of 0.0).
+      */ 
+      pIdxInfo->estimatedCost = 10.0;
+      return SQLITE_OK;
+    }
+    else if (p->op == SQLITE_INDEX_CONSTRAINT_MATCH) {
+      /* We have a match constraint. Use strategy 2.
+      */
+      pIdxInfo->aConstraintUsage[ii].argvIndex = ii + 1;
+      pIdxInfo->aConstraintUsage[ii].omit = 1;
+    }
+  }
+
+  pIdxInfo->idxNum = 2;
+  pIdxInfo->estimatedCost = (2000000.0 / (double)(pIdxInfo->nConstraint + 1));
   return rc;
 }
 
