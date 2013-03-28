@@ -2352,6 +2352,10 @@ static void rdtree_subset_f(sqlite3_context* ctx,
 }
 
 
+/**
+*** Module init
+**/
+
 int chemicalite_init_rdtree(sqlite3 *db)
 {
   int rc = SQLITE_OK;
