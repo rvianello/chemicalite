@@ -12,7 +12,9 @@ int main(int argc, char *argv[])
   char *errMsg = 0;
   sqlite3 *db = 0;
   int closedb = 1;
-  int dummy;
+  int rowid_count;
+  int parent_count;
+  int node_count;
 
   char sql1[] = "select count(*) from xyz_rowid";
   char sql2[] = "select count(*) from xyz_parent";
@@ -29,14 +31,26 @@ int main(int argc, char *argv[])
 				  "\x01\x02\x04\x08", 4)) != SQLITE_OK) {
     printf("Failed insertion\n");
   }
-  else if ((rc = select_integer(db, sql1, &dummy)) != SQLITE_OK) {
+  else if ((rc = select_integer(db, sql1, &rowid_count)) != SQLITE_OK) {
     printf("Couldn't query rowid table\n");
   }
-  else if ((rc = select_integer(db, sql2, &dummy)) != SQLITE_OK) {
+  else if ((rc = select_integer(db, sql2, &parent_count)) != SQLITE_OK) {
     printf("Couldn't query parent table\n");
   }
-  else if ((rc = select_integer(db, sql3, &dummy)) != SQLITE_OK) {
+  else if ((rc = select_integer(db, sql3, &node_count)) != SQLITE_OK) {
     printf("Couldn't query node table\n");
+  }
+  else if (rowid_count != 1) {
+    printf("Unexpected number of rowid records\n");
+    rc = SQLITE_MISMATCH;
+  }
+  else if (parent_count != 0) {
+    printf("Unexpected number of parent records\n");
+    rc = SQLITE_MISMATCH;
+  }
+  else if (node_count != 1) {
+    printf("Unexpected number of node records\n");
+    rc = SQLITE_MISMATCH;
   }
 
   if (closedb) {
