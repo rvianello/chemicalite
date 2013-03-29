@@ -60,6 +60,36 @@ int insert_bitstring(sqlite3 *db, const char * name, int id, void *s, int len)
   return rc;
 }
 
+int insert_signature(sqlite3 *db, const char * name, int id, const char *smiles)
+{
+  char sql[1024];
+  if (id <= 0) {
+    sprintf(sql, "INSERT INTO %s(s) VALUES(mol_bfp_signature(?1));", name);
+  }
+  else {
+    sprintf(sql, "INSERT INTO %s(id, s) VALUES(%d, mol_bfp_signature(?1));", 
+	    name, id);
+  }
+
+  sqlite3_stmt*pStmt = 0;
+  int rc = sqlite3_prepare(db, sql, -1, &pStmt, 0);
+
+  if (SQLITE_OK == rc) {
+    rc = sqlite3_bind_text(pStmt, 1, smiles, strlen(smiles), SQLITE_STATIC);  
+  }
+
+  if (SQLITE_OK == rc) {
+    int rc2 = sqlite3_step(pStmt);
+    if (rc2 != SQLITE_DONE) {
+      rc = rc2;
+    }  
+  }
+
+  sqlite3_finalize(pStmt);
+
+  return rc;
+}
+
 int select_integer(sqlite3 *db, const char * sql, int *pInt)
 {
   sqlite3_stmt *pStmt;
