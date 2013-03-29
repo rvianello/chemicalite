@@ -1,3 +1,11 @@
+add_library(testcommon testcommon.c)
+
+macro(chemicalite_ctest test)
+    add_executable(${test} ${test}.c)
+    target_link_libraries(${test} testcommon sqlite3)
+    add_test(${test} ${test} ${CHEMICALITE_LOCATION} ${ARGN})
+endmacro(chemicalite_ctest)
+
 macro(chemicalite_pytest module)
     add_test(${module} 
              python ${CMAKE_CURRENT_SOURCE_DIR}/${module}.py 
@@ -9,15 +17,10 @@ chemicalite_pytest(molecule)
 chemicalite_pytest(descriptors)
 chemicalite_pytest(bitstring)
 
-add_library(testcommon testcommon.c)
-
-macro(chemicalite_ctest test)
-    add_executable(${test} ${test}.c)
-    target_link_libraries(${test} testcommon sqlite3)
-    add_test(${test} ${test} ${CHEMICALITE_LOCATION} ${ARGN})
-endmacro(chemicalite_ctest)
-
 chemicalite_ctest(initialize)
 chemicalite_ctest(create_rdtree)
 chemicalite_ctest(rdtree_1st_insert)
 chemicalite_ctest(rdtree_single_select_by_id)
+chemicalite_ctest(rdtree_single_select_by_subset)
+
+chemicalite_pytest(rdtree)
