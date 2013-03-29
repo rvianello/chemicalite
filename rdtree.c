@@ -2041,12 +2041,12 @@ static sqlite3_module rdtreeModule = {
   0,                           /* iVersion */
   rdtreeCreate,                /* xCreate - create a table */
   rdtreeConnect,               /* xConnect - connect to an existing table */
-  0, /* rdtreeBestIndex,             /* xBestIndex - Determine search strategy */
+  rdtreeBestIndex,             /* xBestIndex - Determine search strategy */
   rdtreeDisconnect,            /* xDisconnect - Disconnect from a table */
   rdtreeDestroy,               /* xDestroy - Drop a table */
   rdtreeOpen,                  /* xOpen - open a cursor */
   rdtreeClose,                 /* xClose - close a cursor */
-  0, /* rdtreeFilter,                /* xFilter - configure scan constraints */
+  rdtreeFilter,                /* xFilter - configure scan constraints */
   rdtreeNext,                  /* xNext - advance a cursor */
   rdtreeEof,                   /* xEof */
   rdtreeColumn,                /* xColumn - read data */
