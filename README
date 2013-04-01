@@ -1,10 +1,4 @@
 A cheminformatics extension for the SQLite database engine.
 
-Current status:
-===============
-
-The extension exposes to SQL the direct storage of a molecule data type (I/O as SMILES/SMARTS, storage as binary blob), structural searches (exact and substructure queries) and the computation of a set of chemical descriptors. Stored molecular structures can be indexed to allow faster structural searches (indexing of binary signatures is delegated to the SignTree extension and decoupled from the cheminformatic functions).
-
-The implemented interface tries to reproduce that of the PostgreSQL cartridge provided by RDKit itself, but fingerprinting and similarity searches are not yet available.
 
 
