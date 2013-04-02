@@ -8,7 +8,7 @@ typedef uint8_t u8;
 typedef struct Mol Mol;
 typedef struct Bfp Bfp;
  
-#define MOL_SIGNATURE_SIZE 128
+#define MOL_SIGNATURE_SIZE 256
 #define MAX_BITSTRING_SIZE 256
 
 #endif

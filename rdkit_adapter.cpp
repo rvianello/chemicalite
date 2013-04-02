@@ -380,7 +380,7 @@ int mol_rdkit_bfp(Mol *pMol, Bfp **ppBfp)
 
   try {
     ExplicitBitVect *bv 
-      = RDKit::RDKFingerprintMol(*pMol, 1, 7, LAYERED_FP_SIZE, 2);
+      = RDKit::RDKFingerprintMol(*pMol, 1, 6, LAYERED_FP_SIZE, 2);
     if (bv) {
       *ppBfp = new Bfp(BitVectToBinaryText(*bv));
       delete bv;
@@ -548,9 +548,7 @@ int mol_bfp_signature(Mol *pMol, Bfp **ppBfp)
 
   try {
     ExplicitBitVect *bv 
-      = RDKit::LayeredFingerprintMol2(*pMol,
-				      RDKit::substructLayers, 1, 4,
-				      SSS_FP_SIZE);
+      = RDKit::PatternFingerprintMol(*pMol, SSS_FP_SIZE);
     if (bv) {
       *ppBfp = new Bfp(BitVectToBinaryText(*bv));
       delete bv;
