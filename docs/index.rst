@@ -12,6 +12,8 @@ Contents:
    :maxdepth: 2
 
    build
+   tutorial
+   api
 
 Indices and tables
 ==================
