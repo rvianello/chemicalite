@@ -12,8 +12,8 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "rdtree.h"
 
 /* 
-** This index data structure is *heavily* and *shamelessly* copied from the
-** SQLite's r-tree and r*-tree implementation, with the necessary variation
+** This index data structure is based on (and *very* similar to) the
+** SQLite's r-tree and r*-tree implementation, with the necessary variations
 ** on the algorithms and search constraints definition which were required to
 ** turn it into an rd-tree.
 */
