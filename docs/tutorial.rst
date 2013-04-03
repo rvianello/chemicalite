@@ -79,3 +79,20 @@ A python script implementing the full schema creation and database loading proce
 Substructure Searches
 ---------------------
 
+A search for substructures could be performed with a query like the following::
+
+    SELECT COUNT(*) FROM chembl WHERE mol_is_substruct(molecule, 'c1ccnnc1');
+
+but this would check every single record of the `chembl` table, resulting very inefficient. Performances can strongly improve if the index table is joined::
+
+    SELECT COUNT(*) FROM chembl, str_idx_chembl_molecule AS idx WHERE
+        chembl.id = idx.id AND 
+        mol_is_substruct(chembl.molecule, 'c1ccnnc1') AND
+        idx.id MATCH rdtree_subset(mol_bfp_signature('c1ccnnc1'));
+
+A python script executing this second query is available in the `docs` directory of the source code distribution::
+
+    # returns the number of structures containing the query fragment.
+    $ ./match_count.py /path/libchemicalite.so /path/to/chembldb.sql c1ccnnc1
+
+
