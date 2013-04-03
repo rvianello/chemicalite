@@ -29,7 +29,8 @@ Creating a database and initializing its schema requires just a few statements::
     db.execute("PRAGMA page_size=2048")
     
     # our database will consist of a single table, containing a subset of the
-    # columns from the ChEMBLdb database.
+    # columns from the ChEMBLdb database. The molecular structure is inserted
+    # as a binary blob of the pickled molecule.
     db.execute("CREATE TABLE chembl(id INTEGER PRIMARY KEY, "
                "chembl_id TEXT, smiles TEXT, molecule MOL)")
 	       	       
