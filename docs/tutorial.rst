@@ -95,4 +95,40 @@ A python script executing this second query is available in the `docs` directory
     # returns the number of structures containing the query fragment.
     $ ./match_count.py /path/libchemicalite.so /path/to/chembldb.sql c1ccnnc1
 
+And here are some example queries::
 
+    $ ./match_count.py /path/libchemicalite.so chembldb.sql c1cccc2c1nncc2
+    searching for substructure: c1cccc2c1nncc2
+    Found 285 matches in 0.580219984055 seconds
+
+    $ ./match_count.py /path/libchemicalite.so chembldb.sql c1ccnc2c1nccn2
+    searching for substructure: c1ccnc2c1nccn2
+    Found 707 matches in 0.415385007858 seconds
+
+    $ ./match_count.py /path/libchemicalite.so chembldb.sql Nc1ncnc\(N\)n1
+    searching for substructure: Nc1ncnc(N)n1
+    Found 4564 matches in 1.44142603874 seconds
+    
+    $ ./match_count.py /path/libchemicalite.so chembldb.sql c1scnn1
+    searching for substructure: c1scnn1
+    Found 11235 matches in 2.81160211563 seconds
+    
+    $ ./match_count.py /path/libchemicalite.so chembldb.sql c1cccc2c1ncs2
+    searching for substructure: c1cccc2c1ncs2
+    Found 13521 matches in 5.35551190376 seconds
+    
+    $ ./match_count.py /path/libchemicalite.so chembldb.sql c1cccc2c1CNCCN2
+    searching for substructure: c1cccc2c1CNCCN2
+    Found 1210 matches in 15.256114006 seconds
+
+A second script is provided with the documentation and it's designed to only return the first results (sometimes useful for queries that return a large number of matches)::
+
+    $ ./substructure_search.py /path/libchemicalite.so chembldb.sql c1cccc2c1CNCCN2
+    searching for substructure: c1cccc2c1CNCCN2
+    CHEMBL323692 C1CNc2ccccc2CN1
+    CHEMBL1458895 COC(=O)CN1CCN(C(=O)c2ccc(F)cc2)c3ccccc3C1
+    CHEMBL1623831 C(C1CNc2ccccc2CN1)c3ccccc3
+    [...]
+    CHEMBL270270 NCCCCC1NC(=O)c2ccc(Cl)cc2N(Cc3ccccc3)C1=O
+    CHEMBL233255 Oc1ccc(C[C@@H]2NC(=O)c3ccccc3NC2=O)cc1
+    Found 25 matches in 0.536008834839 seconds
