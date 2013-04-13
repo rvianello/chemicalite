@@ -4,7 +4,7 @@ ChemicaLite Tutorial
 Building a database
 -------------------
 
-This tutorial will guide you through the construction of a chemical database using SQLite and the ChemicaLite extension. Python will be used in illustrating the various operations, but almost any other programming language could be used instead (as long as SQLite drivers are available).
+This tutorial is based on a similar one which is included with the `RDKit PostgreSQL Cartridge documentation <https://rdkit.readthedocs.org/en/latest/Cartridge.html#creating-databases>`_ and it will guide you through the construction of a chemical SQLite database and the execution of some simple queries. Python will be used in illustrating the various operations, but almost any other programming language could be used instead (as long as SQLite drivers are available).
 
 Download a copy of the `ChEMBLdb database <ftp://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_15/chembl_15_chemreps.txt.gz>`_ and decompress it::
 
@@ -120,6 +120,8 @@ And here are some example queries::
     $ ./match_count.py /path/libchemicalite.so chembldb.sql c1cccc2c1CNCCN2
     searching for substructure: c1cccc2c1CNCCN2
     Found 1210 matches in 15.256114006 seconds
+
+*Note*: Execution times are only provided for reference and may vary depending on the available computational power. Moreover, and especially for larger database files, timings appear to be quite sensitive to the behavior of the operating system disk cache. Should you happen to observe anything like a 10-50x difference between the execution times for the first and the second run of the same query, please try bringing the sqlite file into the OS disk cache and see if it helps (something like `cat chembldb.sql > /dev/null` should do).   
 
 A second script is provided with the documentation and it's designed to only return the first results (sometimes useful for queries that return a large number of matches)::
 
