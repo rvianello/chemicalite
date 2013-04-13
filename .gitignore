@@ -1,2 +1,4 @@
 *~
 *.py[co]
+docs/_build/doctrees
+docs/_build/html
