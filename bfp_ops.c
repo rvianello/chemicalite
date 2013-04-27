@@ -48,6 +48,16 @@ int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2)
   return growth;
 }
 
+int bfp_op_same(int length, u8 *bfp1, u8 *bfp2)
+{
+  int intersect_popcount = 0;
+  int i;
+  for (i = 0; i < length; ++i, ++bfp1, ++bfp2) {
+    intersect_popcount += byte_popcounts[ *bfp1 & *bfp2 ];
+  }
+  return intersect_popcount;
+}
+
 int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2)
 {
   int contains = 1;

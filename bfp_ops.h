@@ -8,6 +8,7 @@ extern "C" {
   void bfp_op_union(int length, u8 *bfp1, u8 *bfp2);
   int bfp_op_weight(int length, u8 *bfp);
   int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2);
+  int bfp_op_same(int length, u8 *bfp1, u8 *bfp2);
   int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2);
   double bfp_op_tanimoto(int length, u8 *bfp1, u8 *bfp2);
   double bfp_op_dice(int length, u8 *bfp1, u8 *bfp2);

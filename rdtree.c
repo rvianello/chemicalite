@@ -2291,6 +2291,9 @@ static int subsetTest(RDtree* pRDtree,
 
 static RDtreeMatchOp subsetMatchOp = { subsetTest, subsetTest };
 
+/*
+** A factory function for a substructure search match object
+*/
 static void rdtree_subset_f(sqlite3_context* ctx, 
 			    int argc, sqlite3_value** argv)
 {
@@ -2328,6 +2331,91 @@ static void rdtree_subset_f(sqlite3_context* ctx,
 
 
 /**
+*** Tanimoto similarity match operator
+**/
+
+/*
+** xTestInternal/xTestLeaf implementation for tanimoto similarity 
+** search/filtering
+*/
+static int tanimotoTestInternal(RDtree* pRDtree, 
+				RDtreeConstraint* pCons, RDtreeItem* pItem, 
+				int* pEof)
+{
+  /* The item in the internal node stores the union of the fingerprints 
+  ** that populate the child nodes. I want to use this union to compute an
+  ** upper bound to the similarity. If this upper bound is lower than the 
+  ** threashold value then the item can be discarded and the referred branch
+  ** pruned.
+  **
+  ** T = Nsame / (Na + Nb - Nsame) <= Nsame / Na
+  */
+
+  int same = bfp_op_same(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
+  int na = bfp_op_weight(pRDtree->iBfpSize, pCons->aBfp);
+  *pEof = (same + 0.0)/na >= pCons->dParam ? 0 : 1;
+  return SQLITE_OK;
+}
+
+static int tanimotoTestLeaf(RDtree* pRDtree, 
+			    RDtreeConstraint* pCons, RDtreeItem* pItem, 
+			    int* pEof)
+{
+  double similarity 
+    = bfp_op_tanimoto(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
+  *pEof = similarity >= pCons->dParam ? 0 : 1;    
+  return SQLITE_OK;
+}
+
+static RDtreeMatchOp tanimotoMatchOp = { 
+  tanimotoTestInternal, 
+  tanimotoTestLeaf
+};
+
+/*
+** A factory function for a tanimoto similarity search match object
+*/
+static void rdtree_tanimoto_f(sqlite3_context* ctx, 
+			      int argc, sqlite3_value** argv)
+{
+  assert(argc == 2);
+
+  int sz;
+  RDtreeMatchArg *pMatchArg;
+  int rc = SQLITE_OK;
+
+  /* Check that the first argument is a blob */
+  if (sqlite3_value_type(argv[0]) != SQLITE_BLOB) {
+    rc = SQLITE_MISMATCH;
+  }
+  /* Check that the blob is not bigger than the max allowed bfp */
+  else if ((sz = sqlite3_value_bytes(argv[0])) > MAX_BITSTRING_SIZE) {
+    rc = SQLITE_TOOBIG;
+  }
+  /* Check that the second argument is a float number */
+  else if (sqlite3_value_type(argv[1]) != SQLITE_FLOAT) {
+    rc = SQLITE_MISMATCH;
+  }
+  else if (!(pMatchArg = 
+	     (RDtreeMatchArg *)sqlite3_malloc(sizeof(RDtreeMatchArg)))) {
+    rc = SQLITE_NOMEM;
+  }
+  else {
+    pMatchArg->magic = RDTREE_MATCH_MAGIC;
+    pMatchArg->constraint.op = &tanimotoMatchOp;
+    memcpy(pMatchArg->constraint.aBfp, sqlite3_value_blob(argv[0]), sz);
+    pMatchArg->constraint.dParam = sqlite3_value_double(argv[1]);
+  }
+
+  if (rc == SQLITE_OK) {
+    sqlite3_result_blob(ctx, pMatchArg, sizeof(RDtreeMatchArg), sqlite3_free);
+  }	
+  else {
+    sqlite3_result_error_code(ctx, rc);
+  }
+}
+
+/**
 *** Module init
 **/
 
@@ -2343,6 +2431,7 @@ int chemicalite_init_rdtree(sqlite3 *db)
   }
 
   CREATE_SQLITE_UNARY_FUNCTION(rdtree_subset, rc);
+  CREATE_SQLITE_BINARY_FUNCTION(rdtree_tanimoto, rc);
 
   return rc;
 }
