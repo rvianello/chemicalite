@@ -1102,29 +1102,6 @@ static int rdtreeFilter(sqlite3_vtab_cursor *pVtabCursor,
 **     1        Unused        Direct lookup by rowid.
 **     2        See below     RD-tree query or full-table scan.
 **   ------------------------------------------------
-**
-** If strategy 1 is used, then idxStr is not meaningful. If strategy
-** 2 is used, idxStr is formatted to contain 2 bytes for each 
-** constraint used. The first two bytes of idxStr correspond to 
-** the constraint in sqlite3_index_info.aConstraintUsage[] with
-** (argvIndex==1) etc.
-**
-** The first of each pair of bytes in idxStr identifies the constraint
-** operator as follows:
-**
-**   Operator    Byte Value
-**   ----------------------
-**      =        0x41 ('A')
-**     <=        0x42 ('B')
-**      <        0x43 ('C')
-**     >=        0x44 ('D')
-**      >        0x45 ('E')
-**   MATCH       0x46 ('F')
-**   ----------------------
-**
-** The second of each pair of bytes identifies the coordinate column
-** to which the constraint applies. The leftmost coordinate column
-** is 'a', the second from the left 'b' etc.
 */
 static int rdtreeBestIndex(sqlite3_vtab *tab, sqlite3_index_info *pIdxInfo)
 {
