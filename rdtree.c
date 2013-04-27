@@ -199,9 +199,7 @@ struct RDtreeCursor {
 };
 
 /*
-** A search constraint.
-**
-** Currently this is not making much sense for bitstrings
+** A bitstring search constraint.
 */
 struct RDtreeConstraint {
   u8 aBfp[MAX_BITSTRING_SIZE];    /* Constraint value. */
