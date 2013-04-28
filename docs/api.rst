@@ -20,9 +20,9 @@ Substructure searches
 
 Substructure searches are performed constraining the selection on a column of `mol` data with a `WHERE` clause based on the return value of function `mol_is_substruct`. This can be optionally (and preferably) joined with a `MATCH` constraint on an `rdtree` index, using the match object returned by `rdtree_subset`::
 
-    SELECT * FROM chembl, str_idx_chembl_molecule AS idx WHERE
-        chembl.id = idx.id AND 
-        mol_is_substruct(chembl.molecule, 'c1ccnnc1') AND
+    SELECT * FROM mytable, str_idx_mytable_molcolumn AS idx WHERE
+        mytable.id = idx.id AND 
+        mol_is_substruct(mytable.molcolumn, 'c1ccnnc1') AND
         idx.id MATCH rdtree_subset(mol_bfp_signature('c1ccnnc1'));
 
 Functions
