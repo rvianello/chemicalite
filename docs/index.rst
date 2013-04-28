@@ -14,6 +14,7 @@ Contents:
    build
    tutorial
    api
+   links
 
 Indices and tables
 ==================
