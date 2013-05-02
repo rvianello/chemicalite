@@ -2193,7 +2193,7 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
   int nDb;              /* Length of string argv[1] */
   int nName;            /* Length of string argv[2] */
 
-  int iBfpSize = 256;   /* Default size of binary fingerprint */
+  int iBfpSize = MOL_SIGNATURE_SIZE;  /* Default size of binary fingerprint */
 
   /* perform arg checking */
   if (argc != 5) {

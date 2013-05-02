@@ -27,7 +27,8 @@ int main(int argc, char *argv[])
     closedb = 0;
     printf("Failed database initialization\n");
   }
-  else if ((rc = create_rdtree(db, "xyz", 256, &errMsg)) != SQLITE_OK) {
+  else if ((rc = create_rdtree(db, "xyz", 
+			       MOL_SIGNATURE_SIZE, &errMsg)) != SQLITE_OK) {
     printf("Failed creation of virtual rdtree table\n");
   }
   else if ((rc = insert_signature(db, "xyz", 42, "c1ccccn1")) != SQLITE_OK) {
