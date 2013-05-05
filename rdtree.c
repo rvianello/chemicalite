@@ -202,8 +202,12 @@ struct RDtreeCursor {
 ** A bitstring search constraint.
 */
 struct RDtreeConstraint {
+  /* Ok this part is a bit ugly and these data structures will benefit some
+  ** redesign. FIXME
+  */
   u8 aBfp[MAX_BITSTRING_SIZE];    /* Constraint value. */
   double dParam;
+  int iParam;
   RDtreeMatchOp *op;
 };
 
@@ -2352,7 +2356,7 @@ static int tanimotoTestInternal(RDtree* pRDtree,
   */
 
   int same = bfp_op_same(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
-  int na = bfp_op_weight(pRDtree->iBfpSize, pCons->aBfp);
+  int na = pCons->iParam; /* bfp_op_weight(pRDtree->iBfpSize, pCons->aBfp); */
   *pEof = (same + 0.0)/na >= pCons->dParam ? 0 : 1;
   return SQLITE_OK;
 }
@@ -2405,6 +2409,8 @@ static void rdtree_tanimoto_f(sqlite3_context* ctx,
     pMatchArg->constraint.op = &tanimotoMatchOp;
     memcpy(pMatchArg->constraint.aBfp, sqlite3_value_blob(argv[0]), sz);
     pMatchArg->constraint.dParam = sqlite3_value_double(argv[1]);
+    pMatchArg->constraint.iParam 
+      = bfp_op_weight(sz, pMatchArg->constraint.aBfp);
   }
 
   if (rc == SQLITE_OK) {
