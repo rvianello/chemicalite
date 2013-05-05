@@ -18,7 +18,7 @@ Creating a database and initializing its schema requires just a few statements::
     
     # the extension is usually loaded right after the connection to the
     # database
-    db = sqlite3.connect('chembl.sql')
+    db = sqlite3.connect('chembldb.sql')
     db.enable_load_extension(True)
     db.load_extension(chemicalite_path)
     db.enable_load_extension(False)
@@ -134,3 +134,78 @@ A second script is provided with the documentation and it's designed to only ret
     CHEMBL270270 NCCCCC1NC(=O)c2ccc(Cl)cc2N(Cc3ccccc3)C1=O
     CHEMBL233255 Oc1ccc(C[C@@H]2NC(=O)c3ccccc3NC2=O)cc1
     Found 25 matches in 0.536008834839 seconds
+
+
+Similarity Searches
+-------------------
+
+Fingerprint data for similarity searches is conveniently stored into indexed virtual tables, as illustrated by the following statements::
+
+    from pysqlite2 import dbapi2 as sqlite3
+
+    db = sqlite3.connect(chembldb_path)
+    db.enable_load_extension(True)
+    db.load_extension(chemicalite_path)
+    db.enable_load_extension(False)
+
+    # create a virtual table to be filled with morgan bfp data
+    db.execute("CREATE VIRTUAL TABLE morgan USING\n"
+               "rdtree(id, bfp bytes(64))");
+
+    # compute and insert the fingerprints
+    db.execute("INSERT INTO morgan(id, bfp)\n"
+               "SELECT id, mol_morgan_bfp(molecule, 2) FROM chembl")
+
+    db.commit()
+    db.close()
+
+Once again, a script file implementing the above commands is provided::
+
+    $ ./create_bfp_data.py /path/to/libchemicalite.so /path/to/chembldb.sql
+
+A search for similar structures is therefore based on filtering this newly created table. The following statement would for example return the number of compounds with a Tanimoto similarity greater than or equal to the threshold value (see also the `tanimoto_count.py` file for a complete script)::
+
+    count = c.execute("SELECT count(*) FROM "
+                      "morgan as idx WHERE "
+                      "idx.id match rdtree_tanimoto(mol_morgan_bfp(?, 2), ?)",
+                      (target, threshold)).fetchone()[0]
+
+A sorted list of SMILES strings identifying the most similar compounds is for example produced by the following query::
+
+    rs = c.execute(
+        "SELECT c.chembl_id, c.smiles, bfp_tanimoto(mol_morgan_bfp(c.molecule, 2), mol_morgan_bfp(?, 2)) as t "
+        "FROM "
+        "chembl as c JOIN "
+        "(SELECT id FROM morgan WHERE id match rdtree_tanimoto(mol_morgan_bfp(?, 2), ?)) as idx "
+        "USING(id) ORDER BY t DESC",
+        (target, target, threshold)).fetchall()
+
+Finally, these last two examples were executed using the `tanimoto_search.py` script, which is based on the previous query::
+
+    $ ./tanimoto_search.py /path/to/libchemicalite.so /path/to/chembldb.sql "Cc1ccc2nc(-c3ccc(NC(C4N(C(c5cccs5)=O)CCC4)=O)cc3)sc2c1" 0.5
+    searching for target:  Cc1ccc2nc(-c3ccc(NC(C4N(C(c5cccs5)=O)CCC4)=O)cc3)sc2c1
+    CHEMBL467428 Cc1ccc2nc(sc2c1)c3ccc(NC(=O)C4CCN(CC4)C(=O)c5cccs5)cc3 0.772727272727
+    CHEMBL461435 Cc1ccc2nc(sc2c1)c3ccc(NC(=O)C4CCCN(C4)S(=O)(=O)c5cccs5)cc3 0.657534246575
+    CHEMBL460340 Cc1ccc2nc(sc2c1)c3ccc(NC(=O)C4CCN(CC4)S(=O)(=O)c5cccs5)cc3 0.647887323944
+    CHEMBL460588 Cc1ccc2nc(sc2c1)c3ccc(NC(=O)C4CCN(C4)S(=O)(=O)c5cccs5)cc3 0.638888888889
+    CHEMBL1608585 Clc1ccc2nc(NC(=O)[C@@H]3CCCN3C(=O)c4cccs4)sc2c1 0.623188405797
+    [...]
+    CHEMBL1325810 Cc1ccc(NC(=O)N2CCCC2C(=O)NCc3cccs3)cc1 0.5
+    CHEMBL1864141 Clc1ccc(NC(=O)[C@@H]2CCCN2C(=O)c3cccs3)cc1S(=O)(=O)N4CCOCC4 0.5
+    CHEMBL1421062 COc1cc(Cl)c(C)cc1NC(=O)[C@@H]2CCCN2C(=O)c3cccs3 0.5
+    Found 66 matches in 1.53940916061 seconds
+
+::
+
+    $ ./tanimoto_search.py /path/to/libchemicalite.so /path/to/chembldb.sql "Cc1ccc2nc(N(C)CC(=O)O)sc2c1" 0.5
+    searching for target: Cc1ccc2nc(N(C)CC(=O)O)sc2c1
+    CHEMBL394654 CN(CCN(C)c1nc2ccc(C)cc2s1)c3nc4ccc(C)cc4s3 0.692307692308
+    CHEMBL491074 CN(CC(=O)O)c1nc2cc(ccc2s1)[N+](=O)[O-] 0.583333333333
+    CHEMBL1617304 CN(C)CCCN(C(=O)C)c1nc2ccc(C)cc2s1 0.571428571429
+    CHEMBL1350062 Cl.CN(C)CCCN(C(=O)C)c1nc2ccc(C)cc2s1 0.549019607843
+    [...]
+    CHEMBL1610437 Cl.CN(C)CCCN(C(=O)CS(=O)(=O)c1ccccc1)c2nc3ccc(C)cc3s2 0.5
+    CHEMBL1351385 Cl.CN(C)CCCN(C(=O)CCc1ccccc1)c2nc3ccc(C)cc3s2 0.5
+    CHEMBL1622712 CN(C)CCCN(C(=O)COc1ccc(Cl)cc1)c2nc3ccc(C)cc3s2 0.5
+    CHEMBL1591601 Cc1ccc2nc(sc2c1)N(Cc3cccnc3)C(=O)Cc4ccccc4 0.5
+    Found 18 matches in 1.39061594009 seconds
