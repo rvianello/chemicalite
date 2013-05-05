@@ -25,6 +25,15 @@ Substructure searches are performed constraining the selection on a column of `m
         mol_is_substruct(mytable.molcolumn, 'c1ccnnc1') AND
         idx.id MATCH rdtree_subset(mol_bfp_signature('c1ccnnc1'));
 
+Similarity searches
+...................
+
+Similarity search on `rdtree` virtual tables of binary fingerprint data are supported by means of the match object returned by the `rdtree_tanimoto` factory function::
+
+    SELECT c.smiles, bfp_tanimoto(mol_morgan_bfp(c.molecule, 2), mol_morgan_bfp(?, 2)) as t
+        FROM mytable as c JOIN (SELECT id FROM morgan WHERE id match rdtree_tanimoto(mol_morgan_bfp(?, 2), ?)) as idx
+        USING(id) ORDER BY t DESC;
+
 Functions
 ---------
 
