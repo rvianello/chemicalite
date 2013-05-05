@@ -8,10 +8,10 @@ from rdkit import Chem
 
 def search(c, substructure):
     t1 = time.time()
-    count = c.execute("select count(*) from "
-                      "chembl, str_idx_chembl_molecule as idx where "
-                      "chembl.id = idx.id and "
-                      "mol_is_substruct(chembl.molecule, ?) and "
+    count = c.execute("SELECT count(*) FROM "
+                      "chembl, str_idx_chembl_molecule as idx WHERE "
+                      "chembl.id = idx.id AND "
+                      "mol_is_substruct(chembl.molecule, ?) AND "
                       "idx.id match rdtree_subset(mol_bfp_signature(?))",
                       (substructure, substructure)).fetchone()[0]
     t2 = time.time()
