@@ -35,7 +35,7 @@ def createdb(chemicalite_path, chembl_path):
     db.load_extension(chemicalite_path)
     db.enable_load_extension(False)
 
-    db.execute("PRAGMA page_size=2048")
+    db.execute("PRAGMA page_size=4096")
 
     db.execute("CREATE TABLE chembl(id INTEGER PRIMARY KEY, "
                "chembl_id TEXT, smiles TEXT, molecule MOL)")
