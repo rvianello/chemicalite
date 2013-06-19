@@ -12,7 +12,8 @@ Contents:
    :maxdepth: 2
 
    build
-   tutorial
+   tutorial_1st
+   tutorial_2nd
    api
    links
 
