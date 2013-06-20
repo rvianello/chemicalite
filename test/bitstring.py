@@ -107,18 +107,18 @@ class TestBitString(ChemicaLiteTestCase):
         self.assertEqual(d, 1.0)
 
     def test_mol_arg_mismatch(self):
-        with self.assertRaises(sqlite3.IntegrityError):
+        self.assertRaises(sqlite3.IntegrityError,lambda :
             self.db.execute(
                 "select bfp_dice("
                 "mol('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), "
                 "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
-                ")")
-        with self.assertRaises(sqlite3.IntegrityError):
+                ")"))
+        self.assertRaises(sqlite3.IntegrityError,lambda :
             self.db.execute(
                 "select bfp_tanimoto("
                 "mol('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), "
                 "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
-                ")")
+                ")"))
 
     def test_bfp_weight(self):
         w = self.db.execute(
