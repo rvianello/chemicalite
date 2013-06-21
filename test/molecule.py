@@ -11,17 +11,14 @@ class TestMolecule(ChemicaLiteTestCase):
     def test_cast_to_mol(self):
         self.db.execute("select mol('CCC')")
         self.db.execute("select mol('C[*]C')")
-        with self.assertRaises(sqlite3.OperationalError):
-            self.db.execute("select mol('[C,N]')")
-        with self.assertRaises(sqlite3.OperationalError):
-            self.db.execute("select mol('BAD')")
+        self.assertRaises(sqlite3.OperationalError,lambda : self.db.execute("select mol('[C,N]')"))
+        self.assertRaises(sqlite3.OperationalError,lambda : self.db.execute("select mol('BAD')"))
 
     def test_cast_to_qmol(self):
         self.db.execute("select qmol('CCC')")
         self.db.execute("select qmol('C[*]C')")
         self.db.execute("select qmol('[C,N]')")
-        with self.assertRaises(sqlite3.OperationalError):
-            self.db.execute("select qmol('BAD')")
+        self.assertRaises(sqlite3.OperationalError,lambda : self.db.execute("select qmol('BAD')"))
 
     def test_mol_to_smiles(self):
         c = self.db.execute("select mol_smiles('C1=CC=CC=C1')")
