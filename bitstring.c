@@ -7,6 +7,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "chemicalite.h"
 #include "rdkit_adapter.h"
 #include "utils.h"
+#include "molecule.h"
 #include "bitstring.h"
 
 /*
@@ -33,7 +34,7 @@ int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
     assert(argc == 1);							\
     int rc = SQLITE_OK;							\
     Mol *pMol = 0;							\
-    rc = fetch_mol_arg(argv[0], &pMol);					\
+    rc = fetch_mol_arg(ctx, 0, argv[0], &pMol);				\
     if (rc != SQLITE_OK) goto func##_f_end;				\
 									\
     Bfp * pBfp;								\
@@ -69,7 +70,7 @@ MOL_TO_BFP(mol_maccs_bfp)
     int rc = SQLITE_OK;							\
 									\
     Mol *pMol = 0;							\
-    rc = fetch_mol_arg(argv[0], &pMol);					\
+    rc = fetch_mol_arg(ctx, 0, argv[0], &pMol);				\
     if (rc != SQLITE_OK) goto func##_f_end;				\
 									\
     int radius = sqlite3_value_int(argv[1]);				\

@@ -24,12 +24,18 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "rdkit_adapter.h"
 
 struct Mol : RDKit::ROMol {
+  Mol(const Mol & other) : RDKit::ROMol(other) {}
   Mol(const std::string & pickle) : RDKit::ROMol(pickle) {}
 };
 
 void free_mol(Mol *pMol)
 {
   delete static_cast<RDKit::ROMol *>(pMol);
+}
+
+Mol * clone_mol(Mol *pMol)
+{
+  return new Mol(*pMol);
 }
 
 struct Bfp : std::string {

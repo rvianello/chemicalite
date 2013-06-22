@@ -5,6 +5,7 @@
 extern "C" {
 #endif
   void free_mol(Mol *pMol);
+  Mol * clone_mol(Mol *pMol);
   void free_bfp(Bfp *pBfp);
 
   /* molecular data types interconversion */
