@@ -21,8 +21,7 @@ static void free_mol_auxdata(void * aux)
   free_mol((Mol *) aux);
 }
 
-int fetch_mol_arg(sqlite3_context* ctx,
-		  int n, sqlite3_value* arg, Mol **ppMol)
+int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
 {
   int rc = SQLITE_MISMATCH;
   /* Check that value is a blob */
@@ -32,19 +31,8 @@ int fetch_mol_arg(sqlite3_context* ctx,
   }
   /* or a text string - by default assumed to be a SMILES */
   else if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
-    void * auxdata = sqlite3_get_auxdata(ctx, n);
-    if (auxdata) {
-      rc = SQLITE_OK;
-      *ppMol = clone_mol((Mol *)auxdata);
-    }
-    else {
-      rc = sqlite3_value_bytes(arg) <= MOL_MAX_TXT_LENGTH ?
-	txt_to_mol(sqlite3_value_text(arg), AS_SMILES, ppMol) : SQLITE_TOOBIG;
-      if (rc == SQLITE_OK) {
-	void * auxdata = (void *)clone_mol(*ppMol);
-	sqlite3_set_auxdata(ctx, n, auxdata, free_mol_auxdata);
-      }
-    }
+    rc = sqlite3_value_bytes(arg) <= MOL_MAX_TXT_LENGTH ?
+      txt_to_mol(sqlite3_value_text(arg), AS_SMILES, ppMol) : SQLITE_TOOBIG;
   }
   return rc;
 }
@@ -110,7 +98,7 @@ static void mol_smiles_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
   Mol *pMol = 0;
   char * smiles = 0;
 
-  if ( ((rc = fetch_mol_arg(ctx, 0, argv[0], &pMol)) != SQLITE_OK) ||
+  if ( ((rc = fetch_mol_arg(argv[0], &pMol)) != SQLITE_OK) ||
        ((rc = mol_to_txt(pMol, AS_SMILES, &smiles)) != SQLITE_OK) ) {
     sqlite3_result_error_code(ctx, rc);
   }
@@ -134,16 +122,34 @@ static void mol_smiles_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
     Mol *p1 = 0;							\
     Mol *p2 = 0;							\
 									\
-    rc = fetch_mol_arg(ctx, 0, argv[0], &p1);				\
-    if (rc != SQLITE_OK) goto func##_f_end;				\
+    void * aux1 = sqlite3_get_auxdata(ctx, 0);				\
+    if (aux1) {								\
+      p1 = (Mol *) aux1;						\
+    }									\
+    else {								\
+      if ((rc = fetch_mol_arg(argv[0], &p1)) != SQLITE_OK) {		\
+	goto func##_f_end;						\
+      }									\
+      else {								\
+	sqlite3_set_auxdata(ctx, 0, (void *) p1, free_mol_auxdata);	\
+      }									\
+    }									\
 									\
-    rc = fetch_mol_arg(ctx, 1, argv[1], &p2);				\
-    if (rc != SQLITE_OK) goto func##_f_free_mol1;			\
+    void * aux2 = sqlite3_get_auxdata(ctx, 1);				\
+    if (aux2) {								\
+      p2 = (Mol *) aux2;						\
+    }									\
+    else {								\
+      if ((rc = fetch_mol_arg(argv[1], &p2)) != SQLITE_OK) {		\
+	goto func##_f_end;						\
+      }									\
+      else {								\
+	sqlite3_set_auxdata(ctx, 1, (void *) p2, free_mol_auxdata);	\
+      }									\
+    }									\
 									\
     int result = func(p1, p2);						\
 									\
-  func##_f_free_mol2: free_mol(p2);					\
-  func##_f_free_mol1: free_mol(p1);					\
   func##_f_end:								\
     if (rc == SQLITE_OK) {						\
       sqlite3_result_int(ctx, result);					\
@@ -170,7 +176,7 @@ COMPARE_STRUCTURES(mol_cmp)
     assert(argc == 1);							\
 									\
     Mol *pMol = 0;							\
-    int rc = fetch_mol_arg(ctx, 0, argv[0], &pMol);			\
+    int rc = fetch_mol_arg(argv[0], &pMol);				\
 									\
     if (rc == SQLITE_OK) {						\
       type descriptor = func(pMol);					\
