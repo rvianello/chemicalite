@@ -13,6 +13,11 @@ extern const sqlite3_api_routines *sqlite3_api;
 /*
 ** fetch Bfp from blob argument
 */
+static void free_bfp_auxdata(void * aux)
+{
+  free_bfp((Bfp *) aux);
+}
+
 int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
 {
   int rc = SQLITE_MISMATCH;
@@ -33,21 +38,34 @@ int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
   {									\
     assert(argc == 1);							\
     int rc = SQLITE_OK;							\
-    Mol *pMol = 0;							\
-    rc = fetch_mol_arg(argv[0], &pMol);					\
-    if (rc != SQLITE_OK) goto func##_f_end;				\
 									\
-    Bfp * pBfp;								\
-    rc = func(pMol, &pBfp);						\
-    if (rc != SQLITE_OK) goto func##_f_free_mol;			\
-									\
-    u8 * pBlob = 0;                                                     \
+    Bfp * pBfp = 0;							\
+    u8 * pBlob = 0;							\
     int sz = 0;								\
-    rc = bfp_to_blob(pBfp, &pBlob, &sz);				\
 									\
-  func##_f_free_bfp: free_bfp(pBfp);					\
-  func##_f_free_mol: free_mol(pMol);					\
-  func##_f_end:								\
+    void * aux = sqlite3_get_auxdata(ctx, 0);				\
+    if (aux) {								\
+      pBfp = (Bfp *) aux;						\
+    }									\
+    else {								\
+      Mol *pMol = 0;							\
+      rc = fetch_mol_arg(argv[0], &pMol);				\
+									\
+      if (rc == SQLITE_OK) {						\
+	rc = func(pMol, &pBfp);						\
+      }									\
+									\
+      if (rc == SQLITE_OK) {						\
+	sqlite3_set_auxdata(ctx, 0, (void *) pBfp, free_bfp_auxdata);	\
+      }									\
+									\
+      free_mol(pMol);	/* no-op if failed and pMol == 0 */		\
+    }									\
+									\
+    if (rc == SQLITE_OK) {						\
+      rc = bfp_to_blob(pBfp, &pBlob, &sz);				\
+    }									\
+									\
     if (rc == SQLITE_OK) {						\
       sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free);		\
     }									\
@@ -69,23 +87,35 @@ MOL_TO_BFP(mol_maccs_bfp)
     assert(argc == 2);							\
     int rc = SQLITE_OK;							\
 									\
-    Mol *pMol = 0;							\
-    rc = fetch_mol_arg(argv[0], &pMol);					\
-    if (rc != SQLITE_OK) goto func##_f_end;				\
+    Bfp * pBfp = 0;							\
+    u8 * pBlob = 0;							\
+    int sz = 0;								\
 									\
     int radius = sqlite3_value_int(argv[1]);				\
 									\
-    Bfp * pBfp;								\
-    rc = func(pMol, radius, &pBfp);					\
-    if (rc != SQLITE_OK) goto func##_f_free_mol;			\
+    void * aux = sqlite3_get_auxdata(ctx, 0);				\
+    if (aux) {								\
+      pBfp = (Bfp *) aux;						\
+    }									\
+    else {								\
+      Mol *pMol = 0;							\
+      rc = fetch_mol_arg(argv[0], &pMol);				\
 									\
-    u8 * pBlob = 0;                                                     \
-    int sz = 0;								\
-    rc = bfp_to_blob(pBfp, &pBlob, &sz);				\
+      if (rc == SQLITE_OK) {						\
+	rc = func(pMol, radius, &pBfp);					\
+      }									\
 									\
-  func##_f_free_bfp: free_bfp(pBfp);					\
-  func##_f_free_mol: free_mol(pMol);					\
-  func##_f_end:								\
+      if (rc == SQLITE_OK) {						\
+	sqlite3_set_auxdata(ctx, 0, (void *) pBfp, free_bfp_auxdata);	\
+      }									\
+									\
+      free_mol(pMol);	/* no-op if failed and pMol == 0 */		\
+    }									\
+									\
+    if (rc == SQLITE_OK) {						\
+      rc = bfp_to_blob(pBfp, &pBlob, &sz);				\
+    }									\
+									\
     if (rc == SQLITE_OK) {						\
       sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free);		\
     }									\
