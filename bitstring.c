@@ -147,11 +147,31 @@ MOL_TO_BFP(mol_bfp_signature)
     Bfp *p1 = 0;							\
     Bfp *p2 = 0;							\
 									\
-    rc = fetch_bfp_arg(argv[0], &p1);					\
-    if (rc != SQLITE_OK) goto sim##_f_end;				\
+    void * aux1 = sqlite3_get_auxdata(ctx, 0);				\
+    if (aux1) {								\
+      p1 = (Bfp *) aux1;						\
+    }									\
+    else {								\
+      if ((rc = fetch_bfp_arg(argv[0], &p1)) != SQLITE_OK) {		\
+	goto sim##_f_end;						\
+      }									\
+      else {								\
+	sqlite3_set_auxdata(ctx, 0, (void *) p1, free_bfp_auxdata);	\
+      }									\
+    }									\
 									\
-    rc = fetch_bfp_arg(argv[1], &p2);					\
-    if (rc != SQLITE_OK) goto sim##_f_free_bfp1;			\
+    void * aux2 = sqlite3_get_auxdata(ctx, 1);				\
+    if (aux2) {								\
+      p2 = (Bfp *) aux2;						\
+    }									\
+    else {								\
+      if ((rc = fetch_bfp_arg(argv[1], &p2)) != SQLITE_OK) {		\
+	goto sim##_f_end;						\
+      }									\
+      else {								\
+	sqlite3_set_auxdata(ctx, 1, (void *) p2, free_bfp_auxdata);	\
+      }									\
+    }									\
 									\
     if (bfp_length(p1) != bfp_length(p2)) {				\
       rc = SQLITE_MISMATCH;						\
@@ -160,8 +180,6 @@ MOL_TO_BFP(mol_bfp_signature)
       similarity = bfp_##sim(p1, p2);					\
     }									\
       									\
-  sim##_f_free_bfp2: free_bfp(p2);					\
-  sim##_f_free_bfp1: free_bfp(p1);					\
   sim##_f_end:								\
     if (rc == SQLITE_OK) {						\
       sqlite3_result_double(ctx, similarity);				\
