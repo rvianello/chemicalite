@@ -1,0 +1,28 @@
+package:
+  name: pysqlite
+  version: "2.6.3"
+
+source:
+  fn: pysqlite-2.6.3.tar.gz
+  url: https://pypi.python.org/packages/source/p/pysqlite/pysqlite-2.6.3.tar.gz
+  md5: 7ff1cedee74646b50117acff87aa1cfa
+
+  patches:
+    - setup.cfg.patch
+
+build:
+  number: 1
+
+requirements:
+  build:
+    - sqlite
+    - python
+    - setuptools
+  run:
+    - sqlite
+    - python
+
+test:
+  imports:
+    - pysqlite2
+
