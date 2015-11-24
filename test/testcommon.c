@@ -1,20 +1,22 @@
 #include <stdio.h>
 #include <string.h>
+
+#include <chemicalite_location.h>
+
 #include "testcommon.h"
 
-int database_setup(const char * dbname, const char * extension, 
-		   sqlite3 **pDb, char **pErrMsg)
+int database_setup(const char * dbname, sqlite3 **pDb, char **pErrMsg)
 {
   *pErrMsg = 0;
   *pDb = 0;
 
   int rc = sqlite3_open(dbname, pDb);
 
-  if (SQLITE_OK == rc && extension) {
+  if (SQLITE_OK == rc) {
     rc = sqlite3_enable_load_extension(*pDb, 1);
 
     if (SQLITE_OK == rc) {
-      rc = sqlite3_load_extension(*pDb, extension, 0, pErrMsg);
+      rc = sqlite3_load_extension(*pDb, CHEMICALITE_LOCATION, 0, pErrMsg);
     }
   }
 

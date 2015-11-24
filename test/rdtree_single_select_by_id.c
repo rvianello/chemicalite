@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
   char sql4[] = "select count(*) from xyz";
   char sql5[] = "select count(*) from xyz where id=42";
 
-  if ((rc = database_setup(":memory:", argv[1], &db, &errMsg)) != SQLITE_OK) {
+  if ((rc = database_setup(":memory:", &db, &errMsg)) != SQLITE_OK) {
     closedb = 0;
     printf("Failed database initialization\n");
   }

@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     "id match rdtree_subset(mol_bfp_signature('c1ccccn1'))"
     ;
 
-  if ((rc = database_setup(":memory:", argv[1], &db, &errMsg)) != SQLITE_OK) {
+  if ((rc = database_setup(":memory:", &db, &errMsg)) != SQLITE_OK) {
     closedb = 0;
     printf("Failed database initialization\n");
   }

@@ -2,8 +2,11 @@
 import unittest
 import sys
 
-from pysqlite2 import dbapi2 as sqlite3
-
+try:
+    from pysqlite2 import dbapi2 as sqlite3
+except ImportError:
+    import sqlite3
+    
 from chemicalite import ChemicaLiteTestCase
 
 class TestBitString(ChemicaLiteTestCase):

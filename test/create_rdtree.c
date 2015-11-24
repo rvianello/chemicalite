@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
   char sql2[] = "select count(*) from xyz_parent";
   char sql3[] = "select count(*) from xyz_node";
 
-  if ((rc = database_setup(":memory:", argv[1], &db, &errMsg)) != SQLITE_OK) {
+  if ((rc = database_setup(":memory:", &db, &errMsg)) != SQLITE_OK) {
     closedb = 0;
     printf("Failed database initialization\n");
   }
