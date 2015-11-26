@@ -18,8 +18,11 @@ add_library(chemicalite MODULE
 	    rdtree.c
             chemicalite.c
             rdkit_adapter.cpp)
+
+set_target_properties(chemicalite PROPERTIES PREFIX "")
+
 target_link_libraries(chemicalite 
-                      Descriptors Fingerprints)
+                      Descriptors Fingerprints GraphMol)
 
 enable_testing()
 add_subdirectory(test)
