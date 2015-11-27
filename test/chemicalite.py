@@ -7,14 +7,11 @@ try:
 except ImportError:
     import sqlite3
 
-from chemicalite_location import CHEMICALITE_LOCATION
-
 class ChemicaLiteTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.extension_path = CHEMICALITE_LOCATION
         self.db = sqlite3.connect(':memory:')
         self.db.enable_load_extension(True)
-        self.db.load_extension(self.extension_path)
+        self.db.load_extension('chemicalite')
         self.db.enable_load_extension(False)
 

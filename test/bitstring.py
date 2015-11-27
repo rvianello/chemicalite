@@ -128,7 +128,7 @@ class TestBitString(ChemicaLiteTestCase):
             "select bfp_weight("
             "mol_bfp_signature('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
             ")").fetchone()[0]
-        self.assertEqual(w, 282)
+        self.assertEqual(w, 341)
         w = self.db.execute(
             "select bfp_weight("
             "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
