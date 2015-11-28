@@ -12,9 +12,7 @@ chemicalite_ctest(rdtree_1st_insert)
 chemicalite_ctest(rdtree_single_select_by_id)
 chemicalite_ctest(rdtree_single_select_by_subset)
 
-find_package(PythonInterp)
-
-if (PYTHONINTERP_FOUND)
+if (CHEMICALITE_ENABLE_PYTHON_TESTS)
     macro(chemicalite_pytest module)
         add_test(${module}
                  python ${CMAKE_CURRENT_SOURCE_DIR}/${module}.py)
@@ -25,5 +23,5 @@ if (PYTHONINTERP_FOUND)
     chemicalite_pytest(descriptors)
     chemicalite_pytest(bitstring)
     chemicalite_pytest(rdtree)
-endif (PYTHONINTERP_FOUND)
+endif (CHEMICALITE_ENABLE_PYTHON_TESTS)
 
