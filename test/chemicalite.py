@@ -3,15 +3,16 @@ import sys
 import unittest
 
 try:
-    from pysqlite2 import dbapi2 as sqlite3
+    import apsw
 except ImportError:
-    import sqlite3
+    apsw = None
 
 class ChemicaLiteTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.db = sqlite3.connect(':memory:')
-        self.db.enable_load_extension(True)
-        self.db.load_extension('chemicalite')
-        self.db.enable_load_extension(False)
-
+        if apsw is None:
+            raise AssertionError('Python tests require the APWS driver')
+        self.db = apsw.Connection(':memory:')
+        self.db.enableloadextension(True)
+        self.db.loadextension('chemicalite')
+        self.db.enableloadextension(False)
