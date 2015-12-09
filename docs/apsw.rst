@@ -7,6 +7,8 @@ Differently from `pysqlite`, `APSW` doesn't implement an API fully compliant wit
 
 APSW is hosted at `<https://code.google.com/p/apsw/>`_ and the official documentation is also available `online <http://apidoc.apsw.googlecode.com/hg/index.html#>`_. 
 
+A recipe for building `APSW` as a conda package is included in the chemicalite repository.
+
 Build instructions
 ------------------
 

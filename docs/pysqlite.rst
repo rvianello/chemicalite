@@ -1,10 +1,9 @@
 pysqlite
 ========
 
-In order to use ChemicaLite from python, pysqlite 2.5+ is required and 
-must be compiled with support for dynamic loading of C extension (this feature is often disabled for security reasons). 
+In order to use ChemicaLite from python, the `sqlite3` package must be built with support for loading C extensions. Alternatively (this feature is often disabled for security reasons), pysqlite 2.5+ may be used. 
 
-The custom version of pysqlite can then be used in place of the standard `sqlite3` module (this becomes particularly simple when operating in a sandboxed environment, e.g. virtualenv)::
+The custom version of pysqlite can be imported in place of the standard `sqlite3` module::
 
     >>> from pysqlite2 import dbapi2 as sqlite3
     >>> db = sqlite3.connect(':memory:')
@@ -12,8 +11,10 @@ The custom version of pysqlite can then be used in place of the standard `sqlite
     >>> db.load_extension('/path/to/libchemicalite.so')
     >>> db.enable_load_extension(False)
 
-Build instructions
-------------------
+A recipe for building pysqlite using conda is available from the chemicalite repository, instructions for building it from source code are included in the next section.
+
+Build pysqlite from a source distribution
+-----------------------------------------
 
 Unpack the pysqlite sources in a temporary location:
 
@@ -24,9 +25,8 @@ Unpack the pysqlite sources in a temporary location:
     $ tar zxvf pysqlite-2.6.3.tar.gz
     $ cd pysqlite-2.6.3
 
-Edit the `setup.cfg` file and comment-out the line that disables extensions
-loading (the last one in this case; also fix the include and library paths, in
-case your SQLite installation is not available in standard locations):
+Edit the `setup.cfg` file and make sure that the line that disables extensions
+loading is commented-out (also fix the include and library paths, in case your SQLite installation is not available in standard locations):
 
 ::
 
