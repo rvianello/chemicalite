@@ -6,39 +6,39 @@ Building a database
 
 This tutorial is based on a similar one which is included with the `RDKit PostgreSQL Cartridge documentation <https://rdkit.readthedocs.org/en/latest/Cartridge.html#creating-databases>`_ and it will guide you through the construction of a chemical SQLite database and the execution of some simple queries. Python will be used in illustrating the various operations, but almost any other programming language could be used instead (as long as SQLite drivers are available).
 
-Download a copy of the `ChEMBLdb database <ftp://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_15/chembl_15_chemreps.txt.gz>`_ and decompress it::
+Download a copy of the `ChEMBLdb database <ftp://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_20/chembl_20_chemreps.txt.gz>`_ and decompress it::
 
-    $ gunzip chembl_15_chemreps.txt.gz
+    $ gunzip chembl_20_chemreps.txt.gz
 
 Creating a database and initializing its schema requires just a few statements::
 
-    # we need custom drivers that support loading an SQLite extension
-    # (this feature is usually disabled in the normal python distribution)
-    from pysqlite2 import dbapi2 as sqlite3
+    import apsw
     
     # the extension is usually loaded right after the connection to the
     # database
-    db = sqlite3.connect('chembldb.sql')
-    db.enable_load_extension(True)
-    db.load_extension(chemicalite_path)
-    db.enable_load_extension(False)
+    connection = apsw.Connection('chembldb.sql')
+    connection.enableloadextension(True)
+    connection.loadextension(path_to_chemicalite_ext)
+    connection.enableloadextension(False)
+
+    cursor = connection.cursor()
     
     # the SQLite memory page size affects the configuration of the
     # substructure search index tree. this operation must be performed
     # at database creation, before the first CREATE TABLE.
-    db.execute("PRAGMA page_size=2048")
+    cursor.execute("PRAGMA page_size=2048")
     
     # our database will consist of a single table, containing a subset of the
     # columns from the ChEMBLdb database. The molecular structure is inserted
     # as a binary blob of the pickled molecule.
-    db.execute("CREATE TABLE chembl(id INTEGER PRIMARY KEY, "
-               "chembl_id TEXT, smiles TEXT, molecule MOL)")
+    cursor.execute("CREATE TABLE chembl(id INTEGER PRIMARY KEY, " +
+                   "chembl_id TEXT, smiles TEXT, molecule MOL)")
 	       	       
     # finally, this statement will create and configure an index
     # associated to the 'molecule' column of the 'chembl' table.       
-    db.execute("SELECT create_molecule_rdtree('chembl', 'molecule')")
+    cursor.execute("SELECT create_molecule_rdtree('chembl', 'molecule')")
 
-Support for custom indexes in SQLite is a bit different than other database engines. The data structure of a custom index is in fact wrapped behind the implementation of a so-called "virtual table", an object that exposes an interface that is almost identical to that of a regular SQL table, but whose implementation can be customized.
+Support for custom indexes in SQLite is a bit different than other database engines. The data structure of a custom index is in fact wrapped behind the implementation of a "virtual table", an object that exposes an interface that is almost identical to that of a regular SQL table, but whose implementation can be customized.
 
 The above call to the `create_molecule_rdtree` function creates a virtual table with SQL name `str_idx_chembl_molecule` and a few triggers that connect the manipulation of the `molecule` column of the `chembl` table with the management of the tree data structure wrapped behind `str_idx_chembl_molecule`.
 
@@ -55,21 +55,20 @@ The ChEMBLdb data can be parsed with a python generator function similar to the 
                                 skipinitialspace=True)
             reader.next() # skip header line
             
-            for chembl_id, chebi_id, smiles, inchi, inchi_key in reader:
+            for chembl_id, smiles, inchi, inchi_key in reader:
                 # check the SMILES and skip problematic compounds
                 # [...]
                 yield chembl_id, smiles
 
 And the database is loaded with loop like this::
 
-    c = db.cursor()
+    cursor.execute('BEGIN')
     for chembl_id, smiles in chembl(chembl_path):
-        c.execute("INSERT INTO chembl(chembl_id, smiles, molecule) "
-                  "VALUES(?, ?, mol(?))", (chembl_id, smiles, smiles))
-    db.commit()
-    db.close()
+        cursor.execute("INSERT INTO chembl(chembl_id, smiles, molecule) "
+                       "VALUES(?, ?, mol(?))", (chembl_id, smiles, smiles))
+    cursor.execute('COMMIT')
 
-Please note that loading the whole ChEMBLdb is going to take a substantial amount of time (about one to two hours depending on the available computational power) and the resulting file will require about 1.5GB of disk space.
+Please note that loading the whole ChEMBLdb is going to take a substantial amount of time and the resulting file will require about 1.5GB of disk space.
 
 A python script implementing the full schema creation and database loading procedure as a single command line tool is available in the `docs` directory of the source code distribution::
 
