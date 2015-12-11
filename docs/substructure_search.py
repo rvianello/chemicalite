@@ -1,8 +1,9 @@
 #!/bin/env python
+from __future__ import print_function
 import sys
 import time
 
-from pysqlite2 import dbapi2 as sqlite3
+import apsw
 
 from rdkit import Chem
 
@@ -19,21 +20,20 @@ def search(c, substructure):
     return rs, t2-t1
 
 def substructure_search(chemicalite_path, chembldb_sql, substructure):
-    db = sqlite3.connect(chembldb_sql)
-    db.enable_load_extension(True)
-    db.load_extension(chemicalite_path)
-    db.enable_load_extension(False)
+    connection = apsw.Connection(chembldb_sql)
+    connection.enableloadextension(True)
+    connection.loadextension(chemicalite_path)
+    connection.enableloadextension(False)
 
-    c = db.cursor()
+    c = connection.cursor()
 
-    print 'searching for substructure: {0}'.format(substructure)
+    print('searching for substructure:', substructure)
 
     matches, t = search(c, substructure)
     for match in matches:
-        print match[0], match[1]
-    print ('Found {0} matches in {1} seconds').format(len(matches), t)
+        print(match[0], match[1])
+    print('Found {0} matches in {1} seconds'.format(len(matches), t))
 
-    db.close()
-
+    
 if __name__=="__main__":
     substructure_search(*sys.argv[1:4])

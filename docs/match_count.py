@@ -1,8 +1,9 @@
 #!/bin/env python
+from __future__ import print_function
 import sys
 import time
 
-from pysqlite2 import dbapi2 as sqlite3
+import apsw
 
 from rdkit import Chem
 
@@ -13,24 +14,24 @@ def search(c, substructure):
                       "chembl.id = idx.id AND "
                       "mol_is_substruct(chembl.molecule, ?) AND "
                       "idx.id match rdtree_subset(mol_bfp_signature(?))",
-                      (substructure, substructure)).fetchone()[0]
+                      (substructure, substructure)).fetchall()[0][0]
     t2 = time.time()
     return count, t2-t1
 
+
 def match_count(chemicalite_path, chembldb_sql, substructure):
-    db = sqlite3.connect(chembldb_sql)
-    db.enable_load_extension(True)
-    db.load_extension(chemicalite_path)
-    db.enable_load_extension(False)
+    connection = apsw.Connection(chembldb_sql)
+    connection.enableloadextension(True)
+    connection.loadextension(chemicalite_path)
+    connection.enableloadextension(False)
 
-    c = db.cursor()
+    c = connection.cursor()
 
-    print 'searching for substructure: {0}'.format(substructure)
+    print('searching for substructure:', substructure)
 
     count, t = search(c, substructure)
-    print ('Found {0} matches in {1} seconds').format(count, t)
+    print('Found {0} matches in {1} seconds'.format(count, t))
 
-    db.close()
-
+    
 if __name__=="__main__":
     match_count(*sys.argv[1:4])

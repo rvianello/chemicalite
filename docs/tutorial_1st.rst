@@ -73,7 +73,7 @@ Please note that loading the whole ChEMBLdb is going to take a substantial amoun
 A python script implementing the full schema creation and database loading procedure as a single command line tool is available in the `docs` directory of the source code distribution::
 
     # This will create the molecular database as a file named 'chembldb.sql'
-    $ ./create_chembldb.py /path/to/libchemicalite.so chembl_15_chemreps.txt
+    $ ./create_chembldb.py /path/to/chemicalite.so chembl_20_chemreps.txt
 
 Substructure Searches
 ---------------------
@@ -92,31 +92,31 @@ but this would check every single record of the `chembl` table, resulting very i
 A python script executing this second query is available in the `docs` directory of the source code distribution::
 
     # returns the number of structures containing the query fragment.
-    $ ./match_count.py /path/libchemicalite.so /path/to/chembldb.sql c1ccnnc1
+    $ ./match_count.py /path/chemicalite.so /path/to/chembldb.sql c1ccnnc1
 
 And here are some example queries::
 
-    $ ./match_count.py /path/libchemicalite.so chembldb.sql c1cccc2c1nncc2
+    $ ./match_count.py /path/chemicalite.so chembldb.sql c1cccc2c1nncc2
     searching for substructure: c1cccc2c1nncc2
     Found 285 matches in 0.580219984055 seconds
 
-    $ ./match_count.py /path/libchemicalite.so chembldb.sql c1ccnc2c1nccn2
+    $ ./match_count.py /path/chemicalite.so chembldb.sql c1ccnc2c1nccn2
     searching for substructure: c1ccnc2c1nccn2
     Found 707 matches in 0.415385007858 seconds
 
-    $ ./match_count.py /path/libchemicalite.so chembldb.sql Nc1ncnc\(N\)n1
+    $ ./match_count.py /path/chemicalite.so chembldb.sql Nc1ncnc\(N\)n1
     searching for substructure: Nc1ncnc(N)n1
     Found 4564 matches in 1.44142603874 seconds
     
-    $ ./match_count.py /path/libchemicalite.so chembldb.sql c1scnn1
+    $ ./match_count.py /path/chemicalite.so chembldb.sql c1scnn1
     searching for substructure: c1scnn1
     Found 11235 matches in 2.81160211563 seconds
     
-    $ ./match_count.py /path/libchemicalite.so chembldb.sql c1cccc2c1ncs2
+    $ ./match_count.py /path/chemicalite.so chembldb.sql c1cccc2c1ncs2
     searching for substructure: c1cccc2c1ncs2
     Found 13521 matches in 5.35551190376 seconds
     
-    $ ./match_count.py /path/libchemicalite.so chembldb.sql c1cccc2c1CNCCN2
+    $ ./match_count.py /path/chemicalite.so chembldb.sql c1cccc2c1CNCCN2
     searching for substructure: c1cccc2c1CNCCN2
     Found 1210 matches in 15.256114006 seconds
 
@@ -124,7 +124,7 @@ And here are some example queries::
 
 A second script is provided with the documentation and it's designed to only return the first results (sometimes useful for queries that return a large number of matches)::
 
-    $ ./substructure_search.py /path/libchemicalite.so chembldb.sql c1cccc2c1CNCCN2
+    $ ./substructure_search.py /path/chemicalite.so chembldb.sql c1cccc2c1CNCCN2
     searching for substructure: c1cccc2c1CNCCN2
     CHEMBL323692 C1CNc2ccccc2CN1
     CHEMBL1458895 COC(=O)CN1CCN(C(=O)c2ccc(F)cc2)c3ccccc3C1
@@ -140,27 +140,26 @@ Similarity Searches
 
 Fingerprint data for similarity searches is conveniently stored into indexed virtual tables, as illustrated by the following statements::
 
-    from pysqlite2 import dbapi2 as sqlite3
+    import apsw
 
-    db = sqlite3.connect(chembldb_path)
-    db.enable_load_extension(True)
-    db.load_extension(chemicalite_path)
-    db.enable_load_extension(False)
+    connection = apsw.Connection(chembldb_path)
+    connection.enableloadextension(True)
+    connection.loadextension(chemicalite_path)
+    connection.enableloadextension(False)
 
+    cursor = connection.cursor()
+    
     # create a virtual table to be filled with morgan bfp data
-    db.execute("CREATE VIRTUAL TABLE morgan USING\n"
-               "rdtree(id, bfp bytes(64))");
+    cursor.execute("CREATE VIRTUAL TABLE morgan USING\n" +
+                   "rdtree(id, bfp bytes(64))");
 
     # compute and insert the fingerprints
-    db.execute("INSERT INTO morgan(id, bfp)\n"
-               "SELECT id, mol_morgan_bfp(molecule, 2) FROM chembl")
-
-    db.commit()
-    db.close()
+    cursor.execute("INSERT INTO morgan(id, bfp)\n" +
+                   "SELECT id, mol_morgan_bfp(molecule, 2) FROM chembl")
 
 Once again, a script file implementing the above commands is provided::
 
-    $ ./create_bfp_data.py /path/to/libchemicalite.so /path/to/chembldb.sql
+    $ ./create_bfp_data.py /path/to/chemicalite.so /path/to/chembldb.sql
 
 A search for similar structures is therefore based on filtering this newly created table. The following statement would for example return the number of compounds with a Tanimoto similarity greater than or equal to the threshold value (see also the `tanimoto_count.py` file for a complete script)::
 
@@ -181,7 +180,7 @@ A sorted list of SMILES strings identifying the most similar compounds is for ex
 
 Finally, these last two examples were executed using the `tanimoto_search.py` script, which is based on the previous query::
 
-    $ ./tanimoto_search.py /path/to/libchemicalite.so /path/to/chembldb.sql "Cc1ccc2nc(-c3ccc(NC(C4N(C(c5cccs5)=O)CCC4)=O)cc3)sc2c1" 0.5
+    $ ./tanimoto_search.py /path/to/chemicalite.so /path/to/chembldb.sql "Cc1ccc2nc(-c3ccc(NC(C4N(C(c5cccs5)=O)CCC4)=O)cc3)sc2c1" 0.5
     searching for target:  Cc1ccc2nc(-c3ccc(NC(C4N(C(c5cccs5)=O)CCC4)=O)cc3)sc2c1
     CHEMBL467428 Cc1ccc2nc(sc2c1)c3ccc(NC(=O)C4CCN(CC4)C(=O)c5cccs5)cc3 0.772727272727
     CHEMBL461435 Cc1ccc2nc(sc2c1)c3ccc(NC(=O)C4CCCN(C4)S(=O)(=O)c5cccs5)cc3 0.657534246575
@@ -196,7 +195,7 @@ Finally, these last two examples were executed using the `tanimoto_search.py` sc
 
 ::
 
-    $ ./tanimoto_search.py /path/to/libchemicalite.so /path/to/chembldb.sql "Cc1ccc2nc(N(C)CC(=O)O)sc2c1" 0.5
+    $ ./tanimoto_search.py /path/to/chemicalite.so /path/to/chembldb.sql "Cc1ccc2nc(N(C)CC(=O)O)sc2c1" 0.5
     searching for target: Cc1ccc2nc(N(C)CC(=O)O)sc2c1
     CHEMBL394654 CN(CCN(C)c1nc2ccc(C)cc2s1)c3nc4ccc(C)cc4s3 0.692307692308
     CHEMBL491074 CN(CC(=O)O)c1nc2cc(ccc2s1)[N+](=O)[O-] 0.583333333333
