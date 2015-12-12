@@ -11,6 +11,12 @@ include_directories(${SQLITE3_INCLUDE_DIR})
 find_package(RDKit REQUIRED)
 include_directories(${RDKit_INCLUDE_DIRS})
 
+option(CHEMICALITE_USE_BUILTIN_POPCOUNT "use builtin popcount" ON)
+
+if (CHEMICALITE_USE_BUILTIN_POPCOUNT)
+   add_definitions(-DUSE_BUILTIN_POPCOUNT)
+endif (CHEMICALITE_USE_BUILTIN_POPCOUNT)
+
 add_library(chemicalite MODULE 
  	    molecule.c
 	    bfp_ops.c

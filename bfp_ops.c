@@ -1,4 +1,3 @@
-
 #include "chemicalite.h"
 #include "bfp_ops.h"
 
@@ -6,6 +5,15 @@
 // from Gred Landrum's RDKit PostgreSQL cartridge code that in turn is
 // adapted from Andrew Dalke's chem-fingerprints code
 // http://code.google.com/p/chem-fingerprints/
+
+#ifdef USE_BUILTIN_POPCOUNT
+
+#ifdef __MSC_VER
+#include <intrin.h>
+#define __builtin_popcount __popcnt
+#endif
+
+#endif
 
 static int byte_popcounts[] = {
   0,1,1,2,1,2,2,3,1,2,2,3,2,3,3,4,1,2,2,3,2,3,3,4,2,3,3,4,3,4,4,5,
@@ -22,7 +30,17 @@ int bfp_op_weight(int length, u8 *bfp)
 {
   int total_popcount = 0; 
   int i;
+#ifdef USE_BUILTIN_POPCOUNT
+  unsigned int * ibfp = (unsigned int *) bfp;
+  int ilength = length / sizeof(unsigned int);
+  for (i = 0; i < ilength; ++i) {
+    total_popcount += __builtin_popcount(*ibfp++);
+  }
+  bfp += ilength * sizeof(unsigned int);
+  for (i = ilength * sizeof(unsigned int); i < length; ++i) {
+#else
   for (i = 0; i < length; ++i) {
+#endif
     total_popcount += byte_popcounts[*bfp++];
   }
   return total_popcount;
@@ -31,7 +49,19 @@ int bfp_op_weight(int length, u8 *bfp)
 void bfp_op_union(int length, u8 *bfp1, u8 *bfp2)
 {
   int i;
+#if 1
+  unsigned int * ibfp1 = (unsigned int *) bfp1;
+  unsigned int * ibfp2 = (unsigned int *) bfp2;
+  int ilength = length / sizeof(unsigned int);
+  for (i = 0; i < ilength; ++i) {
+    *ibfp1++ |= *ibfp2++;
+  }
+  bfp1 += ilength * sizeof(unsigned int);
+  bfp2 += ilength * sizeof(unsigned int);
+  for (i = ilength * sizeof(unsigned int); i < length; ++i) {
+#else
   for (i = 0; i < length; ++i) {
+#endif
     *bfp1++ |= *bfp2++;
   }
 }
@@ -40,7 +70,21 @@ int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2)
 {
   int growth = 0; 
   int i;
+#ifdef USE_BUILTIN_POPCOUNT
+  unsigned int * ibfp1 = (unsigned int *) bfp1;
+  unsigned int * ibfp2 = (unsigned int *) bfp2;
+  int ilength = length / sizeof(unsigned int);
+  for (i = 0; i < ilength; ++i) {
+    unsigned int i1 = *ibfp1++;
+    unsigned int i2 = *ibfp2++;
+    growth += __builtin_popcount(i1 ^ (i1 | i2));
+  }
+  bfp1 += ilength * sizeof(unsigned int);
+  bfp2 += ilength * sizeof(unsigned int);
+  for (i = ilength * sizeof(unsigned int); i < length; ++i) {
+#else
   for (i = 0; i < length; ++i) {
+#endif
     u8 b1 = *bfp1++; 
     u8 b2 = *bfp2++;
     growth += byte_popcounts[b1 ^ (b1 | b2)];
@@ -52,8 +96,20 @@ int bfp_op_same(int length, u8 *bfp1, u8 *bfp2)
 {
   int intersect_popcount = 0;
   int i;
-  for (i = 0; i < length; ++i, ++bfp1, ++bfp2) {
-    intersect_popcount += byte_popcounts[ *bfp1 & *bfp2 ];
+#ifdef USE_BUILTIN_POPCOUNT
+  unsigned int * ibfp1 = (unsigned int *) bfp1;
+  unsigned int * ibfp2 = (unsigned int *) bfp2;
+  int ilength = length / sizeof(unsigned int);
+  for (i = 0; i < ilength; ++i) {
+    intersect_popcount += __builtin_popcount(*ibfp1++ & *ibfp2++);
+  }
+  bfp1 += ilength * sizeof(unsigned int);
+  bfp2 += ilength * sizeof(unsigned int);
+  for (i = ilength * sizeof(unsigned int); i < length; ++i) {
+#else
+  for (i = 0; i < length; ++i) {
+#endif
+    intersect_popcount += byte_popcounts[*bfp1++ & *bfp2++];
   }
   return intersect_popcount;
 }
@@ -62,7 +118,21 @@ int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2)
 {
   int contains = 1;
   int i;
+#if 1
+  unsigned int * ibfp1 = (unsigned int *) bfp1;
+  unsigned int * ibfp2 = (unsigned int *) bfp2;
+  int ilength = length / sizeof(unsigned int);
+  for (i = 0; contains && i < ilength; ++i) {
+    unsigned int i1 = *ibfp1++;
+    unsigned int i2 = *ibfp2++;
+    contains = i1 == (i1 | i2);
+  }
+  bfp1 += ilength * sizeof(unsigned int);
+  bfp2 += ilength * sizeof(unsigned int);
+  for (i = ilength * sizeof(unsigned int); contains && i < length; ++i) {
+#else
   for (i = 0; contains && i < length; ++i) {
+#endif
     u8 b1 = *bfp1++; 
     u8 b2 = *bfp2++;
     contains = b1 == (b1 | b2);
@@ -78,9 +148,26 @@ double bfp_op_tanimoto(int length, u8 *afp, u8 *bfp)
   int union_popcount = 0;
   int intersect_popcount = 0;
   int i;
-  for (i = 0; i < length; ++i, ++afp, ++bfp) {
-    union_popcount += byte_popcounts[ *afp | *bfp ];
-    intersect_popcount += byte_popcounts[ *afp & *bfp ];
+#ifdef USE_BUILTIN_POPCOUNT
+  unsigned int * iafp = (unsigned int *) afp;
+  unsigned int * ibfp = (unsigned int *) bfp;
+  int ilength = length / sizeof(unsigned int);
+  for (i = 0; i < ilength; ++i) {
+    unsigned int ia = *iafp++;
+    unsigned int ib = *ibfp++;
+    union_popcount += __builtin_popcount(ia | ib);
+    intersect_popcount += __builtin_popcount(ia & ib);
+  }
+  afp += ilength * sizeof(unsigned int);
+  bfp += ilength * sizeof(unsigned int);
+  for (i = ilength * sizeof(unsigned int); i < length; ++i) {
+#else
+  for (i = 0; i < length; ++i) {
+#endif
+    u8 ba = *afp++;
+    u8 bb = *bfp++;
+    union_popcount += byte_popcounts[ ba | bb ];
+    intersect_popcount += byte_popcounts[ ba & bb ];
   }
   
   if (union_popcount != 0) {
@@ -98,9 +185,26 @@ double bfp_op_dice(int length, u8 *afp, u8 *bfp)
   int intersect_popcount = 0;
   int total_popcount = 0; 
   int i;
-  for (i = 0; i < length; ++i, ++afp, ++bfp) {
-    total_popcount += byte_popcounts[*afp] + byte_popcounts[*bfp];
-    intersect_popcount += byte_popcounts[*afp & *bfp];
+#ifdef USE_BUILTIN_POPCOUNT
+  unsigned int * iafp = (unsigned int *) afp;
+  unsigned int * ibfp = (unsigned int *) bfp;
+  int ilength = length / sizeof(unsigned int);
+  for (i = 0; i < ilength; ++i) {
+    unsigned int ia = *iafp++;
+    unsigned int ib = *ibfp++;
+    total_popcount += __builtin_popcount(ia) + __builtin_popcount(ib);
+    intersect_popcount += __builtin_popcount(ia & ib);
+  }
+  afp += ilength * sizeof(unsigned int);
+  bfp += ilength * sizeof(unsigned int);
+  for (i = ilength * sizeof(unsigned int); i < length; ++i) {
+#else
+  for (i = 0; i < length; ++i) {
+#endif
+    u8 ba = *afp++;
+    u8 bb = *bfp++;
+    total_popcount += byte_popcounts[ba] + byte_popcounts[bb];
+    intersect_popcount += byte_popcounts[ba & bb];
   }
 
   if (total_popcount != 0) {
