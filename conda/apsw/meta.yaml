@@ -1,10 +1,10 @@
 package:
   name: apsw
-  version: "3.8.4.1.r1"
+  version: "3.9.2.r1"
 
 source:
   git_url: https://github.com/rogerbinns/apsw.git
-  git_tag: 3.8.4.1-r1
+  git_tag: 3.9.2-r1
 
 build:
   number: 1
