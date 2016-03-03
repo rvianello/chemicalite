@@ -90,8 +90,8 @@ static i64 readInt64(u8 *p)
 }
 
 /*
-** Functions to serialize a 16 bit integer, 32 bit real number and
-** 64 bit integer. The value returned is the number of bytes written
+** Functions to serialize a 16 bit and 64 bit integer.
+** The value returned is the number of bytes written
 ** to the argument buffer (always 2, 4 and 8 respectively).
 */
 static int writeInt16(u8 *p, int i)
