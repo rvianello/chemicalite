@@ -1182,8 +1182,6 @@ static int chooseLeaf(RDtree *pRDtree,
     RDtreeItem item;
     RDtreeNode *pChild;
 
-    RDtreeItem *aItem = 0;
-
     /* Select the child node which will be enlarged the least if pItem
     ** is inserted into it. Resolve ties by choosing the entry with
     ** the smallest weight.
@@ -1205,7 +1203,6 @@ static int chooseLeaf(RDtree *pRDtree,
       }
     }
 
-    sqlite3_free(aItem);
     rc = nodeAcquire(pRDtree, iBest, pNode, &pChild);
     nodeRelease(pRDtree, pNode);
     pNode = pChild;
