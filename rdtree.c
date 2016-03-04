@@ -142,7 +142,6 @@ struct RDtree {
   ** headed by the node (leaf nodes have RDtreeNode.iNode==0).
   */
   RDtreeNode *pDeleted;
-  int iReinsertHeight;  /* Height of sub-trees Reinsert() has run on DELME? */
 
   /* Statements to read/write/delete a record from xxx_node */
   sqlite3_stmt *pReadNode;
@@ -1985,7 +1984,6 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
 
     if (rc == SQLITE_OK) {
       int rc2;
-      pRDtree->iReinsertHeight = -1;
       rc = rdtreeInsertItem(pRDtree, pLeaf, &item, 0);
       rc2 = nodeRelease(pRDtree, pLeaf);
       if (rc == SQLITE_OK) {
