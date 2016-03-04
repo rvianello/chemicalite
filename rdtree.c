@@ -170,7 +170,6 @@ struct RDtree {
 ** cells are removed from the overfull node and reinserted into the tree.
 */
 #define RDTREE_MINITEMS(p) ((p)->iNodeCapacity/3)
-#define RDTREE_REINSERT(p) RDTREE_MINITEMS(p)
 #define RDTREE_MAXITEMS 51
 
 /*
