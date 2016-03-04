@@ -245,6 +245,8 @@ struct RDtreeNode {
   u8 *zData;
   RDtreeNode *pNext;   /* Next node in this hash chain */
 };
+
+/* access the number of items stored by the node */
 #define NITEM(pNode) readInt16(&(pNode)->zData[2])
 
 /* 
