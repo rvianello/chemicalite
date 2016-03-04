@@ -1597,6 +1597,14 @@ static int fixLeafParent(RDtree *pRDtree, RDtreeNode *pLeaf)
 static int deleteItem(RDtree *pRDtree, RDtreeNode *pNode, 
 		      int iItem, int iHeight);
 
+/*
+** deleting an Item may result in the removal of an underfull node from the
+** that in turn requires the deletion of the corresponding Item from the
+** parent node, and may therefore trigger the further removal of additional
+** nodes.. removed nodes are collected into a linked list where they are 
+** staged for later reinsertion of their items into the tree.
+*/
+
 static int removeNode(RDtree *pRDtree, RDtreeNode *pNode, int iHeight)
 {
   int rc;
