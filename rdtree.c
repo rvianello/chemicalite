@@ -514,7 +514,7 @@ static int nodeInsertItem(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem)
     pNode->isDirty = 1;
   } 
 
-  return (nItem == pRDtree->iNodeCapacity);
+  return (nItem == pRDtree->iNodeCapacity) ? SQLITE_FULL : SQLITE_OK;
 }
 
 /*
