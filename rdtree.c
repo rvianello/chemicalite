@@ -1407,7 +1407,6 @@ static int splitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
   int rc = SQLITE_OK;
   int nItem = NITEM(pNode);
   RDtreeItem *aItem;
-  int *aiUsed;
 
   RDtreeNode *pLeft = 0;
   RDtreeNode *pRight = 0;
@@ -1417,17 +1416,12 @@ static int splitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
 
   /* Allocate an array and populate it with a copy of pItem and 
   ** all items from node pLeft. Then zero the original node.
-  ** 
-  ** Actually, the same buffer will host both the above mentioned array
-  ** (aItem) and an array of integer flags (aiUsed).
   */
-  aItem = sqlite3_malloc((sizeof(RDtreeItem) + sizeof(int)) * (nItem + 1));
+  aItem = sqlite3_malloc(sizeof(RDtreeItem) * (nItem + 1));
   if (!aItem) {
     rc = SQLITE_NOMEM;
     goto splitnode_out;
   }
-  aiUsed = (int *)&aItem[nItem + 1];
-  memset(aiUsed, 0, (sizeof(int) * (nItem + 1)));
   for (i = 0; i < nItem; i++){
     nodeGetItem(pRDtree, pNode, i, &aItem[i]);
   }
