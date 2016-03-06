@@ -252,6 +252,8 @@ struct RDtreeNode {
 */
 struct RDtreeItem {
   i64 iRowid;
+  int iMinWeight;
+  int iMaxWeight;
   u8 aBfp[MAX_BITSTRING_SIZE];
 };
 
@@ -261,19 +263,13 @@ static int itemWeight(RDtree *pRDtree, RDtreeItem *pItem)
 }
 
 /*
-** Store the union of items p1 and p2 in p1.
-*/
-static void itemUnion(RDtree *pRDtree, RDtreeItem *p1, RDtreeItem *p2)
-{
-  bfp_op_union(pRDtree->iBfpSize, p1->aBfp, p2->aBfp);
-}
-
-/*
 ** Return true if item p2 is a subset of item p1. False otherwise.
 */
 static int itemContains(RDtree *pRDtree, RDtreeItem *p1, RDtreeItem *p2)
 {
-  return bfp_op_contains(pRDtree->iBfpSize, p1->aBfp, p2->aBfp);
+  return ( p1->iMinWeight <= p2->iMinWeight &&
+	   p1->iMaxWeight >= p2->iMaxWeight &&
+	   bfp_op_contains(pRDtree->iBfpSize, p1->aBfp, p2->aBfp) );
 }
 
 /*
@@ -282,6 +278,16 @@ static int itemContains(RDtree *pRDtree, RDtreeItem *p1, RDtreeItem *p2)
 static int itemGrowth(RDtree *pRDtree, RDtreeItem *pBase, RDtreeItem *pAdded)
 {
   return bfp_op_growth(pRDtree->iBfpSize, pBase->aBfp, pAdded->aBfp);
+}
+
+/*
+** Extend the bounds of p1 to contain p2
+*/
+static void itemExtendBounds(RDtree *pRDtree, RDtreeItem *p1, RDtreeItem *p2)
+{
+  bfp_op_union(pRDtree->iBfpSize, p1->aBfp, p2->aBfp);
+  if (p1->iMinWeight > p2->iMinWeight) { p1->iMinWeight = p2->iMinWeight; }
+  if (p1->iMaxWeight < p2->iMaxWeight) { p1->iMaxWeight = p2->iMaxWeight; }
 }
 
 /*
@@ -476,9 +482,10 @@ static int nodeAcquire(RDtree *pRDtree,     /* R-tree structure */
 */
 static void nodeOverwriteItem(RDtree *pRDtree, RDtreeNode *pNode,  
 			      RDtreeItem *pItem, int iItem) {
-  int ii;
   u8 *p = &pNode->zData[4 + pRDtree->nBytesPerItem*iItem];
   p += writeInt64(p, pItem->iRowid);
+  p += writeInt16(p, pItem->iMinWeight);
+  p += writeInt16(p, pItem->iMaxWeight);
   memcpy(p, pItem->aBfp, pRDtree->iBfpSize);
   pNode->isDirty = 1;
 }
@@ -581,6 +588,28 @@ static i64 nodeGetRowid(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
   return readInt64(&pNode->zData[4 + pRDtree->nBytesPerItem*iItem]);
 }
 
+/* Return the min weight computed on the fingerprints associated to this
+** item. If pNode is a leaf node then this is the actual population count
+** for the item's fingerprint. On internal nodes the min weight contributes
+** to defining the cell bounds
+*/
+static int nodeGetMinWeight(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
+{
+  assert(iItem < NITEM(pNode));
+  return readInt16(&pNode->zData[4 + pRDtree->nBytesPerItem*iItem + 8 /* rowid */]);
+}
+
+/* Return the max weight computed on the fingerprints associated to this
+** item. If pNode is a leaf node then this is the actual population count
+** for the item's fingerprint. On internal nodes the max weight contributes
+** to defining the cell bounds
+*/
+static int nodeGetMaxWeight(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
+{
+  assert(iItem < NITEM(pNode));
+  return readInt16(&pNode->zData[4 + pRDtree->nBytesPerItem*iItem + 8 /* rowid */ + 2 /* min weight */]);
+}
+
 /*
 ** Return pointer to the binary fingerprint associated with item iItem of
 ** node pNode. If pNode is a leaf node, this is a virtual table element.
@@ -590,7 +619,7 @@ static i64 nodeGetRowid(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
 static u8 *nodeGetBfp(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
 {
   assert(iItem < NITEM(pNode));
-  return &pNode->zData[4 + pRDtree->nBytesPerItem*iItem + 8];
+  return &pNode->zData[4 + pRDtree->nBytesPerItem*iItem + 8 /* rowid */ + 4 /* min/max weight */];
 }
 
 /*
@@ -600,9 +629,10 @@ static u8 *nodeGetBfp(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
 static void nodeGetItem(RDtree *pRDtree, RDtreeNode *pNode, 
 			int iItem, RDtreeItem *pItem)
 {
-  i64 iRowid = nodeGetRowid(pRDtree, pNode, iItem);
+  pItem->iRowid = nodeGetRowid(pRDtree, pNode, iItem);
+  pItem->iMinWeight = nodeGetMinWeight(pRDtree, pNode, iItem);
+  pItem->iMaxWeight = nodeGetMaxWeight(pRDtree, pNode, iItem);
   u8 *pBfp = nodeGetBfp(pRDtree, pNode, iItem);
-  pItem->iRowid = iRowid;
   memcpy(pItem->aBfp, pBfp, pRDtree->iBfpSize);
 }
 
@@ -1229,7 +1259,7 @@ static int adjustTree(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem)
 
     nodeGetItem(pRDtree, pParent, iItem, &item);
     if (!itemContains(pRDtree, &item, pItem)) {
-      itemUnion(pRDtree, &item, pItem);
+      itemExtendBounds(pRDtree, &item, pItem);
       nodeOverwriteItem(pRDtree, pParent, &item, iItem);
     }
  
@@ -1366,11 +1396,11 @@ static int assignItems(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
     if ((RDTREE_MINITEMS(pRDtree) - NITEM(pRight) == i) ||
 	(iPreferRight > 0 && (RDTREE_MINITEMS(pRDtree) - NITEM(pLeft) != i))) {
       nodeInsertItem(pRDtree, pRight, pNext);
-      itemUnion(pRDtree, pRightBounds, pNext);
+      itemExtendBounds(pRDtree, pRightBounds, pNext);
     }
     else {
       nodeInsertItem(pRDtree, pLeft, pNext);
-      itemUnion(pRDtree, pLeftBounds, pNext);
+      itemExtendBounds(pRDtree, pLeftBounds, pNext);
     }
   }
 
@@ -1644,7 +1674,7 @@ static int fixNodeBounds(RDtree *pRDtree, RDtreeNode *pNode)
     for (ii = 1; ii < nItem; ii++) {
       RDtreeItem item;
       nodeGetItem(pRDtree, pNode, ii, &item);
-      itemUnion(pRDtree, &bounds, &item);
+      itemExtendBounds(pRDtree, &bounds, &item);
     }
     bounds.iRowid = pNode->iNode;
     rc = nodeParentIndex(pRDtree, pNode, &ii);
@@ -1931,6 +1961,7 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
 	item.iRowid = rowid;
       }
       memcpy(item.aBfp, sqlite3_value_blob(argv[3]), pRDtree->iBfpSize);
+      item.iMinWeight = item.iMaxWeight = bfp_op_weight(pRDtree->iBfpSize, item.aBfp);
     }
 
     if (rc != SQLITE_OK) {
@@ -2211,7 +2242,7 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
 
   pRDtree->db = db;
   pRDtree->iBfpSize = iBfpSize;
-  pRDtree->nBytesPerItem = 8 + iBfpSize; 
+  pRDtree->nBytesPerItem = 8 /* row id */ + 4 /* min/max weight */ + iBfpSize; 
   pRDtree->nBusy = 1;
   pRDtree->zDb = (char *)&pRDtree[1];
   pRDtree->zName = &pRDtree->zDb[nDb+1];
