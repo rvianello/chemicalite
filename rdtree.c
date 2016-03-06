@@ -1438,8 +1438,8 @@ static int splitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
   }
   else {
     pLeft = pNode;
-    pRight = nodeNew(pRDtree, pLeft->pParent);
     nodeReference(pLeft);
+    pRight = nodeNew(pRDtree, pLeft->pParent);
   }
 
   if (!pLeft || !pRight) {
@@ -1516,18 +1516,6 @@ static int splitNode(RDtree *pRDtree, RDtreeNode *pNode, RDtreeItem *pItem,
   }
   else if (newItemIsRight == 0) {
     rc = updateMapping(pRDtree, pItem->iRowid, pLeft, iHeight);
-  }
-
-  /* FIXME the following two blocks seem useless to me */
-
-  if (rc == SQLITE_OK) {
-    rc = nodeRelease(pRDtree, pRight);
-    pRight = 0;
-  }
-
-  if (rc == SQLITE_OK) {
-    rc = nodeRelease(pRDtree, pLeft);
-    pLeft = 0;
   }
 
 splitnode_out:
