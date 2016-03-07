@@ -205,8 +205,8 @@ struct RDtreeConstraint {
   ** redesign. FIXME
   */
   u8 aBfp[MAX_BITSTRING_SIZE];    /* Constraint value. */
+  int iWeight;
   double dParam;
-  int iParam;
   RDtreeMatchOp *op;
 };
 
@@ -2307,7 +2307,12 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
 static int subsetTest(RDtree* pRDtree, 
 		      RDtreeConstraint* pCons, RDtreeItem* pItem, int* pEof)
 {
-  *pEof = bfp_op_contains(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp) ? 0 : 1;
+  if (pItem->iMaxWeight < pCons->iWeight) {
+    *pEof = 1;
+  }
+  else {
+    *pEof = bfp_op_contains(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp) ? 0 : 1;
+  }
   return SQLITE_OK;
 }
 
@@ -2341,6 +2346,7 @@ static void rdtree_subset_f(sqlite3_context* ctx,
     pMatchArg->magic = RDTREE_MATCH_MAGIC;
     pMatchArg->constraint.op = &subsetMatchOp;
     memcpy(pMatchArg->constraint.aBfp, sqlite3_value_blob(argv[0]), sz);
+    pMatchArg->constraint.iWeight = bfp_op_weight(sz, pMatchArg->constraint.aBfp);
   }
 
   if (rc == SQLITE_OK) {
@@ -2364,18 +2370,34 @@ static int tanimotoTestInternal(RDtree* pRDtree,
 				RDtreeConstraint* pCons, RDtreeItem* pItem, 
 				int* pEof)
 {
-  /* The item in the internal node stores the union of the fingerprints 
-  ** that populate the child nodes. I want to use this union to compute an
-  ** upper bound to the similarity. If this upper bound is lower than the 
-  ** threashold value then the item can be discarded and the referred branch
-  ** pruned.
-  **
-  ** T = Nsame / (Na + Nb - Nsame) <= Nsame / Na
-  */
-
-  int same = bfp_op_same(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
-  int na = pCons->iParam; /* bfp_op_weight(pRDtree->iBfpSize, pCons->aBfp); */
-  *pEof = (same + 0.0)/na >= pCons->dParam ? 0 : 1;
+  if ((pCons->dParam > 0.) &&
+      ((pCons->iWeight*pCons->dParam > pItem->iMaxWeight) || (pCons->iWeight/pCons->dParam < pItem->iMinWeight))) {
+    /* It is known that for the tanimoto similarity to be above a given 
+    ** threshold t, it must be
+    **
+    ** Na*t <= Nb <= Na/t
+    **
+    ** And for the fingerprints in pItem we have that 
+    ** 
+    ** iMinWeight <= Nb <= iMaxWeight
+    **
+    ** so if (Na*t > iMaxWeight) or (Na/t < iMinWeight) this item can be discarded.
+    */
+    *pEof = 1;
+  }
+  else {
+    /* The item in the internal node stores the union of the fingerprints 
+    ** that populate the child nodes. I want to use this union to compute an
+    ** upper bound to the similarity. If this upper bound is lower than the 
+    ** threashold value then the item can be discarded and the referred branch
+    ** pruned.
+    **
+    ** T = Nsame / (Na + Nb - Nsame) <= Nsame / Na
+    */
+    int same = bfp_op_same(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
+    int na = pCons->iWeight; /* bfp_op_weight(pRDtree->iBfpSize, pCons->aBfp); */
+    *pEof = (same + 0.0)/na >= pCons->dParam ? 0 : 1;
+  }
   return SQLITE_OK;
 }
 
@@ -2383,9 +2405,17 @@ static int tanimotoTestLeaf(RDtree* pRDtree,
 			    RDtreeConstraint* pCons, RDtreeItem* pItem, 
 			    int* pEof)
 {
-  double similarity 
-    = bfp_op_tanimoto(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
-  *pEof = similarity >= pCons->dParam ? 0 : 1;    
+  int weight = pItem->iMaxWeight; /* on a leaf node */
+  if ((pCons->dParam > 0.) &&
+      ((pCons->iWeight*pCons->dParam > weight) || (pCons->iWeight/pCons->dParam < weight))) {
+    /* skip the similarity computation when possible, see comment in function above testing the internal node */
+    *pEof = 1;
+  }
+  else {
+    double similarity 
+      = bfp_op_tanimoto(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
+    *pEof = similarity >= pCons->dParam ? 0 : 1;
+  }
   return SQLITE_OK;
 }
 
@@ -2426,9 +2456,8 @@ static void rdtree_tanimoto_f(sqlite3_context* ctx,
     pMatchArg->magic = RDTREE_MATCH_MAGIC;
     pMatchArg->constraint.op = &tanimotoMatchOp;
     memcpy(pMatchArg->constraint.aBfp, sqlite3_value_blob(argv[0]), sz);
+    pMatchArg->constraint.iWeight = bfp_op_weight(sz, pMatchArg->constraint.aBfp);
     pMatchArg->constraint.dParam = sqlite3_value_double(argv[1]);
-    pMatchArg->constraint.iParam 
-      = bfp_op_weight(sz, pMatchArg->constraint.aBfp);
   }
 
   if (rc == SQLITE_OK) {
