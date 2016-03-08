@@ -30,6 +30,8 @@ set_target_properties(chemicalite PROPERTIES PREFIX "")
 target_link_libraries(chemicalite 
                       Descriptors Fingerprints GraphMol)
 
+add_subdirectory(examples)
+
 option(CHEMICALITE_ENABLE_TESTS "enable tests" ON)
 option(CHEMICALITE_ENABLE_PYTHON_TESTS "enable python tests" ON)
 
