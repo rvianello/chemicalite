@@ -28,7 +28,7 @@ add_library(chemicalite MODULE
 set_target_properties(chemicalite PROPERTIES PREFIX "")
 
 target_link_libraries(chemicalite 
-                      Descriptors Fingerprints GraphMol)
+                      Descriptors Fingerprints GraphMol  ${SQLITE3_LIBRARY})
 
 add_subdirectory(examples)
 
