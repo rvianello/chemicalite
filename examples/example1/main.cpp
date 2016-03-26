@@ -53,6 +53,16 @@ void initialize_database(sqlite3 * db)
 
 void insert_molecules(sqlite3 * db, std::istream & input)
 {
+  char * errmsg = 0;
+
+  if (sqlite3_exec(db, "BEGIN",  
+		   NULL,  /* Callback function */
+		   0,     /* 1st argument to callback */
+		   &errmsg) != SQLITE_OK) {
+    std::cerr << "Could not begin transaction: " << errmsg << std::endl;
+    sqlite3_free(errmsg);
+  }
+
   const char * sql =
     "INSERT INTO chembl(chembl_id, smiles, molecule) VALUES(?, ?, mol(?))";
 
@@ -98,7 +108,7 @@ void insert_molecules(sqlite3 * db, std::istream & input)
       // execute the query
       if (sqlite3_step(stmt) != SQLITE_DONE) {
    	std::cerr << "Couldn't execute sql statement" << std::endl;
-	break;
+	// don't break; just reset the statement and continue.
       }
 
       // reset the query
@@ -114,7 +124,15 @@ void insert_molecules(sqlite3 * db, std::istream & input)
   }
 
   if (sqlite3_finalize(stmt) != SQLITE_OK)  {
-    std::cerr << "Couldn't finalize statement" << std::endl;
+    //std::cerr << "Couldn't finalize statement" << std::endl;
+  }
+  
+  if (sqlite3_exec(db, "COMMIT",  
+		   NULL,  /* Callback function */
+		   0,     /* 1st argument to callback */
+		   &errmsg) != SQLITE_OK) {
+    std::cerr << "Could not commit transaction: " << errmsg << std::endl;
+    sqlite3_free(errmsg);
   }
 }
 
