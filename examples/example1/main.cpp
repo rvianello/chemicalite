@@ -51,6 +51,25 @@ void initialize_database(sqlite3 * db)
 }
 
 
+void replace_substring(std::string & str,
+		       const std::string & from, const std::string & to)
+{
+  if(from.empty())
+    return;
+  size_t start_pos = 0;
+  while((start_pos = str.find(from, start_pos)) != std::string::npos) {
+    str.replace(start_pos, from.length(), to);
+    start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
+  }
+}
+
+void fix_smiles(std::string & smiles)
+{
+  replace_substring(smiles, "=N#N", "=[N+]=[N-]");
+  replace_substring(smiles, "N#N=", "[N-]=[N+]=");
+}
+
+
 void insert_molecules(sqlite3 * db, std::istream & input)
 {
   char * errmsg = 0;
@@ -72,8 +91,9 @@ void insert_molecules(sqlite3 * db, std::istream & input)
   }
   
   // skip the header line
-  char buffer[1024];
-  input.getline(buffer, 1024);
+  static const int BUFFER_SIZE = 4096;
+  char buffer[BUFFER_SIZE];
+  input.getline(buffer, BUFFER_SIZE);
 
   if (!input) {
     std::cerr << "Unexpected end of input after header line" << std::endl;
@@ -82,12 +102,21 @@ void insert_molecules(sqlite3 * db, std::istream & input)
   int line_count = 0;
   
   while (input) {
-    std::string chembl_id, smiles, inchi, inchi_key;
-    input >> chembl_id >> smiles >> inchi >> inchi_key;
-    if (input) {
-      // std::cout << ++line_count << " "
-      // 		<< chembl_id << " " << smiles << std::endl;
 
+    std::string chembl_id, smiles;
+    input >> chembl_id >> smiles;
+    input.getline(buffer, BUFFER_SIZE); // discard the rest of the line
+    
+    if (input) {
+
+      ++line_count;
+
+      if (smiles.size() > 300) {
+	continue;
+      }
+
+      fix_smiles(smiles);
+      
       // bind the query parameter
       if (sqlite3_bind_text(stmt, 1, chembl_id.c_str(), -1, SQLITE_STATIC)
 	  != SQLITE_OK) {
@@ -107,7 +136,8 @@ void insert_molecules(sqlite3 * db, std::istream & input)
 
       // execute the query
       if (sqlite3_step(stmt) != SQLITE_DONE) {
-   	std::cerr << "Couldn't execute sql statement" << std::endl;
+   	std::cerr << "Couldn't execute sql statement: "
+		  << line_count << std::endl;
 	// don't break; just reset the statement and continue.
       }
 
