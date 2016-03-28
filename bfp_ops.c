@@ -142,12 +142,13 @@ int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2)
 
 double bfp_op_tanimoto(int length, u8 *afp, u8 *bfp)
 {
-  double sim = 0.0;
+  double sim;
 
   // Nsame / (Na + Nb - Nsame)
   int union_popcount = 0;
   int intersect_popcount = 0;
   int i;
+
 #ifdef USE_BUILTIN_POPCOUNT
   unsigned int * iafp = (unsigned int *) afp;
   unsigned int * ibfp = (unsigned int *) bfp;
@@ -158,22 +159,35 @@ double bfp_op_tanimoto(int length, u8 *afp, u8 *bfp)
     union_popcount += __builtin_popcount(ia | ib);
     intersect_popcount += __builtin_popcount(ia & ib);
   }
-  afp += ilength * sizeof(unsigned int);
-  bfp += ilength * sizeof(unsigned int);
-  for (i = ilength * sizeof(unsigned int); i < length; ++i) {
+  if (length % sizeof(unsigned int)) {
+    int ilength_end = ilength * sizeof(unsigned int);
+    if (ilength_end < length) {
+      afp += ilength_end;
+      bfp += ilength_end;
+    }
+    for (i = ilength_end; i < length; ++i) {
+      u8 ba = *afp++;
+      u8 bb = *bfp++;
+      union_popcount += byte_popcounts[ ba | bb ];
+      intersect_popcount += byte_popcounts[ ba & bb ];
+    }
+  }
 #else
   for (i = 0; i < length; ++i) {
-#endif
     u8 ba = *afp++;
     u8 bb = *bfp++;
     union_popcount += byte_popcounts[ ba | bb ];
     intersect_popcount += byte_popcounts[ ba & bb ];
   }
-  
+#endif
+    
   if (union_popcount != 0) {
-    sim = (intersect_popcount + 0.0) / union_popcount;
+    sim = ((double)intersect_popcount) / union_popcount;
   }
-
+  else {
+    sim = 1.0;
+  }
+  
   return sim;
 }
 

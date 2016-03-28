@@ -825,6 +825,7 @@ static int descendToItem(RDtree *pRDtree,
   int isEof;
   int rc;
   int ii;
+  int nitem;
   RDtreeNode *pChild;
   sqlite3_int64 iRowid;
 
@@ -848,7 +849,8 @@ static int descendToItem(RDtree *pRDtree,
   nodeRelease(pRDtree, pCursor->pNode);
   pCursor->pNode = pChild;
   isEof = 1;
-  for (ii=0; isEof && ii < NITEM(pChild); ii++) {
+  nitem = NITEM(pChild);
+  for (ii=0; isEof && ii < nitem; ii++) {
     pCursor->iItem = ii;
     rc = descendToItem(pRDtree, pCursor, iHeight-1, &isEof);
     if (rc != SQLITE_OK) {
