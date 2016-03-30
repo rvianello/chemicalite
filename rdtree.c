@@ -589,28 +589,6 @@ static i64 nodeGetRowid(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
   return readInt64(&pNode->zData[4 + pRDtree->nBytesPerItem*iItem]);
 }
 
-/* Return the min weight computed on the fingerprints associated to this
-** item. If pNode is a leaf node then this is the actual population count
-** for the item's fingerprint. On internal nodes the min weight contributes
-** to defining the cell bounds
-*/
-static int nodeGetMinWeight(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
-{
-  assert(iItem < NITEM(pNode));
-  return readInt16(&pNode->zData[4 + pRDtree->nBytesPerItem*iItem + 8 /* rowid */]);
-}
-
-/* Return the max weight computed on the fingerprints associated to this
-** item. If pNode is a leaf node then this is the actual population count
-** for the item's fingerprint. On internal nodes the max weight contributes
-** to defining the cell bounds
-*/
-static int nodeGetMaxWeight(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
-{
-  assert(iItem < NITEM(pNode));
-  return readInt16(&pNode->zData[4 + pRDtree->nBytesPerItem*iItem + 8 /* rowid */ + 2 /* min weight */]);
-}
-
 /*
 ** Return pointer to the binary fingerprint associated with item iItem of
 ** node pNode. If pNode is a leaf node, this is a virtual table element.
@@ -631,8 +609,13 @@ static void nodeGetItem(RDtree *pRDtree, RDtreeNode *pNode,
 			int iItem, RDtreeItem *pItem)
 {
   pItem->iRowid = nodeGetRowid(pRDtree, pNode, iItem);
-  pItem->iMinWeight = nodeGetMinWeight(pRDtree, pNode, iItem);
-  pItem->iMaxWeight = nodeGetMaxWeight(pRDtree, pNode, iItem);
+  pItem->iMinWeight = readInt16(&pNode->zData[4
+					      + pRDtree->nBytesPerItem*iItem
+					      + 8 /* rowid */]);
+  pItem->iMaxWeight = readInt16(&pNode->zData[4
+					      + pRDtree->nBytesPerItem*iItem
+					      + 8 /* rowid */
+					      + 2 /* min weight */]);
   u8 *pBfp = nodeGetBfp(pRDtree, pNode, iItem);
   memcpy(pItem->aBfp, pBfp, pRDtree->iBfpSize);
 }
