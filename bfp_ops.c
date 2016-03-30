@@ -86,7 +86,7 @@ int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2)
   return growth;
 }
 
-int bfp_op_same(int length, u8 *bfp1, u8 *bfp2)
+int bfp_op_iweight(int length, u8 *bfp1, u8 *bfp2)
 {
   int intersect_popcount = 0;
   int i;

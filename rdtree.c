@@ -2394,7 +2394,7 @@ static int tanimotoTestInternal(RDtree* pRDtree,
     ** so if (Na*t > iMaxWeight) or (Na/t < iMinWeight) this item can be discarded.
     */
     *pEof = 1;
-  }
+  }  
   else {
     /* The item in the internal node stores the union of the fingerprints 
     ** that populate the child nodes. I want to use this union to compute an
@@ -2404,9 +2404,14 @@ static int tanimotoTestInternal(RDtree* pRDtree,
     **
     ** T = Nsame / (Na + Nb - Nsame) <= Nsame / Na
     */
-    int same = bfp_op_same(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
-    int na = pCons->iWeight; /* bfp_op_weight(pRDtree->iBfpSize, pCons->aBfp); */
-    *pEof = (same + 0.0)/na >= pCons->dParam ? 0 : 1;
+    int iweight = bfp_op_iweight(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
+    if (pCons->iWeight &&
+	((double)iweight)/pCons->iWeight >= pCons->dParam) {
+      *pEof = 0;
+    }
+    else {
+      *pEof = 1;
+    }
   }
   return SQLITE_OK;
 }
@@ -2418,14 +2423,19 @@ static int tanimotoTestLeaf(RDtree* pRDtree,
   int weight = pItem->iMaxWeight; /* on a leaf node */
   if ((pCons->dParam > 0.) &&
       ((pCons->iWeight*pCons->dParam > weight) || (pCons->iWeight/pCons->dParam < weight))) {
-    /* skip the similarity computation when possible, see comment in function above testing the internal node */
+    /* skip the similarity computation when possible, 
+    ** see comment in function above testing the internal node 
+    */
     *pEof = 1;
+    return SQLITE_OK;
   }
-  else {
-    double similarity 
-      = bfp_op_tanimoto(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
-    *pEof = similarity >= pCons->dParam ? 0 : 1;
-  }
+
+  int iweight = bfp_op_iweight(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
+  int uweight = pItem->iMaxWeight + pCons->iWeight - iweight;
+  double similarity = uweight ? ((double)iweight)/uweight : 1.;
+
+  *pEof = similarity >= pCons->dParam ? 0 : 1;
+  
   return SQLITE_OK;
 }
 
