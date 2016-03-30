@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <math.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -1187,6 +1188,17 @@ static int rdtreeBestIndex(sqlite3_vtab *tab, sqlite3_index_info *pIdxInfo)
 }
 
 /*
+**
+*/
+static double itemDistance(RDtreeItem *aItem, RDtreeItem *bItem)
+{
+  int d1 = abs(aItem->iMinWeight - bItem->iMinWeight);
+  int d2 = abs(aItem->iMaxWeight - bItem->iMaxWeight);
+  return (double) (d1 + d2);
+  /* return (double) (d1 > d2) ? d1 : d2; */
+}
+
+/*
 ** This function implements the chooseLeaf algorithm from Gutman[84].
 ** ChooseSubTree in r*tree terminology.
 */
@@ -1206,29 +1218,28 @@ static int chooseLeaf(RDtree *pRDtree,
     sqlite3_int64 iBest = 0;
 
     int iMinGrowth = 0;
-    int iMinWeight = 0;
-
+    double dMinDistance = 0.;
+    
     int nItem = NITEM(pNode);
     RDtreeItem item;
     RDtreeNode *pChild;
 
     /* Select the child node which will be enlarged the least if pItem
-    ** is inserted into it. Resolve ties by choosing the entry with
-    ** the smallest weight.
+    ** is inserted into it.
     */
     for (iItem = 0; iItem < nItem; iItem++) {
       int bBest = 0;
+      double distance;
       int growth;
-      int weight;
       nodeGetItem(pRDtree, pNode, iItem, &item);
+      distance = itemDistance(&item, pItem);
       growth = itemGrowth(pRDtree, &item, pItem);
-      weight = itemWeight(pRDtree, &item);
 
-      if (iItem == 0 || 
-	  growth < iMinGrowth || 
-	  (growth == iMinGrowth && weight < iMinWeight) ) {
+      if (iItem == 0 ||
+	  distance < dMinDistance ||
+	  (distance == dMinDistance && growth < iMinGrowth) ) {
+	dMinDistance = distance;
         iMinGrowth = growth;
-        iMinWeight = weight;
         iBest = item.iRowid;
       }
     }
@@ -1311,16 +1322,13 @@ static void pickNext(RDtree *pRDtree,
   int ii;
   for(ii = 0; ii < nItem; ii++){
     if( aiUsed[ii]==0 ){
-      double left 
-	= 1. - bfp_op_tanimoto(pRDtree->iBfpSize, 
-			       aItem[ii].aBfp, pLeftSeed->aBfp);
-      double right 
-	= 1. - bfp_op_tanimoto(pRDtree->iBfpSize, 
-			       aItem[ii].aBfp, pRightSeed->aBfp);
+      double left = itemDistance(&aItem[ii], pLeftSeed);
+      double right = itemDistance(&aItem[ii], pRightSeed);
       double diff = left - right;
-      double preference = 0.;
-      if ((left + right) > 0.) {
-	preference = abs(diff)/(left + right);
+      double sum = left + right;
+      double preference = fabs(diff);
+      if (sum) {
+	preference /= (sum);
       }
       if (iSelect < 0 || preference > dMaxPreference) {
         dMaxPreference = preference;
@@ -1345,18 +1353,18 @@ static void pickSeeds(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
 
   int iLeftSeed = 0;
   int iRightSeed = 1;
+  double dDistance;
   double dMaxDistance = 0.;
 
   for (ii = 0; ii < nItem; ii++) {
     for (jj = ii + 1; jj < nItem; jj++) {
-      double tanimoto 
-	= bfp_op_tanimoto(pRDtree->iBfpSize, aItem[ii].aBfp, aItem[jj].aBfp);
-      double distance = 1. - tanimoto;
 
-      if (distance > dMaxDistance) {
+      dDistance = itemDistance(&aItem[ii], &aItem[jj]);
+      
+      if (dDistance > dMaxDistance) {
         iLeftSeed = ii;
         iRightSeed = jj;
-        dMaxDistance = distance;
+        dMaxDistance = dDistance;
       }
     }
   }
