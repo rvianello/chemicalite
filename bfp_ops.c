@@ -8,7 +8,11 @@
 
 #ifdef __MSC_VER
 #include <intrin.h>
-#define __builtin_popcount __popcnt
+#define POPCNT __popcnt
+typedef unsigned int POPCNT_TYPE;
+#else
+#define POPCNT __builtin_popcountll
+typedef unsigned long long POPCNT_TYPE;
 #endif
 
 static int byte_popcounts[] = {
@@ -25,15 +29,16 @@ static int byte_popcounts[] = {
 int bfp_op_weight(int length, u8 *bfp)
 {
   int total_popcount = 0; 
-  int i;
+  int i, length2;
 
-  unsigned int * ibfp = (unsigned int *) bfp;
-  int ilength = length / sizeof(unsigned int);
-  int length2 = ilength * sizeof(unsigned int);
-  for (i = 0; i < ilength; ++i) {
-    total_popcount += __builtin_popcount(*ibfp++);
+  POPCNT_TYPE * ibfp = (POPCNT_TYPE *) bfp;
+  int ilength = length / sizeof(POPCNT_TYPE);
+  POPCNT_TYPE * ibfp_end = ibfp + ilength;
+  while (ibfp < ibfp_end) {
+    total_popcount += POPCNT(*ibfp++);
   }
-  if (length2 < length) {
+  if (length % sizeof(POPCNT_TYPE)) {
+    length2 = ilength * sizeof(POPCNT_TYPE);
     bfp += length2;
     for (i = length2; i < length; ++i) {
       total_popcount += byte_popcounts[*bfp++];
@@ -44,15 +49,16 @@ int bfp_op_weight(int length, u8 *bfp)
 
 void bfp_op_union(int length, u8 *bfp1, u8 *bfp2)
 {
-  int i;
-  unsigned int * ibfp1 = (unsigned int *) bfp1;
-  unsigned int * ibfp2 = (unsigned int *) bfp2;
-  int ilength = length / sizeof(unsigned int);
-  int length2 = ilength * sizeof(unsigned int);
-  for (i = 0; i < ilength; ++i) {
+  int i, length2;
+  POPCNT_TYPE * ibfp1 = (POPCNT_TYPE *) bfp1;
+  POPCNT_TYPE * ibfp2 = (POPCNT_TYPE *) bfp2;
+  int ilength = length / sizeof(POPCNT_TYPE);
+  POPCNT_TYPE * ibfp1_end = ibfp1 + ilength;
+  while (ibfp1 < ibfp1_end) {
     *ibfp1++ |= *ibfp2++;
   }
-  if (length2 < length) {
+  if (length % sizeof(POPCNT_TYPE)) {
+    length2 = ilength * sizeof(POPCNT_TYPE);
     bfp1 += length2;
     bfp2 += length2;
     for (i = length2; i < length; ++i) {
@@ -64,17 +70,18 @@ void bfp_op_union(int length, u8 *bfp1, u8 *bfp2)
 int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2)
 {
   int growth = 0; 
-  int i;
-  unsigned int * ibfp1 = (unsigned int *) bfp1;
-  unsigned int * ibfp2 = (unsigned int *) bfp2;
-  int ilength = length / sizeof(unsigned int);
-  int length2 = ilength * sizeof(unsigned int);
-  for (i = 0; i < ilength; ++i) {
-    unsigned int i1 = *ibfp1++;
-    unsigned int i2 = *ibfp2++;
-    growth += __builtin_popcount(i1 ^ (i1 | i2));
+  int i, length2;
+  POPCNT_TYPE * ibfp1 = (POPCNT_TYPE *) bfp1;
+  POPCNT_TYPE * ibfp2 = (POPCNT_TYPE *) bfp2;
+  int ilength = length / sizeof(POPCNT_TYPE);
+  POPCNT_TYPE * ibfp1_end = ibfp1 + ilength;
+  while (ibfp1 < ibfp1_end) {
+    POPCNT_TYPE i1 = *ibfp1++;
+    POPCNT_TYPE i2 = *ibfp2++;
+    growth += POPCNT(i1 ^ (i1 | i2));
   }
-  if (length2 < length) {  
+  if (length % sizeof(POPCNT_TYPE)) {
+    length2 = ilength * sizeof(POPCNT_TYPE);
     bfp1 += length2;
     bfp2 += length2;
     for (i = length2; i < length; ++i) {
@@ -89,15 +96,16 @@ int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2)
 int bfp_op_iweight(int length, u8 *bfp1, u8 *bfp2)
 {
   int intersect_popcount = 0;
-  int i;
-  unsigned int * ibfp1 = (unsigned int *) bfp1;
-  unsigned int * ibfp2 = (unsigned int *) bfp2;
-  int ilength = length / sizeof(unsigned int);
-  int length2 = ilength * sizeof(unsigned int);
-  for (i = 0; i < ilength; ++i) {
-    intersect_popcount += __builtin_popcount(*ibfp1++ & *ibfp2++);
+  int i, length2;
+  POPCNT_TYPE * ibfp1 = (POPCNT_TYPE *) bfp1;
+  POPCNT_TYPE * ibfp2 = (POPCNT_TYPE *) bfp2;
+  int ilength = length / sizeof(POPCNT_TYPE);
+  POPCNT_TYPE * ibfp1_end = ibfp1 + ilength;
+  while (ibfp1 < ibfp1_end) {
+    intersect_popcount += POPCNT(*ibfp1++ & *ibfp2++);
   }
-  if (length2 < length) {
+  if (length % sizeof(POPCNT_TYPE)) {
+    length2 = ilength * sizeof(POPCNT_TYPE);
     bfp1 += length2;
     bfp2 += length2;
     for (i = length2; i < length; ++i) {
@@ -110,17 +118,18 @@ int bfp_op_iweight(int length, u8 *bfp1, u8 *bfp2)
 int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2)
 {
   int contains = 1;
-  int i;
-  unsigned int * ibfp1 = (unsigned int *) bfp1;
-  unsigned int * ibfp2 = (unsigned int *) bfp2;
-  int ilength = length / sizeof(unsigned int);
-  int length2 = ilength * sizeof(unsigned int);
-  for (i = 0; contains && i < ilength; ++i) {
-    unsigned int i1 = *ibfp1++;
-    unsigned int i2 = *ibfp2++;
+  int i, length2;
+  POPCNT_TYPE * ibfp1 = (POPCNT_TYPE *) bfp1;
+  POPCNT_TYPE * ibfp2 = (POPCNT_TYPE *) bfp2;
+  int ilength = length / sizeof(POPCNT_TYPE);
+  POPCNT_TYPE * ibfp1_end = ibfp1 + ilength;
+  while (contains && ibfp1 < ibfp1_end) {
+    POPCNT_TYPE i1 = *ibfp1++;
+    POPCNT_TYPE i2 = *ibfp2++;
     contains = i1 == (i1 | i2);
   }
-  if (length2 < length) {
+  if (contains && length % sizeof(POPCNT_TYPE)) {
+    length2 = ilength * sizeof(POPCNT_TYPE);
     bfp1 += length2;
     bfp2 += length2;
     for (i = length2; contains && i < length; ++i) {
@@ -139,19 +148,20 @@ double bfp_op_tanimoto(int length, u8 *afp, u8 *bfp)
   // Nsame / (Na + Nb - Nsame)
   int union_popcount = 0;
   int intersect_popcount = 0;
-  int i;
+  int i, length2;
 
-  unsigned int * iafp = (unsigned int *) afp;
-  unsigned int * ibfp = (unsigned int *) bfp;
-  int ilength = length / sizeof(unsigned int);
-  int length2 = ilength * sizeof(unsigned int);
-  for (i = 0; i < ilength; ++i) {
-    unsigned int ia = *iafp++;
-    unsigned int ib = *ibfp++;
-    union_popcount += __builtin_popcount(ia | ib);
-    intersect_popcount += __builtin_popcount(ia & ib);
+  POPCNT_TYPE * iafp = (POPCNT_TYPE *) afp;
+  POPCNT_TYPE * ibfp = (POPCNT_TYPE *) bfp;
+  int ilength = length / sizeof(POPCNT_TYPE);
+  POPCNT_TYPE * iafp_end = iafp + ilength;
+  while (iafp < iafp_end) {
+    POPCNT_TYPE ia = *iafp++;
+    POPCNT_TYPE ib = *ibfp++;
+    union_popcount += POPCNT(ia | ib);
+    intersect_popcount += POPCNT(ia & ib);
   }
-  if (length2 < length) {
+  if (length % sizeof(POPCNT_TYPE)) {
+    length2 = ilength * sizeof(POPCNT_TYPE);
     afp += length2;
     bfp += length2;
     for (i = length2; i < length; ++i) {
@@ -179,18 +189,19 @@ double bfp_op_dice(int length, u8 *afp, u8 *bfp)
   // 2 * Nsame / (Na + Nb)
   int intersect_popcount = 0;
   int total_popcount = 0; 
-  int i;
-  unsigned int * iafp = (unsigned int *) afp;
-  unsigned int * ibfp = (unsigned int *) bfp;
-  int ilength = length / sizeof(unsigned int);
-  int length2 = ilength * sizeof(unsigned int);
-  for (i = 0; i < ilength; ++i) {
-    unsigned int ia = *iafp++;
-    unsigned int ib = *ibfp++;
-    total_popcount += __builtin_popcount(ia) + __builtin_popcount(ib);
-    intersect_popcount += __builtin_popcount(ia & ib);
+  int i, length2;
+  POPCNT_TYPE * iafp = (POPCNT_TYPE *) afp;
+  POPCNT_TYPE * ibfp = (POPCNT_TYPE *) bfp;
+  int ilength = length / sizeof(POPCNT_TYPE);
+  POPCNT_TYPE * iafp_end = iafp + ilength;
+  while (iafp < iafp_end) {
+    POPCNT_TYPE ia = *iafp++;
+    POPCNT_TYPE ib = *ibfp++;
+    total_popcount += POPCNT(ia) + POPCNT(ib);
+    intersect_popcount += POPCNT(ia & ib);
   }
-  if (length2 < length) {
+  if (length % sizeof(POPCNT_TYPE)) {
+    length2 = ilength * sizeof(POPCNT_TYPE);
     afp += length2;
     bfp += length2;
     for (i = length2; i < length; ++i) {
