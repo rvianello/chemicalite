@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <cstdio>
 #include <iostream>
 #include <fstream>
 
@@ -92,10 +93,19 @@ int main(int argc, char * argv[])
 {
   const char * db_path = argv[1];
   const char * target = argv[2];
+
+  double threshold = 0.5;
+  
+  if (argc >= 4) {
+    threshold = atof(argv[3]);
+  }
+
+  std::cout << "Matching '" << target << "' with t >= "
+	    << threshold << std::endl;
   
   sqlite3 * db = open_database(db_path);
 
   load_chemicalite(db);
-  tanimoto_search(db, target, 0.5);
+  tanimoto_search(db, target, threshold);
   close_database(db);
 }
