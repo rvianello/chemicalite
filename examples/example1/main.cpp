@@ -39,8 +39,7 @@ void initialize_database(sqlite3 * db)
  		   "PRAGMA page_size=4096; "
 		   "CREATE TABLE chembl("
 		   "id INTEGER PRIMARY KEY, chembl_id TEXT, smiles TEXT, "
-		   "molecule MOL); "
-		   "SELECT create_molecule_rdtree('chembl', 'molecule')",  
+		   "molecule MOL)",  
 		   NULL,  /* Callback function */
 		   0,     /* 1st argument to callback */
 		   &errmsg) != SQLITE_OK) {
@@ -62,6 +61,7 @@ void replace_substring(std::string & str,
     start_pos += to.length(); // In case 'to' contains 'from', like replacing 'x' with 'yx'
   }
 }
+
 
 void fix_smiles(std::string & smiles)
 {
@@ -143,7 +143,9 @@ void insert_molecules(sqlite3 * db, std::istream & input)
 
       // reset the query
       if (sqlite3_reset(stmt) != SQLITE_OK) {
-	 std::cerr << "Couldn't successfully reset sql statement" << std::endl;
+	// an error code is returned if the statement failed executing
+	// so the output below may appear misleading
+	//std::cerr << "Couldn't successfully reset sql statement" << std::endl;
       }
 
       // clear the bindings
@@ -165,6 +167,22 @@ void insert_molecules(sqlite3 * db, std::istream & input)
     sqlite3_free(errmsg);
   }
 }
+
+
+void create_index(sqlite3 * db)
+{
+  char * errmsg = 0;
+  if (sqlite3_exec(db,
+ 		   "SELECT create_molecule_rdtree('chembl', 'molecule')",  
+		   NULL,  /* Callback function */
+		   0,     /* 1st argument to callback */
+		   &errmsg) != SQLITE_OK) {
+    std::cerr << "An error occurred while indexing the mol column: "
+	      << errmsg << std::endl;
+    sqlite3_free(errmsg);
+  }
+}
+
 
 void close_database(sqlite3 * db)
 {
@@ -191,5 +209,7 @@ int main(int argc, char * argv[])
   load_chemicalite(db);
   initialize_database(db);
   insert_molecules(db, input_file);
+  create_index(db);
+
   close_database(db);
 }
