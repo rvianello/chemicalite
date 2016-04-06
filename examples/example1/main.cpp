@@ -39,7 +39,8 @@ void initialize_database(sqlite3 * db)
  		   "PRAGMA page_size=4096; "
 		   "CREATE TABLE chembl("
 		   "id INTEGER PRIMARY KEY, chembl_id TEXT, smiles TEXT, "
-		   "molecule MOL)",  
+		   "molecule MOL);"
+		   "PRAGMA journal_mode=MEMORY",  
 		   NULL,  /* Callback function */
 		   0,     /* 1st argument to callback */
 		   &errmsg) != SQLITE_OK) {
