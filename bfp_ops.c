@@ -47,6 +47,33 @@ int bfp_op_weight(int length, u8 *bfp)
   return total_popcount;
 }
 
+int bfp_op_subset_weight(int length, u8 *bfp, u8 byte_mask)
+{
+  int total_popcount = 0; 
+  int i, length2;
+
+  POPCNT_TYPE mask = byte_mask;
+  for (i = 1; i < sizeof(POPCNT_TYPE); ++i) {
+    mask <<= 8;
+    mask |= byte_mask;
+  }
+  
+  POPCNT_TYPE * ibfp = (POPCNT_TYPE *) bfp;
+  int ilength = length / sizeof(POPCNT_TYPE);
+  POPCNT_TYPE * ibfp_end = ibfp + ilength;
+  while (ibfp < ibfp_end) {
+    total_popcount += POPCNT(mask & *ibfp++);
+  }
+  if (length % sizeof(POPCNT_TYPE)) {
+    length2 = ilength * sizeof(POPCNT_TYPE);
+    bfp += length2;
+    for (i = length2; i < length; ++i) {
+      total_popcount += byte_popcounts[byte_mask & *bfp++];
+    }
+  }
+  return total_popcount;
+}
+
 void bfp_op_union(int length, u8 *bfp1, u8 *bfp2)
 {
   int i, length2;

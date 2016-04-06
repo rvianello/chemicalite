@@ -7,6 +7,7 @@ extern "C" {
 
   void bfp_op_union(int length, u8 *bfp1, u8 *bfp2);
   int bfp_op_weight(int length, u8 *bfp);
+  int bfp_op_subset_weight(int length, u8 *bfp, u8 mask);
   int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2);
   int bfp_op_iweight(int length, u8 *bfp1, u8 *bfp2);
   int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2);
