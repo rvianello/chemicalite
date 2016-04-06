@@ -62,14 +62,16 @@ int main(int argc, char *argv[])
     printf("Couldn't query virtual table (full scan)\n");
   }
   else if (xyz_count != 1) {
-    printf("Unexpected number of records\n");
+    printf("Unexpected number of records (unconstrained): %d (1 expected)\n",
+	   xyz_count);
     rc = SQLITE_MISMATCH;
   }
   else if ((rc = select_integer(db, sql5, &xyz_count)) != SQLITE_OK) {
     printf("Couldn't query virtual table (constrained by subset)\n");
   }
   else if (xyz_count != 1) {
-    printf("Unexpected number of records\n");
+    printf("Unexpected number of records (constrained): %d (1 expected)\n",
+	   xyz_count);
     rc = SQLITE_MISMATCH;
   }
 
