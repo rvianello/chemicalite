@@ -26,6 +26,8 @@ target_link_libraries(chemicalite
 
 add_subdirectory(examples)
 
+option(CHEMICALITE_ENABLE_NATIVE_OPT
+       "enable compiler optimization for the native architecture" ON)
 option(CHEMICALITE_ENABLE_TESTS "enable tests" ON)
 option(CHEMICALITE_ENABLE_PYTHON_TESTS "enable python tests" ON)
 
@@ -37,11 +39,9 @@ if (CHEMICALITE_ENABLE_TESTS)
     endif (CHEMICALITE_ENABLE_PYTHON_TESTS)
 endif (CHEMICALITE_ENABLE_TESTS) 
 
-if (CMAKE_COMPILER_IS_GNUCC)
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -march=native")
-    set(CMAKE_C_FLAGS_RELWITHDEBINFO
-        "${CMAKE_C_FLAGS_RELWITHDEBINFO} -march=native")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
-    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO
-        "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -march=native")
-endif (CMAKE_COMPILER_IS_GNUCC)
+if (CHEMICALITE_ENABLE_NATIVE_OPT)
+    if (CMAKE_COMPILER_IS_GNUCC)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+    endif (CMAKE_COMPILER_IS_GNUCC)
+endif (CHEMICALITE_ENABLE_NATIVE_OPT)
