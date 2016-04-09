@@ -34,6 +34,13 @@ int bfp_op_weight(int length, u8 *bfp)
   POPCNT_TYPE * ibfp = (POPCNT_TYPE *) bfp;
   int ilength = length / sizeof(POPCNT_TYPE);
   POPCNT_TYPE * ibfp_end = ibfp + ilength;
+  POPCNT_TYPE * ibfp4_end = (ilength >= 4) ? ibfp_end - (ilength % 4) : ibfp;
+  while (ibfp < ibfp4_end) {
+    total_popcount += POPCNT(*ibfp++);
+    total_popcount += POPCNT(*ibfp++);
+    total_popcount += POPCNT(*ibfp++);
+    total_popcount += POPCNT(*ibfp++);
+  }
   while (ibfp < ibfp_end) {
     total_popcount += POPCNT(*ibfp++);
   }
@@ -61,6 +68,13 @@ int bfp_op_subset_weight(int length, u8 *bfp, u8 byte_mask)
   POPCNT_TYPE * ibfp = (POPCNT_TYPE *) bfp;
   int ilength = length / sizeof(POPCNT_TYPE);
   POPCNT_TYPE * ibfp_end = ibfp + ilength;
+  POPCNT_TYPE * ibfp4_end = (ilength >= 4) ? ibfp_end - (ilength % 4) : ibfp;
+  while (ibfp < ibfp4_end) {
+    total_popcount += POPCNT(mask & *ibfp++);
+    total_popcount += POPCNT(mask & *ibfp++);
+    total_popcount += POPCNT(mask & *ibfp++);
+    total_popcount += POPCNT(mask & *ibfp++);
+  }
   while (ibfp < ibfp_end) {
     total_popcount += POPCNT(mask & *ibfp++);
   }
@@ -81,6 +95,13 @@ void bfp_op_union(int length, u8 *bfp1, u8 *bfp2)
   POPCNT_TYPE * ibfp2 = (POPCNT_TYPE *) bfp2;
   int ilength = length / sizeof(POPCNT_TYPE);
   POPCNT_TYPE * ibfp1_end = ibfp1 + ilength;
+  POPCNT_TYPE * ibfp4_end = (ilength >= 4) ? ibfp1_end - (ilength % 4) : ibfp1;
+  while (ibfp1 < ibfp4_end) {
+    *ibfp1++ |= *ibfp2++;
+    *ibfp1++ |= *ibfp2++;
+    *ibfp1++ |= *ibfp2++;
+    *ibfp1++ |= *ibfp2++;
+  }
   while (ibfp1 < ibfp1_end) {
     *ibfp1++ |= *ibfp2++;
   }
@@ -98,14 +119,20 @@ int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2)
 {
   int growth = 0; 
   int i, length2;
+  POPCNT_TYPE ib1;
   POPCNT_TYPE * ibfp1 = (POPCNT_TYPE *) bfp1;
   POPCNT_TYPE * ibfp2 = (POPCNT_TYPE *) bfp2;
   int ilength = length / sizeof(POPCNT_TYPE);
   POPCNT_TYPE * ibfp1_end = ibfp1 + ilength;
+  POPCNT_TYPE * ibfp4_end = (ilength >= 4) ? ibfp1_end - (ilength % 4) : ibfp1;
+  while (ibfp1 < ibfp4_end) {
+    ib1 = *ibfp1++; growth += POPCNT(ib1 ^ (ib1 | *ibfp2++));
+    ib1 = *ibfp1++; growth += POPCNT(ib1 ^ (ib1 | *ibfp2++));
+    ib1 = *ibfp1++; growth += POPCNT(ib1 ^ (ib1 | *ibfp2++));
+    ib1 = *ibfp1++; growth += POPCNT(ib1 ^ (ib1 | *ibfp2++));
+  }
   while (ibfp1 < ibfp1_end) {
-    POPCNT_TYPE i1 = *ibfp1++;
-    POPCNT_TYPE i2 = *ibfp2++;
-    growth += POPCNT(i1 ^ (i1 | i2));
+    ib1 = *ibfp1++; growth += POPCNT(ib1 ^ (ib1 | *ibfp2++));
   }
   if (length % sizeof(POPCNT_TYPE)) {
     length2 = ilength * sizeof(POPCNT_TYPE);
@@ -128,6 +155,13 @@ int bfp_op_iweight(int length, u8 *bfp1, u8 *bfp2)
   POPCNT_TYPE * ibfp2 = (POPCNT_TYPE *) bfp2;
   int ilength = length / sizeof(POPCNT_TYPE);
   POPCNT_TYPE * ibfp1_end = ibfp1 + ilength;
+  POPCNT_TYPE * ibfp4_end = (ilength >= 4) ? ibfp1_end - (ilength % 4) : ibfp1;
+  while (ibfp1 < ibfp4_end) {
+    intersect_popcount += POPCNT(*ibfp1++ & *ibfp2++);
+    intersect_popcount += POPCNT(*ibfp1++ & *ibfp2++);
+    intersect_popcount += POPCNT(*ibfp1++ & *ibfp2++);
+    intersect_popcount += POPCNT(*ibfp1++ & *ibfp2++);
+  }
   while (ibfp1 < ibfp1_end) {
     intersect_popcount += POPCNT(*ibfp1++ & *ibfp2++);
   }
