@@ -702,8 +702,10 @@ static int rdtreeDestroy(sqlite3_vtab *pVtab)
  
   char *zCreate = sqlite3_mprintf("DROP TABLE '%q'.'%q_node';"
 				  "DROP TABLE '%q'.'%q_rowid';"
-				  "DROP TABLE '%q'.'%q_parent';",
+				  "DROP TABLE '%q'.'%q_parent';"
+				  "DROP TABLE '%q'.'%q_bitfreq';",
 				  pRDtree->zDb, pRDtree->zName, 
+				  pRDtree->zDb, pRDtree->zName,
 				  pRDtree->zDb, pRDtree->zName,
 				  pRDtree->zDb, pRDtree->zName);
 
@@ -2383,13 +2385,14 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
       = sqlite3_mprintf("CREATE TABLE \"%w\".\"%w_node\"(nodeno INTEGER PRIMARY KEY, data BLOB);"
 			"CREATE TABLE \"%w\".\"%w_rowid\"(rowid INTEGER PRIMARY KEY, nodeno INTEGER);"
 			"CREATE TABLE \"%w\".\"%w_parent\"(nodeno INTEGER PRIMARY KEY, parentnode INTEGER);"
+			"CREATE TABLE \"%w\".\"%w_bitfreq\"(bitno INTEGER PRIMARY KEY, count INTEGER);"
 			"INSERT INTO '%q'.'%q_node' VALUES(1, zeroblob(%d))",
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
-			pRDtree->iNodeSize
-    );
+			pRDtree->zDb, pRDtree->zName, pRDtree->iNodeSize
+			);
     if (!zCreate) {
       return SQLITE_NOMEM;
     }
