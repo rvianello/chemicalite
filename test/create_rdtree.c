@@ -33,7 +33,24 @@ int main(int argc, char *argv[])
   else if ((rc = select_integer(db, sql3, &dummy)) != SQLITE_OK) {
     printf("Couldn't query node table\n");
   }
-
+  else if (create_rdtree_ex(db, "abc", 128, "WHATEVER", &errMsg) == SQLITE_OK) {
+    rc = 42;
+    printf("Successful creation of virtual rdtree table "
+	   "w/ options 'WHATEVER'\n");
+  }
+  else if ((rc = create_rdtree_ex(db, "abc", 128, "OPT_FOR_SUBSET_QUERIES",
+				  &errMsg))
+	    != SQLITE_OK) {
+    printf("Couldn't create virtual rdtree table "
+	   "w/ options 'OPT_FOR_SUBSET_QUERIES'\n");
+  }
+  else if ((rc = create_rdtree_ex(db, "def", 128, "OPT_FOR_SIMILARITY_QUERIES",
+				  &errMsg))
+	    != SQLITE_OK) {
+    printf("Couldn't create virtual rdtree table "
+	   "w/ options 'OPT_FOR_SIMILARITY_QUERIES'\n");
+  }
+  
   if (closedb) {
     int rc2 = sqlite3_close(db);
     if (SQLITE_OK == rc) { rc = rc2; }

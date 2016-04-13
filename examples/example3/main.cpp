@@ -37,7 +37,8 @@ void extend_schema(sqlite3 * db)
   char * errmsg = 0;
   if (sqlite3_exec(db,
  		   "CREATE VIRTUAL TABLE morgan "
-		   "USING rdtree(id, bfp bytes(64))",  
+		   "USING rdtree(id, bfp bytes(64),"
+		   " OPT_FOR_SIMILARITY_QUERIES)",  
 		   NULL,  /* Callback function */
 		   0,     /* 1st argument to callback */
 		   &errmsg) != SQLITE_OK) {

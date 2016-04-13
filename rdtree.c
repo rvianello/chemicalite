@@ -20,6 +20,10 @@ extern const sqlite3_api_routines *sqlite3_api;
 ** turn it into an rd-tree.
 */
 
+static const unsigned int RDTREE_FLAGS_UNASSIGNED = 0;
+static const unsigned int RDTREE_OPT_FOR_SUBSET_QUERIES = 1;
+static const unsigned int RDTREE_OPT_FOR_SIMILARITY_QUERIES = 2;
+
 /*
 ** Database Format of RD-Tree Tables
 ** ---------------------------------
@@ -127,6 +131,7 @@ static int writeInt64(u8 *p, i64 i)
 struct RDtree {
   sqlite3_vtab base;
   sqlite3 *db;                 /* Host database connection */
+  unsigned int flags;          /* Configuration flags */
   int iBfpSize;                /* Size (bytes) of the binary fingerprint */
   int nBytesPerItem;           /* Bytes consumed per item */
   int iNodeSize;               /* Size (bytes) of each node in the node table */
@@ -1185,11 +1190,117 @@ static double itemWeightDistance(RDtreeItem *aItem, RDtreeItem *bItem)
 ** This function implements the chooseLeaf algorithm from Gutman[84].
 ** ChooseSubTree in r*tree terminology.
 */
-static int chooseLeaf(RDtree *pRDtree,
-		      RDtreeItem *pItem, /* Item to insert into rdtree */
-		      int iHeight, /* Height of sub-tree rooted at pItem */
-		      RDtreeNode **ppLeaf /* OUT: Selected leaf page */
-		      )
+static int chooseLeafSubset(RDtree *pRDtree,
+			    RDtreeItem *pItem, /* Item to insert into rdtree */
+			    int iHeight, /* Height of sub-tree at pItem */
+			    RDtreeNode **ppLeaf /* OUT: Selected leaf page */
+			    )
+{
+  int rc;
+  int ii;
+  RDtreeNode *pNode;
+  rc = nodeAcquire(pRDtree, 1, 0, &pNode);
+
+  for (ii = 0; rc == SQLITE_OK && ii < (pRDtree->iDepth - iHeight); ii++) {
+    int iItem;
+    sqlite3_int64 iBest = 0;
+
+    int iMinGrowth = 0;
+    int iMinWeight = 0;
+
+    int nItem = NITEM(pNode);
+    RDtreeItem item;
+    RDtreeNode *pChild;
+
+    RDtreeItem *aItem = 0;
+
+    /* Select the child node which will be enlarged the least if pItem
+    ** is inserted into it. Resolve ties by choosing the entry with
+    ** the smallest weight.
+    */
+    for (iItem = 0; iItem < nItem; iItem++) {
+      int bBest = 0;
+      int growth;
+      int weight;
+      nodeGetItem(pRDtree, pNode, iItem, &item);
+      growth = itemGrowth(pRDtree, &item, pItem);
+      weight = itemWeight(pRDtree, &item);
+
+      if (iItem == 0 || 
+	  growth < iMinGrowth || 
+	  (growth == iMinGrowth && weight < iMinWeight) ) {
+        iMinGrowth = growth;
+        iMinWeight = weight;
+        iBest = item.iRowid;
+      }
+    }
+
+    sqlite3_free(aItem);
+    rc = nodeAcquire(pRDtree, iBest, pNode, &pChild);
+    nodeRelease(pRDtree, pNode);
+    pNode = pChild;
+  }
+
+  *ppLeaf = pNode;
+  return rc;
+}
+
+static int chooseLeafSimilarity(RDtree *pRDtree,
+				RDtreeItem *pItem,
+				int iHeight,
+				RDtreeNode **ppLeaf
+				)
+{
+  int rc;
+  int ii;
+  RDtreeNode *pNode;
+  rc = nodeAcquire(pRDtree, 1, 0, &pNode);
+
+  for (ii = 0; rc == SQLITE_OK && ii < (pRDtree->iDepth - iHeight); ii++) {
+    int iItem;
+    sqlite3_int64 iBest = 0;
+
+    int iMinGrowth = 0;
+    double dMinDistance = 0.;
+    
+    int nItem = NITEM(pNode);
+    RDtreeItem item;
+    RDtreeNode *pChild;
+
+    /* Select the child node which will be enlarged the least if pItem
+    ** is inserted into it.
+    */
+    for (iItem = 0; iItem < nItem; iItem++) {
+      int bBest = 0;
+      double distance;
+      int growth;
+      nodeGetItem(pRDtree, pNode, iItem, &item);
+      distance = itemWeightDistance(&item, pItem);
+      growth = itemGrowth(pRDtree, &item, pItem);
+
+      if (iItem == 0 ||
+	  distance < dMinDistance ||
+	  (distance == dMinDistance && growth < iMinGrowth) ) {
+	dMinDistance = distance;
+        iMinGrowth = growth;
+        iBest = item.iRowid;
+      }
+    }
+
+    rc = nodeAcquire(pRDtree, iBest, pNode, &pChild);
+    nodeRelease(pRDtree, pNode);
+    pNode = pChild;
+  }
+
+  *ppLeaf = pNode;
+  return rc;
+}
+
+static int chooseLeafGeneric(RDtree *pRDtree,
+			     RDtreeItem *pItem, /* Item to insert into rdtree */
+			     int iHeight, /* Height of sub-tree at pItem */
+			     RDtreeNode **ppLeaf /* OUT: Selected leaf page */
+			     )
 {
   int rc;
   int ii;
@@ -1238,6 +1349,26 @@ static int chooseLeaf(RDtree *pRDtree,
   }
 
   *ppLeaf = pNode;
+  return rc;
+}
+
+static int chooseLeaf(RDtree *pRDtree,
+		      RDtreeItem *pItem, /* Item to insert into rdtree */
+		      int iHeight, /* Height of sub-tree rooted at pItem */
+		      RDtreeNode **ppLeaf /* OUT: Selected leaf page */
+		      )
+{
+  unsigned int flags = pRDtree->flags;
+  int rc = SQLITE_ERROR;
+  if (flags & RDTREE_OPT_FOR_SUBSET_QUERIES) {
+    rc = chooseLeafSubset(pRDtree, pItem, iHeight, ppLeaf);
+  }
+  else if (flags & RDTREE_OPT_FOR_SIMILARITY_QUERIES) {
+    rc = chooseLeafSimilarity(pRDtree, pItem, iHeight, ppLeaf);
+  }
+  else {
+    rc = chooseLeafGeneric(pRDtree, pItem, iHeight, ppLeaf);
+  }
   return rc;
 }
 
@@ -1297,11 +1428,11 @@ static int parentWrite(RDtree *pRDtree,
 ** Pick the next item to be inserted into one of the two subsets. Select the
 ** one associated to a strongest "preference" for one of the two.
 */
-static void pickNext(RDtree *pRDtree,
-		     RDtreeItem *aItem, int nItem, int *aiUsed,
-		     RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
-		     RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
-		     RDtreeItem **ppNext, int *pPreferRight)
+static void pickNextGeneric(RDtree *pRDtree,
+			    RDtreeItem *aItem, int nItem, int *aiUsed,
+			    RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+			    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
+			    RDtreeItem **ppNext, int *pPreferRight)
 {
   int iSelect = -1;
   int preferRight = 0;
@@ -1332,11 +1463,103 @@ static void pickNext(RDtree *pRDtree,
   *pPreferRight = preferRight;
 }
 
+static void pickNextSubset(RDtree *pRDtree,
+			   RDtreeItem *aItem, int nItem, int *aiUsed,
+			   RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+			   RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
+			   RDtreeItem **ppNext, int *pPreferRight)
+{
+  int iSelect = -1;
+  int preferRight = 0;
+  double dMaxPreference = -1.;
+  int ii;
+  for(ii = 0; ii < nItem; ii++){
+    if( aiUsed[ii]==0 ){
+      double left 
+	= 1. - bfp_op_tanimoto(pRDtree->iBfpSize, 
+			       aItem[ii].aBfp, pLeftSeed->aBfp);
+      double right 
+	= 1. - bfp_op_tanimoto(pRDtree->iBfpSize, 
+			       aItem[ii].aBfp, pRightSeed->aBfp);
+      double diff = left - right;
+      double preference = 0.;
+      if ((left + right) > 0.) {
+	preference = abs(diff)/(left + right);
+      }
+      if (iSelect < 0 || preference > dMaxPreference) {
+        dMaxPreference = preference;
+        iSelect = ii;
+	preferRight = diff > 0.;
+      }
+    }
+  }
+  aiUsed[iSelect] = 1;
+  *ppNext = &aItem[iSelect];
+  *pPreferRight = preferRight;
+}
+
+static void pickNextSimilarity(RDtree *pRDtree,
+			       RDtreeItem *aItem, int nItem, int *aiUsed,
+			       RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+			       RDtreeItem *pLeftBounds,
+			       RDtreeItem *pRightBounds,
+			       RDtreeItem **ppNext, int *pPreferRight)
+{
+  int iSelect = -1;
+  int preferRight = 0;
+  double dMaxPreference = -1.;
+  int ii;
+  for(ii = 0; ii < nItem; ii++){
+    if( aiUsed[ii]==0 ){
+      double left = itemWeightDistance(&aItem[ii], pLeftSeed);
+      double right = itemWeightDistance(&aItem[ii], pRightSeed);
+      double diff = left - right;
+      double sum = left + right;
+      double preference = fabs(diff);
+      if (sum) {
+	preference /= (sum);
+      }
+      if (iSelect < 0 || preference > dMaxPreference) {
+        dMaxPreference = preference;
+        iSelect = ii;
+	preferRight = diff > 0.;
+      }
+    }
+  }
+  aiUsed[iSelect] = 1;
+  *ppNext = &aItem[iSelect];
+  *pPreferRight = preferRight;
+}
+
+static void pickNext(RDtree *pRDtree,
+		     RDtreeItem *aItem, int nItem, int *aiUsed,
+		     RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+		     RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
+		     RDtreeItem **ppNext, int *pPreferRight)
+{
+  unsigned int flags = pRDtree->flags;
+  if (flags & RDTREE_OPT_FOR_SUBSET_QUERIES) {
+    pickNextSubset(pRDtree, aItem, nItem, aiUsed,
+		   pLeftSeed, pRightSeed, pLeftBounds, pRightBounds,
+		   ppNext, pPreferRight);
+  }
+  else if (flags & RDTREE_OPT_FOR_SIMILARITY_QUERIES) {
+    pickNextSimilarity(pRDtree, aItem, nItem, aiUsed,
+		       pLeftSeed, pRightSeed, pLeftBounds, pRightBounds,
+		       ppNext, pPreferRight);
+  }
+  else {
+    pickNextGeneric(pRDtree, aItem, nItem, aiUsed,
+		    pLeftSeed, pRightSeed, pLeftBounds, pRightBounds,
+		    ppNext, pPreferRight);
+  }
+}
+
 /*
 ** Pick the two most dissimilar fingerprints.
 */
-static void pickSeeds(RDtree *pRDtree, RDtreeItem *aItem, int nItem, 
-		      int *piLeftSeed, int *piRightSeed)
+static void pickSeedsGeneric(RDtree *pRDtree, RDtreeItem *aItem, int nItem, 
+			     int *piLeftSeed, int *piRightSeed)
 {
   int ii;
   int jj;
@@ -1361,6 +1584,77 @@ static void pickSeeds(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
 
   *piLeftSeed = iLeftSeed;
   *piRightSeed = iRightSeed;
+}
+
+static void pickSeedsSubset(RDtree *pRDtree, RDtreeItem *aItem, int nItem, 
+			    int *piLeftSeed, int *piRightSeed)
+{
+  int ii;
+  int jj;
+
+  int iLeftSeed = 0;
+  int iRightSeed = 1;
+  double dMaxDistance = 0.;
+
+  for (ii = 0; ii < nItem; ii++) {
+    for (jj = ii + 1; jj < nItem; jj++) {
+      double tanimoto 
+	= bfp_op_tanimoto(pRDtree->iBfpSize, aItem[ii].aBfp, aItem[jj].aBfp);
+      double distance = 1. - tanimoto;
+
+      if (distance > dMaxDistance) {
+        iLeftSeed = ii;
+        iRightSeed = jj;
+        dMaxDistance = distance;
+      }
+    }
+  }
+
+  *piLeftSeed = iLeftSeed;
+  *piRightSeed = iRightSeed;
+}
+
+static void pickSeedsSimilarity(RDtree *pRDtree, RDtreeItem *aItem, int nItem, 
+				int *piLeftSeed, int *piRightSeed)
+{
+  int ii;
+  int jj;
+
+  int iLeftSeed = 0;
+  int iRightSeed = 1;
+  double dDistance;
+  double dMaxDistance = 0.;
+
+  for (ii = 0; ii < nItem; ii++) {
+    for (jj = ii + 1; jj < nItem; jj++) {
+
+      dDistance = itemWeightDistance(&aItem[ii], &aItem[jj]);
+      
+      if (dDistance > dMaxDistance) {
+        iLeftSeed = ii;
+        iRightSeed = jj;
+        dMaxDistance = dDistance;
+      }
+    }
+  }
+
+  *piLeftSeed = iLeftSeed;
+  *piRightSeed = iRightSeed;
+}
+
+static void pickSeeds(RDtree *pRDtree, RDtreeItem *aItem, int nItem, 
+		      int *piLeftSeed, int *piRightSeed)
+{
+  unsigned int flags = pRDtree->flags;
+  if (flags & RDTREE_OPT_FOR_SUBSET_QUERIES) {
+    pickSeedsSubset(pRDtree, aItem, nItem, piLeftSeed, piRightSeed);
+  }
+  else if (flags & RDTREE_OPT_FOR_SIMILARITY_QUERIES) {
+    pickSeedsSimilarity(pRDtree, aItem, nItem, piLeftSeed, piRightSeed);
+  }
+  else {
+    pickSeedsGeneric(pRDtree, aItem, nItem, piLeftSeed, piRightSeed);
+  }
 }
 
 static int assignItems(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
@@ -2218,9 +2512,14 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
   int iBfpSize = MOL_SIGNATURE_SIZE;  /* Default size of binary fingerprint */
 
   /* perform arg checking */
-  if (argc != 5) {
+  if (argc < 5) {
     *pzErr = sqlite3_mprintf("wrong number of arguments. "
-                             "two column definitions expected.");
+                             "two column definitions are required.");
+    return SQLITE_ERROR;
+  }
+  if (argc > 6) {
+    *pzErr = sqlite3_mprintf("wrong number of arguments. "
+                             "at most one optional argument is expected.");
     return SQLITE_ERROR;
   }
 
@@ -2229,6 +2528,20 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
       iBfpSize = sz;
   }
 
+  unsigned int flags = RDTREE_FLAGS_UNASSIGNED;
+  if (argc == 6) {
+    if (strcmp(argv[5], "OPT_FOR_SUBSET_QUERIES") == 0) {
+      flags |= RDTREE_OPT_FOR_SUBSET_QUERIES;
+    }
+    else if (strcmp(argv[5], "OPT_FOR_SIMILARITY_QUERIES") == 0) {
+      flags |= RDTREE_OPT_FOR_SIMILARITY_QUERIES;
+    }
+    else {
+      *pzErr = sqlite3_mprintf("unrecognized option: %s", argv[5]);
+      return SQLITE_ERROR;
+    }
+  }
+  
   sqlite3_vtab_config(db, SQLITE_VTAB_CONSTRAINT_SUPPORT, 1);
 
   /* Allocate the sqlite3_vtab structure */
@@ -2241,6 +2554,7 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
   memset(pRDtree, 0, sizeof(RDtree)+nDb+nName+2);
 
   pRDtree->db = db;
+  pRDtree->flags = flags;
   pRDtree->iBfpSize = iBfpSize;
   pRDtree->nBytesPerItem = 8 /* row id */ + 4 /* min/max weight */ + iBfpSize; 
   pRDtree->nBusy = 1;
@@ -2370,38 +2684,35 @@ static int tanimotoTestInternal(RDtree* pRDtree,
 				RDtreeConstraint* pCons, RDtreeItem* pItem, 
 				int* pEof)
 {
-  if ((pCons->dParam > 0.) &&
-      ((pCons->iWeight*pCons->dParam > pItem->iMaxWeight) || (pCons->iWeight/pCons->dParam < pItem->iMinWeight))) {
-    /* It is known that for the tanimoto similarity to be above a given 
-    ** threshold t, it must be
-    **
-    ** Na*t <= Nb <= Na/t
-    **
-    ** And for the fingerprints in pItem we have that 
-    ** 
-    ** iMinWeight <= Nb <= iMaxWeight
-    **
-    ** so if (Na*t > iMaxWeight) or (Na/t < iMinWeight) this item can be discarded.
-    */
+  double t = pCons->dParam;
+  int na = pCons->iWeight;
+  
+  /* It is known that for the tanimoto similarity to be above a given 
+  ** threshold t, it must be
+  **
+  ** Na*t <= Nb <= Na/t
+  **
+  ** And for the fingerprints in pItem we have that 
+  ** 
+  ** iMinWeight <= Nb <= iMaxWeight
+  **
+  ** so if (Na*t > iMaxWeight) or (Na/t < iMinWeight) this item can be
+  ** discarded.
+  */
+  if ((pItem->iMaxWeight < t*na) || (na < t*pItem->iMinWeight)) {
     *pEof = 1;
-  }  
+  }
+  /* The item in the internal node stores the union of the fingerprints 
+  ** that populate the child nodes. I want to use this union to compute an
+  ** upper bound to the similarity. If this upper bound is lower than the 
+  ** threashold value then the item can be discarded and the referred branch
+  ** pruned.
+  **
+  ** T = Nsame / (Na + Nb - Nsame) <= Nsame / Na
+  */
   else {
-    /* The item in the internal node stores the union of the fingerprints 
-    ** that populate the child nodes. I want to use this union to compute an
-    ** upper bound to the similarity. If this upper bound is lower than the 
-    ** threashold value then the item can be discarded and the referred branch
-    ** pruned.
-    **
-    ** T = Nsame / (Na + Nb - Nsame) <= Nsame / Na
-    */
     int iweight = bfp_op_iweight(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
-    if (pCons->iWeight &&
-	((double)iweight)/pCons->iWeight >= pCons->dParam) {
-      *pEof = 0;
-    }
-    else {
-      *pEof = 1;
-    }
+    *pEof = (iweight < t*na) ? 1 : 0;
   }
   return SQLITE_OK;
 }
@@ -2410,22 +2721,20 @@ static int tanimotoTestLeaf(RDtree* pRDtree,
 			    RDtreeConstraint* pCons, RDtreeItem* pItem, 
 			    int* pEof)
 {
-  int weight = pItem->iMaxWeight; /* on a leaf node */
-  if ((pCons->dParam > 0.) &&
-      ((pCons->iWeight*pCons->dParam > weight) || (pCons->iWeight/pCons->dParam < weight))) {
-    /* skip the similarity computation when possible, 
-    ** see comment in function above testing the internal node 
-    */
-    *pEof = 1;
-    return SQLITE_OK;
-  }
-
-  int iweight = bfp_op_iweight(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
-  int uweight = pItem->iMaxWeight + pCons->iWeight - iweight;
-  double similarity = uweight ? ((double)iweight)/uweight : 1.;
-
-  *pEof = similarity >= pCons->dParam ? 0 : 1;
+  double t = pCons->dParam;
+  int na = pCons->iWeight;
+  int nb = pItem->iMaxWeight; /* on a leaf node max == min*/
   
+  if ((nb < t*na) || (na < t*nb)) {
+    *pEof = 1;
+  }
+  else {
+    int iweight = bfp_op_iweight(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
+    int uweight = na + nb - iweight;
+    double similarity = uweight ? ((double)iweight)/uweight : 1.;
+    
+    *pEof = similarity >= t ? 0 : 1;
+  }
   return SQLITE_OK;
 }
 
