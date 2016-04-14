@@ -2386,7 +2386,7 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
 			"CREATE TABLE \"%w\".\"%w_rowid\"(rowid INTEGER PRIMARY KEY, nodeno INTEGER);"
 			"CREATE TABLE \"%w\".\"%w_parent\"(nodeno INTEGER PRIMARY KEY, parentnode INTEGER);"
 			"CREATE TABLE \"%w\".\"%w_bitfreq\"(bitno INTEGER PRIMARY KEY, count INTEGER);"
-			"INSERT INTO '%q'.'%q_node' VALUES(1, zeroblob(%d))",
+			"INSERT INTO \"%w\".\"%w_node\" VALUES(1, zeroblob(%d))",
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
@@ -2398,6 +2398,40 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
     }
     rc = sqlite3_exec(pRDtree->db, zCreate, 0, 0, 0);
     sqlite3_free(zCreate);
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
+    
+    char *zInitBitfreq
+      = sqlite3_mprintf("INSERT INTO \"%w\".\"%w_bitfreq\" VALUES(?, 0)",
+			pRDtree->zDb, pRDtree->zName
+			);
+    if (!zInitBitfreq) {
+      return SQLITE_NOMEM;
+    }
+    sqlite3_stmt * initBitfreqStmt = 0;
+    rc = sqlite3_prepare_v2(pRDtree->db, zInitBitfreq, -1, &initBitfreqStmt, 0);
+    sqlite3_free(zInitBitfreq);
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
+
+    for (i=0; i < pRDtree->iBfpSize*8; ++i) {
+      rc = sqlite3_bind_int(initBitfreqStmt, 1, i);
+      if (rc != SQLITE_OK) {
+	break;
+      }
+      rc = sqlite3_step(initBitfreqStmt);
+      if (rc != SQLITE_DONE) {
+	break;
+      }
+      else {
+	/* reassign the rc status and keep the error handling simple */
+	rc = SQLITE_OK; 
+      }
+      sqlite3_reset(initBitfreqStmt);
+    }
+    sqlite3_finalize(initBitfreqStmt);
     if (rc != SQLITE_OK) {
       return rc;
     }
