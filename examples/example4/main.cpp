@@ -36,10 +36,10 @@ void load_chemicalite(sqlite3 * db)
 void tanimoto_search(sqlite3 * db, const char * target, double threshold)
 {
   const char * sql =
-    "SELECT c.chembl_id, c.smiles, "
+    "SELECT c.label, c.smiles, "
     "bfp_tanimoto(mol_morgan_bfp(c.molecule, 2), mol_morgan_bfp(?, 2)) as t "
     "FROM "
-    "chembl as c JOIN "
+    "compounds as c JOIN "
     "(SELECT id FROM morgan WHERE "
     "id match rdtree_tanimoto(mol_morgan_bfp(?, 2), ?)) as idx "
     "USING(id) ORDER BY t DESC"

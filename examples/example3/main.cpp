@@ -54,7 +54,7 @@ void insert_fingerprints(sqlite3 * db)
   char * errmsg = 0;
   if (sqlite3_exec(db,
  		   "INSERT INTO morgan(id, bfp) "
-		   "SELECT id, mol_morgan_bfp(molecule, 2) FROM chembl",  
+		   "SELECT id, mol_morgan_bfp(molecule, 2) FROM compounds",  
 		   NULL,  /* Callback function */
 		   0,     /* 1st argument to callback */
 		   &errmsg) != SQLITE_OK) {

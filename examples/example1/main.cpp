@@ -37,8 +37,8 @@ void initialize_database(sqlite3 * db)
   char * errmsg = 0;
   if (sqlite3_exec(db,
  		   "PRAGMA page_size=4096; "
-		   "CREATE TABLE chembl("
-		   "id INTEGER PRIMARY KEY, chembl_id TEXT, smiles TEXT, "
+		   "CREATE TABLE compounds("
+		   "id INTEGER PRIMARY KEY, label TEXT, smiles TEXT, "
 		   "molecule MOL);"
 		   "PRAGMA journal_mode=MEMORY",  
 		   NULL,  /* Callback function */
@@ -84,7 +84,7 @@ void insert_molecules(sqlite3 * db, std::istream & input)
   }
 
   const char * sql =
-    "INSERT INTO chembl(chembl_id, smiles, molecule) VALUES(?, ?, mol(?))";
+    "INSERT INTO compounds(label, smiles, molecule) VALUES(?, ?, mol(?))";
 
   sqlite3_stmt * stmt = 0;
   if (sqlite3_prepare_v2(db, sql, -1, & stmt, 0) != SQLITE_OK) {
@@ -104,8 +104,8 @@ void insert_molecules(sqlite3 * db, std::istream & input)
   
   while (input) {
 
-    std::string chembl_id, smiles;
-    input >> chembl_id >> smiles;
+    std::string label, smiles;
+    input >> label >> smiles;
     input.getline(buffer, BUFFER_SIZE); // discard the rest of the line
     
     if (input) {
@@ -119,9 +119,9 @@ void insert_molecules(sqlite3 * db, std::istream & input)
       fix_smiles(smiles);
       
       // bind the query parameter
-      if (sqlite3_bind_text(stmt, 1, chembl_id.c_str(), -1, SQLITE_STATIC)
+      if (sqlite3_bind_text(stmt, 1, label.c_str(), -1, SQLITE_STATIC)
 	  != SQLITE_OK) {
-	std::cerr << "Couldn't bind chembl_id parameter" << std::endl;
+	std::cerr << "Couldn't bind label parameter" << std::endl;
 	break;
       }
       if (sqlite3_bind_text(stmt, 2, smiles.c_str(), -1, SQLITE_STATIC)
@@ -174,7 +174,7 @@ void create_index(sqlite3 * db)
 {
   char * errmsg = 0;
   if (sqlite3_exec(db,
- 		   "SELECT create_molecule_rdtree('chembl', 'molecule')",  
+ 		   "SELECT create_molecule_rdtree('compounds', 'molecule')",  
 		   NULL,  /* Callback function */
 		   0,     /* 1st argument to callback */
 		   &errmsg) != SQLITE_OK) {

@@ -36,9 +36,9 @@ void substructure_search(sqlite3 * db, const char * substructure)
 {
   const char * sql =
     "SELECT count(*) FROM "
-    "chembl, str_idx_chembl_molecule as idx WHERE "
-    "chembl.id = idx.id AND "
-    "mol_is_substruct(chembl.molecule, ?) AND "
+    "compounds, str_idx_compounds_molecule as idx WHERE "
+    "compounds.id = idx.id AND "
+    "mol_is_substruct(compounds.molecule, ?) AND "
     "idx.id match rdtree_subset(mol_bfp_signature(?))"
     ;
 
