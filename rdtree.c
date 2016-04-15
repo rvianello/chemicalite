@@ -2455,11 +2455,13 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
 			"CREATE TABLE \"%w\".\"%w_rowid\"(rowid INTEGER PRIMARY KEY, nodeno INTEGER);"
 			"CREATE TABLE \"%w\".\"%w_parent\"(nodeno INTEGER PRIMARY KEY, parentnode INTEGER);"
 			"CREATE TABLE \"%w\".\"%w_bitfreq\"(bitno INTEGER PRIMARY KEY, freq INTEGER);"
+			//"CREATE INDEX \"%w\".\"%w_bitfreq_idx\" ON \"%w_bitfreq\"('freq' ASC);"
 			"INSERT INTO \"%w\".\"%w_node\" VALUES(1, zeroblob(%d))",
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
+			//pRDtree->zDb, pRDtree->zName, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, pRDtree->iNodeSize
 			);
     if (!zCreate) {
