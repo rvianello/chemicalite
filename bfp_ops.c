@@ -228,6 +228,36 @@ int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2)
   return contains;
 }
 
+int bfp_op_intersects(int length, u8 *bfp1, u8 *bfp2)
+{
+  int intersects = 0;
+  int i;
+
+  int ilength = length / sizeof(POPCNT_TYPE);
+
+  POPCNT_TYPE * ibfp1 = (POPCNT_TYPE *) bfp1;
+  POPCNT_TYPE * ibfp2 = (POPCNT_TYPE *) bfp2;
+  POPCNT_TYPE * ibfp1_end = ibfp1 + ilength;
+  
+  while (!intersects && ibfp1 < ibfp1_end) {
+    POPCNT_TYPE i1 = *ibfp1++;
+    POPCNT_TYPE i2 = *ibfp2++;
+    intersects = i1 & i2;
+  }
+  
+  u8 * bfp1_end = bfp1 + length;
+  bfp1 = (u8 *) ibfp1;
+  bfp2 = (u8 *) ibfp2;
+  
+  while (!intersects && bfp1 < bfp1_end) {
+    u8 b1 = *bfp1++; 
+    u8 b2 = *bfp2++;
+    intersects = b1 & b2;
+  }
+
+  return intersects;
+}
+
 double bfp_op_tanimoto(int length, u8 *afp, u8 *bfp)
 {
   double sim;

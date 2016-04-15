@@ -11,6 +11,7 @@ extern "C" {
   int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2);
   int bfp_op_iweight(int length, u8 *bfp1, u8 *bfp2);
   int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2);
+  int bfp_op_intersects(int length, u8 *bfp1, u8 *bfp2);
   double bfp_op_tanimoto(int length, u8 *bfp1, u8 *bfp2);
   double bfp_op_dice(int length, u8 *bfp1, u8 *bfp2);
 
