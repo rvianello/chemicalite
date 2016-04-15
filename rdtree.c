@@ -163,6 +163,10 @@ struct RDtree {
   sqlite3_stmt *pReadParent;
   sqlite3_stmt *pWriteParent;
   sqlite3_stmt *pDeleteParent;
+
+  /* Statements to update the bit frequencies in xxx_bitfreq */
+  sqlite3_stmt *pIncrementBitfreq;
+  sqlite3_stmt *pDecrementBitfreq;
 };
 
 /*
@@ -679,6 +683,8 @@ static void rdtreeRelease(RDtree *pRDtree)
     sqlite3_finalize(pRDtree->pReadParent);
     sqlite3_finalize(pRDtree->pWriteParent);
     sqlite3_finalize(pRDtree->pDeleteParent);
+    sqlite3_finalize(pRDtree->pIncrementBitfreq);
+    sqlite3_finalize(pRDtree->pDecrementBitfreq);
     sqlite3_free(pRDtree);
   }
 }
@@ -1427,6 +1433,54 @@ static int parentWrite(RDtree *pRDtree,
 }
 
 /*
+** Increment the bits frequency count
+*/
+static int bitfreqIncrement(RDtree *pRDtree, u8 *pBfp)
+{
+  int rc = SQLITE_OK;
+  
+  int i, bitno = 0;
+  u8 * pBfp_end = pBfp + pRDtree->iBfpSize;
+  
+  while (pBfp < pBfp_end) {
+    u8 byte = *pBfp++;
+    for (i = 0; i < 8; ++i, ++bitno, byte>>=1) {
+      if (byte & 0x01) {
+	sqlite3_bind_int(pRDtree->pIncrementBitfreq, 1, bitno);
+	sqlite3_step(pRDtree->pIncrementBitfreq);
+	rc = sqlite3_reset(pRDtree->pIncrementBitfreq);
+      }
+    }
+  }
+  return rc;
+}
+
+
+/*
+** Decrement the bits frequency count
+*/
+static int bitfreqDecrement(RDtree *pRDtree, u8 *pBfp)
+{
+  int rc = SQLITE_OK;
+  
+  int i, bitno = 0;
+  u8 * pBfp_end = pBfp + pRDtree->iBfpSize;
+  
+  while (pBfp < pBfp_end) {
+    u8 byte = *pBfp++;
+    for (i = 0; i < 8; ++i, ++bitno, byte>>=1) {
+      if (byte & 0x01) {
+	sqlite3_bind_int(pRDtree->pDecrementBitfreq, 1, bitno);
+	sqlite3_step(pRDtree->pDecrementBitfreq);
+	rc = sqlite3_reset(pRDtree->pDecrementBitfreq);
+      }
+    }
+  }
+  return rc;
+}
+
+
+/*
 ** Pick the next item to be inserted into one of the two subsets. Select the
 ** one associated to a strongest "preference" for one of the two.
 */
@@ -2113,6 +2167,7 @@ static int rdtreeDeleteRowid(RDtree *pRDtree, sqlite3_int64 iDelete)
   int rc, rc2;                    /* Return code */
   RDtreeNode *pLeaf = 0;          /* Leaf node containing record iDelete */
   int iItem;                      /* Index of iDelete item in pLeaf */
+  u8 *pBfp;                       /* Fingerprint that is being removed */
   RDtreeNode *pRoot;              /* Root node of rtree structure */
 
 
@@ -2131,6 +2186,10 @@ static int rdtreeDeleteRowid(RDtree *pRDtree, sqlite3_int64 iDelete)
     rc = nodeRowidIndex(pRDtree, pLeaf, iDelete, &iItem);
     if (rc == SQLITE_OK) {
       rc = deleteItem(pRDtree, pLeaf, iItem, 0);
+    }
+    if (rc == SQLITE_OK) {
+      pBfp = nodeGetBfp(pRDtree, pLeaf, iItem);
+      rc = bitfreqDecrement(pRDtree, pBfp);
     }
     rc2 = nodeRelease(pRDtree, pLeaf);
     if (rc == SQLITE_OK) {
@@ -2299,6 +2358,10 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
         rc = rc2;
       }
     }
+
+    if (rc == SQLITE_OK) {
+      rc = bitfreqIncrement(pRDtree, item.aBfp);
+    }
   }
 
 update_end:
@@ -2318,8 +2381,10 @@ static int rdtreeRename(sqlite3_vtab *pVtab, const char *zNewName)
     "ALTER TABLE %Q.'%q_node'   RENAME TO \"%w_node\";"
     "ALTER TABLE %Q.'%q_parent' RENAME TO \"%w_parent\";"
     "ALTER TABLE %Q.'%q_rowid'  RENAME TO \"%w_rowid\";"
+    "ALTER TABLE %Q.'%q_bitfreq'  RENAME TO \"%w_bitfreq\";"
     , pRDtree->zDb, pRDtree->zName, zNewName 
     , pRDtree->zDb, pRDtree->zName, zNewName 
+    , pRDtree->zDb, pRDtree->zName, zNewName
     , pRDtree->zDb, pRDtree->zName, zNewName
   );
   if (zSql) {
@@ -2360,7 +2425,7 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
 {
   int rc = SQLITE_OK;
 
-  #define N_STATEMENT 9
+  #define N_STATEMENT 11
   static const char *azSql[N_STATEMENT] = {
     /* Read and write the xxx_node table */
     "SELECT data FROM '%q'.'%q_node' WHERE nodeno = :1",
@@ -2375,7 +2440,11 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
     /* Read and write the xxx_parent table */
     "SELECT parentnode FROM '%q'.'%q_parent' WHERE nodeno = :1",
     "INSERT OR REPLACE INTO '%q'.'%q_parent' VALUES(:1, :2)",
-    "DELETE FROM '%q'.'%q_parent' WHERE nodeno = :1"
+    "DELETE FROM '%q'.'%q_parent' WHERE nodeno = :1",
+
+    /* Update the xxx_bitfreq table */
+    "UPDATE '%q'.'%q_bitfreq' SET freq = freq + 1 WHERE bitno = :1",
+    "UPDATE '%q'.'%q_bitfreq' SET freq = freq - 1 WHERE bitno = :1"
   };
   sqlite3_stmt **appStmt[N_STATEMENT];
   int i;
@@ -2385,7 +2454,7 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
       = sqlite3_mprintf("CREATE TABLE \"%w\".\"%w_node\"(nodeno INTEGER PRIMARY KEY, data BLOB);"
 			"CREATE TABLE \"%w\".\"%w_rowid\"(rowid INTEGER PRIMARY KEY, nodeno INTEGER);"
 			"CREATE TABLE \"%w\".\"%w_parent\"(nodeno INTEGER PRIMARY KEY, parentnode INTEGER);"
-			"CREATE TABLE \"%w\".\"%w_bitfreq\"(bitno INTEGER PRIMARY KEY, count INTEGER);"
+			"CREATE TABLE \"%w\".\"%w_bitfreq\"(bitno INTEGER PRIMARY KEY, freq INTEGER);"
 			"INSERT INTO \"%w\".\"%w_node\" VALUES(1, zeroblob(%d))",
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
@@ -2446,7 +2515,9 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
   appStmt[6] = &pRDtree->pReadParent;
   appStmt[7] = &pRDtree->pWriteParent;
   appStmt[8] = &pRDtree->pDeleteParent;
-
+  appStmt[9] = &pRDtree->pIncrementBitfreq;
+  appStmt[10] = &pRDtree->pDecrementBitfreq;
+  
   for (i=0; i<N_STATEMENT && rc==SQLITE_OK; i++) {
     char *zSql = sqlite3_mprintf(azSql[i], pRDtree->zDb, pRDtree->zName);
     if (zSql) {
@@ -2614,8 +2685,15 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
     else {
       char *zSql = sqlite3_mprintf("CREATE TABLE x(%s", argv[3]);
       char *zTmp;
+      /* the current implementation requires 2 columns specs, plus
+      ** an optional flag. in practice, the following loop will always
+      ** execute one single iteration, but I'm leaving it here although
+      ** more generic than needed, just in case it may be useful again at
+      ** some point in the future
+      */
       int ii;
-      for(ii=4; zSql && ii<argc; ii++){
+      /* for(ii=4; zSql && ii<argc; ii++){ */
+      for(ii=4; zSql && ii<5; ii++){
         zTmp = zSql;
         zSql = sqlite3_mprintf("%s, %s", zTmp, argv[ii]);
         sqlite3_free(zTmp);
