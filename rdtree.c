@@ -214,7 +214,8 @@ struct RDtreeConstraint {
   /* Ok this part is a bit ugly and these data structures will benefit some
   ** redesign. FIXME
   */
-  u8 aBfp[MAX_BITSTRING_SIZE];    /* Constraint value. */
+  u8 aBfp[MAX_BITSTRING_SIZE];        /* Constraint value. */
+  u8 aBfpFilter[MAX_BITSTRING_SIZE];  /* Subset constraint value */
   int iWeight;
   double dParam;
   RDtreeMatchOp *op;
@@ -2819,6 +2820,16 @@ static int tanimotoTestInternal(RDtree* pRDtree,
   if ((pItem->iMaxWeight < t*na) || (na < t*pItem->iMinWeight)) {
     *pEof = 1;
   }
+  /*
+  ** A bfp satisfying the query must have at least 1 bit in common with
+  ** any subset of Na - t*Na + 1 bits from the query. If this test fails
+  ** on the union of fingerprints populating the child nodes, we can prune 
+  ** the subtree
+  */
+  else if (!bfp_op_intersects(pRDtree->iBfpSize,
+			      pItem->aBfp, pCons->aBfpFilter)) {
+    *pEof = 1;
+  }
   /* The item in the internal node stores the union of the fingerprints 
   ** that populate the child nodes. I want to use this union to compute an
   ** upper bound to the similarity. If this upper bound is lower than the 
@@ -2845,6 +2856,10 @@ static int tanimotoTestLeaf(RDtree* pRDtree,
   if ((nb < t*na) || (na < t*nb)) {
     *pEof = 1;
   }
+  else if (!bfp_op_intersects(pRDtree->iBfpSize,
+			      pItem->aBfp, pCons->aBfpFilter)) {
+    *pEof = 1;
+  }
   else {
     int iweight = bfp_op_iweight(pRDtree->iBfpSize, pItem->aBfp, pCons->aBfp);
     int uweight = na + nb - iweight;
@@ -2863,6 +2878,44 @@ static RDtreeMatchOp tanimotoMatchOp = {
 /*
 ** A factory function for a tanimoto similarity search match object
 */
+static void assignTanimotoFilterBfp(RDtreeMatchArg *pMatchArg, int iBfpSize)
+{
+  /* clear the filter bfp */
+  /* compute the required number of bit to be set */
+  int na = pMatchArg->constraint.iWeight;
+  double t = pMatchArg->constraint.dParam;
+  int nbits = ceil((1 - t)*na) + 1;
+
+  /* loop on the query fp and copy nbits bits 
+  ** (we could do better using the bitfreq stats, but in a next rev)
+  */
+  u8 * pSrc = pMatchArg->constraint.aBfp;
+  u8 * pSrc_end = pSrc + iBfpSize;
+  u8 * pDst = pMatchArg->constraint.aBfpFilter;
+
+  int i;
+  int bitcount = 0;
+  u8 bit, byte;
+
+  memset(pMatchArg->constraint.aBfpFilter, 0, iBfpSize);
+
+  while (bitcount < nbits && pSrc < pSrc_end) {
+    byte = *pSrc++;
+    for (i = 0, bit = 0x01; bitcount < nbits && i < 8; ++i, bit<<=1) {
+      if (byte & bit) {
+	++bitcount;
+	*pDst |= bit;
+      }
+    }
+    ++pDst;
+  }
+
+  assert(bfp_op_weight(iBfpSize, pMatchArg->constraint.aBfpFilter) == nbits);
+  assert(bfp_op_contains(iBfpSize,
+			 pMatchArg->constraint.aBfp,
+			 pMatchArg->constraint.aBfpFilter));
+}
+
 static void rdtree_tanimoto_f(sqlite3_context* ctx, 
 			      int argc, sqlite3_value** argv)
 {
@@ -2894,6 +2947,7 @@ static void rdtree_tanimoto_f(sqlite3_context* ctx,
     memcpy(pMatchArg->constraint.aBfp, sqlite3_value_blob(argv[0]), sz);
     pMatchArg->constraint.iWeight = bfp_op_weight(sz, pMatchArg->constraint.aBfp);
     pMatchArg->constraint.dParam = sqlite3_value_double(argv[1]);
+    assignTanimotoFilterBfp(pMatchArg, sz);
   }
 
   if (rc == SQLITE_OK) {
