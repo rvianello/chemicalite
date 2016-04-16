@@ -239,6 +239,7 @@ struct RDtreeMatchArg {
 };
 
 struct RDtreeMatchOp {
+  int (*xInitializeConstraint)(RDtree*, RDtreeConstraint*); 
   int (*xTestInternal)(RDtree*, RDtreeConstraint*, RDtreeItem*, int*); 
   int (*xTestLeaf)(RDtree*, RDtreeConstraint*, RDtreeItem*, int*);
 };
@@ -1089,6 +1090,9 @@ static int rdtreeFilter(sqlite3_vtab_cursor *pVtabCursor,
 	  ** can be cast into an RDtreeMatchArg object.
 	  */
 	  rc = deserializeMatchArg(argv[ii], p);
+	  if (rc == SQLITE_OK && p->op->xInitializeConstraint) {
+	      rc = p->op->xInitializeConstraint(pRDtree, p);
+	  }
 	  if (rc != SQLITE_OK) {
 	    break;
 	  }
@@ -2748,7 +2752,7 @@ static int subsetTest(RDtree* pRDtree,
   return SQLITE_OK;
 }
 
-static RDtreeMatchOp subsetMatchOp = { subsetTest, subsetTest };
+static RDtreeMatchOp subsetMatchOp = { 0, subsetTest, subsetTest };
 
 /*
 ** A factory function for a substructure search match object
@@ -2870,34 +2874,35 @@ static int tanimotoTestLeaf(RDtree* pRDtree,
   return SQLITE_OK;
 }
 
-static RDtreeMatchOp tanimotoMatchOp = { 
-  tanimotoTestInternal, 
-  tanimotoTestLeaf
-};
-
-/*
-** A factory function for a tanimoto similarity search match object
-*/
-static void assignTanimotoFilterBfp(RDtreeMatchArg *pMatchArg, int iBfpSize)
+static int tanimotoInitializeConstraint(RDtree *pRDtree,
+					RDtreeConstraint *pCons)
 {
-  /* clear the filter bfp */
+  int rc = SQLITE_OK;
+
+  int iBfpSize = pRDtree->iBfpSize;
+  
+  memset(pCons->aBfpFilter, 0, iBfpSize);
+
   /* compute the required number of bit to be set */
-  int na = pMatchArg->constraint.iWeight;
-  double t = pMatchArg->constraint.dParam;
+  int na = pCons->iWeight;
+  double t = pCons->dParam;
   int nbits = ceil((1 - t)*na) + 1;
 
+#if 0
+  /* Easy method first. Just pick the first nbits bits from aBfp, and 
+  ** copy them onto aBfpFilter.
+  */
+  
   /* loop on the query fp and copy nbits bits 
   ** (we could do better using the bitfreq stats, but in a next rev)
   */
-  u8 * pSrc = pMatchArg->constraint.aBfp;
+  u8 * pSrc = pCons->aBfp;
   u8 * pSrc_end = pSrc + iBfpSize;
-  u8 * pDst = pMatchArg->constraint.aBfpFilter;
+  u8 * pDst = pCons->aBfpFilter;
 
   int i;
   int bitcount = 0;
   u8 bit, byte;
-
-  memset(pMatchArg->constraint.aBfpFilter, 0, iBfpSize);
 
   while (bitcount < nbits && pSrc < pSrc_end) {
     byte = *pSrc++;
@@ -2910,12 +2915,87 @@ static void assignTanimotoFilterBfp(RDtreeMatchArg *pMatchArg, int iBfpSize)
     ++pDst;
   }
 
-  assert(bfp_op_weight(iBfpSize, pMatchArg->constraint.aBfpFilter) == nbits);
-  assert(bfp_op_contains(iBfpSize,
-			 pMatchArg->constraint.aBfp,
-			 pMatchArg->constraint.aBfpFilter));
+#else
+  /* More sophisticated approach. Use the bit frequency table to pick
+  ** the bits from aBfp that are less frequetly occurring in the database
+  ** and may therefore provide a more selective power
+  */
+
+  char *zSql = sqlite3_mprintf("SELECT bitno FROM '%q'.'%q_bitfreq' "
+			       "WHERE bitno IN (",
+			       pRDtree->zDb, pRDtree->zName);
+  char *zTmp;
+
+  int i, ii;
+  int first = 1;
+  for (i=0; i < iBfpSize; ++i) {
+    u8 byte = pCons->aBfp[i];
+    u8 bit = 0x01;
+    for (ii = 0; ii < 8; ++ii, bit<<=1) {
+      if (byte & bit) {
+	int bitno = i*8 + ii;
+	zTmp = zSql;
+	if (first) {
+	  zSql = sqlite3_mprintf("%s%d", zTmp, bitno);
+	  first = 0;
+	}
+	else {
+	  zSql = sqlite3_mprintf("%s, %d", zTmp, bitno);
+	}
+	sqlite3_free(zTmp);
+      }
+    }
+  }
+  
+  if( zSql ){
+    zTmp = zSql;
+    zSql = sqlite3_mprintf("%s) ORDER BY freq ASC LIMIT %d;", zTmp, nbits);
+    sqlite3_free(zTmp);
+  }
+  
+  if( !zSql ){
+    return SQLITE_NOMEM;
+  }
+
+  sqlite3_stmt * pStmt = 0;
+  /* printf("%s\n", zSql); */
+  
+  rc = sqlite3_prepare_v2(pRDtree->db, zSql, -1, &pStmt, 0);
+  sqlite3_free(zSql);
+
+  if (rc != SQLITE_OK) {
+    return rc;
+  }
+
+  while ((rc = sqlite3_step(pStmt)) == SQLITE_ROW) {
+    int bitno = sqlite3_column_int(pStmt, 0);
+    /* printf("%d\n", bitno); */
+    pCons->aBfpFilter[bitno/8] |= (0x01 << (bitno % 8));
+  }
+
+  sqlite3_finalize(pStmt);
+  
+  if (rc == SQLITE_DONE) {
+    rc = SQLITE_OK;
+  }
+  
+#endif
+  
+  assert(bfp_op_weight(iBfpSize, pCons->aBfpFilter) == nbits);
+  assert(bfp_op_contains(iBfpSize, pCons->aBfp, pCons->aBfpFilter));
+
+  return rc;
 }
 
+static RDtreeMatchOp tanimotoMatchOp = {
+  tanimotoInitializeConstraint,
+  tanimotoTestInternal, 
+  tanimotoTestLeaf
+};
+
+/*
+** A factory function for a tanimoto similarity search match object
+*/
 static void rdtree_tanimoto_f(sqlite3_context* ctx, 
 			      int argc, sqlite3_value** argv)
 {
@@ -2947,7 +3027,6 @@ static void rdtree_tanimoto_f(sqlite3_context* ctx,
     memcpy(pMatchArg->constraint.aBfp, sqlite3_value_blob(argv[0]), sz);
     pMatchArg->constraint.iWeight = bfp_op_weight(sz, pMatchArg->constraint.aBfp);
     pMatchArg->constraint.dParam = sqlite3_value_double(argv[1]);
-    assignTanimotoFilterBfp(pMatchArg, sz);
   }
 
   if (rc == SQLITE_OK) {
