@@ -167,6 +167,10 @@ struct RDtree {
   /* Statements to update the bit frequencies in xxx_bitfreq */
   sqlite3_stmt *pIncrementBitfreq;
   sqlite3_stmt *pDecrementBitfreq;
+
+  /* Statements to update the weight frequencies in xxx_weightfreq */
+  sqlite3_stmt *pIncrementWeightfreq;
+  sqlite3_stmt *pDecrementWeightfreq;
 };
 
 /*
@@ -600,6 +604,28 @@ static i64 nodeGetRowid(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
   return readInt64(&pNode->zData[4 + pRDtree->nBytesPerItem*iItem]);
 }
 
+/* Return the min weight computed on the fingerprints associated to this
+** item. If pNode is a leaf node then this is the actual population count
+** for the item's fingerprint. On internal nodes the min weight contributes
+** to defining the cell bounds
+*/
+static int nodeGetMinWeight(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
+{
+  assert(iItem < NITEM(pNode));
+  return readInt16(&pNode->zData[4 + pRDtree->nBytesPerItem*iItem + 8 /* rowid */]);
+}
+
+/* Return the max weight computed on the fingerprints associated to this
+** item. If pNode is a leaf node then this is the actual population count
+** for the item's fingerprint. On internal nodes the max weight contributes
+** to defining the cell bounds
+*/
+static int nodeGetMaxWeight(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
+{
+  assert(iItem < NITEM(pNode));
+  return readInt16(&pNode->zData[4 + pRDtree->nBytesPerItem*iItem + 8 /* rowid */ + 2 /* min weight */]);
+}
+
 /*
 ** Return pointer to the binary fingerprint associated with item iItem of
 ** node pNode. If pNode is a leaf node, this is a virtual table element.
@@ -687,6 +713,8 @@ static void rdtreeRelease(RDtree *pRDtree)
     sqlite3_finalize(pRDtree->pDeleteParent);
     sqlite3_finalize(pRDtree->pIncrementBitfreq);
     sqlite3_finalize(pRDtree->pDecrementBitfreq);
+    sqlite3_finalize(pRDtree->pIncrementWeightfreq);
+    sqlite3_finalize(pRDtree->pDecrementWeightfreq);
     sqlite3_free(pRDtree);
   }
 }
@@ -1486,6 +1514,36 @@ static int bitfreqDecrement(RDtree *pRDtree, u8 *pBfp)
 
 
 /*
+** Increment the weight frequency count
+*/
+static int weightfreqIncrement(RDtree *pRDtree, int weight)
+{
+  int rc = SQLITE_OK;
+  
+  sqlite3_bind_int(pRDtree->pIncrementWeightfreq, 1, weight);
+  sqlite3_step(pRDtree->pIncrementWeightfreq);
+  rc = sqlite3_reset(pRDtree->pIncrementWeightfreq);
+
+  return rc;
+}
+
+
+/*
+** Decrement the weight frequency count
+*/
+static int weightfreqDecrement(RDtree *pRDtree, int weight)
+{
+  int rc = SQLITE_OK;
+  
+  sqlite3_bind_int(pRDtree->pDecrementWeightfreq, 1, weight);
+  sqlite3_step(pRDtree->pDecrementWeightfreq);
+  rc = sqlite3_reset(pRDtree->pDecrementWeightfreq);
+
+  return rc;
+}
+
+
+/*
 ** Pick the next item to be inserted into one of the two subsets. Select the
 ** one associated to a strongest "preference" for one of the two.
 */
@@ -2172,7 +2230,6 @@ static int rdtreeDeleteRowid(RDtree *pRDtree, sqlite3_int64 iDelete)
   int rc, rc2;                    /* Return code */
   RDtreeNode *pLeaf = 0;          /* Leaf node containing record iDelete */
   int iItem;                      /* Index of iDelete item in pLeaf */
-  u8 *pBfp;                       /* Fingerprint that is being removed */
   RDtreeNode *pRoot;              /* Root node of rtree structure */
 
 
@@ -2193,8 +2250,12 @@ static int rdtreeDeleteRowid(RDtree *pRDtree, sqlite3_int64 iDelete)
       rc = deleteItem(pRDtree, pLeaf, iItem, 0);
     }
     if (rc == SQLITE_OK) {
-      pBfp = nodeGetBfp(pRDtree, pLeaf, iItem);
+      u8 *pBfp = nodeGetBfp(pRDtree, pLeaf, iItem);
       rc = bitfreqDecrement(pRDtree, pBfp);
+    }
+    if (rc == SQLITE_OK) {
+      int weight = nodeGetMaxWeight(pRDtree, pLeaf, iItem);
+      rc = weightfreqDecrement(pRDtree, weight);
     }
     rc2 = nodeRelease(pRDtree, pLeaf);
     if (rc == SQLITE_OK) {
@@ -2367,6 +2428,9 @@ static int rdtreeUpdate(sqlite3_vtab *pVtab,
     if (rc == SQLITE_OK) {
       rc = bitfreqIncrement(pRDtree, item.aBfp);
     }
+    if (rc == SQLITE_OK) {
+      rc = weightfreqIncrement(pRDtree, item.iMaxWeight);
+    }
   }
 
 update_end:
@@ -2387,8 +2451,10 @@ static int rdtreeRename(sqlite3_vtab *pVtab, const char *zNewName)
     "ALTER TABLE %Q.'%q_parent' RENAME TO \"%w_parent\";"
     "ALTER TABLE %Q.'%q_rowid'  RENAME TO \"%w_rowid\";"
     "ALTER TABLE %Q.'%q_bitfreq'  RENAME TO \"%w_bitfreq\";"
+    "ALTER TABLE %Q.'%q_weightfreq'  RENAME TO \"%w_weightfreq\";"
     , pRDtree->zDb, pRDtree->zName, zNewName 
     , pRDtree->zDb, pRDtree->zName, zNewName 
+    , pRDtree->zDb, pRDtree->zName, zNewName
     , pRDtree->zDb, pRDtree->zName, zNewName
     , pRDtree->zDb, pRDtree->zName, zNewName
   );
@@ -2430,7 +2496,7 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
 {
   int rc = SQLITE_OK;
 
-  #define N_STATEMENT 11
+  #define N_STATEMENT 13
   static const char *azSql[N_STATEMENT] = {
     /* Read and write the xxx_node table */
     "SELECT data FROM '%q'.'%q_node' WHERE nodeno = :1",
@@ -2449,7 +2515,11 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
 
     /* Update the xxx_bitfreq table */
     "UPDATE '%q'.'%q_bitfreq' SET freq = freq + 1 WHERE bitno = :1",
-    "UPDATE '%q'.'%q_bitfreq' SET freq = freq - 1 WHERE bitno = :1"
+    "UPDATE '%q'.'%q_bitfreq' SET freq = freq - 1 WHERE bitno = :1",
+
+    /* Update the xxx_weightfreq table */
+    "UPDATE '%q'.'%q_weightfreq' SET freq = freq + 1 WHERE weight = :1",
+    "UPDATE '%q'.'%q_weightfreq' SET freq = freq - 1 WHERE weight = :1"
   };
   sqlite3_stmt **appStmt[N_STATEMENT];
   int i;
@@ -2460,13 +2530,13 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
 			"CREATE TABLE \"%w\".\"%w_rowid\"(rowid INTEGER PRIMARY KEY, nodeno INTEGER);"
 			"CREATE TABLE \"%w\".\"%w_parent\"(nodeno INTEGER PRIMARY KEY, parentnode INTEGER);"
 			"CREATE TABLE \"%w\".\"%w_bitfreq\"(bitno INTEGER PRIMARY KEY, freq INTEGER);"
-			//"CREATE INDEX \"%w\".\"%w_bitfreq_idx\" ON \"%w_bitfreq\"('freq' ASC);"
+			"CREATE TABLE \"%w\".\"%w_weightfreq\"(weight INTEGER PRIMARY KEY, freq INTEGER);"
 			"INSERT INTO \"%w\".\"%w_node\" VALUES(1, zeroblob(%d))",
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, 
-			//pRDtree->zDb, pRDtree->zName, pRDtree->zName, 
+			pRDtree->zDb, pRDtree->zName, 
 			pRDtree->zDb, pRDtree->zName, pRDtree->iNodeSize
 			);
     if (!zCreate) {
@@ -2511,6 +2581,42 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
     if (rc != SQLITE_OK) {
       return rc;
     }
+
+    char *zInitWeightfreq
+      = sqlite3_mprintf("INSERT INTO \"%w\".\"%w_weightfreq\" VALUES(?, 0)",
+			pRDtree->zDb, pRDtree->zName
+			);
+    if (!zInitWeightfreq) {
+      return SQLITE_NOMEM;
+    }
+    sqlite3_stmt * initWeightfreqStmt = 0;
+    rc = sqlite3_prepare_v2(pRDtree->db, zInitWeightfreq, -1,
+			    &initWeightfreqStmt, 0);
+    sqlite3_free(zInitWeightfreq);
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
+
+    for (i=0; i <= pRDtree->iBfpSize*8; ++i) {
+      rc = sqlite3_bind_int(initWeightfreqStmt, 1, i);
+      if (rc != SQLITE_OK) {
+	break;
+      }
+      rc = sqlite3_step(initWeightfreqStmt);
+      
+      if (rc != SQLITE_DONE) {
+	break;
+      }
+      else {
+	/* reassign the rc status and keep the error handling simple */
+	rc = SQLITE_OK; 
+      }
+      sqlite3_reset(initWeightfreqStmt);
+    }
+    sqlite3_finalize(initWeightfreqStmt);
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
   }
 
   appStmt[0] = &pRDtree->pReadNode;
@@ -2524,6 +2630,8 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
   appStmt[8] = &pRDtree->pDeleteParent;
   appStmt[9] = &pRDtree->pIncrementBitfreq;
   appStmt[10] = &pRDtree->pDecrementBitfreq;
+  appStmt[11] = &pRDtree->pIncrementWeightfreq;
+  appStmt[12] = &pRDtree->pDecrementWeightfreq;
   
   for (i=0; i<N_STATEMENT && rc==SQLITE_OK; i++) {
     char *zSql = sqlite3_mprintf(azSql[i], pRDtree->zDb, pRDtree->zName);
