@@ -27,7 +27,7 @@ class TestBitString(ChemicaLiteTestCase):
             ")")
         d = next(c)[0]
         self.assertEqual(d, 1.0)
-        
+
     def test_rdkit(self):
         c = self.db.cursor()
         c.execute(
@@ -44,7 +44,7 @@ class TestBitString(ChemicaLiteTestCase):
             ")")
         d = next(c)[0]
         self.assertEqual(d, 1.0)
-        
+
     def test_atom_pairs(self):
         c = self.db.cursor()
         c.execute(
@@ -61,7 +61,7 @@ class TestBitString(ChemicaLiteTestCase):
             ")")
         d = next(c)[0]
         self.assertEqual(d, 1.0)
-        
+
     def test_topological_torsion(self):
         c = self.db.cursor()
         c.execute(
@@ -78,7 +78,7 @@ class TestBitString(ChemicaLiteTestCase):
             ")")
         d = next(c)[0]
         self.assertEqual(d, 1.0)
-        
+
     def test_maccs(self):
         c = self.db.cursor()
         c.execute(
@@ -95,7 +95,7 @@ class TestBitString(ChemicaLiteTestCase):
             ")")
         d = next(c)[0]
         self.assertEqual(d, 1.0)
-        
+
     def test_morgan(self):
         c = self.db.cursor()
         c.execute(
@@ -112,7 +112,7 @@ class TestBitString(ChemicaLiteTestCase):
             ")")
         d = next(c)[0]
         self.assertEqual(d, 1.0)
-        
+
     def test_feat_morgan(self):
         c = self.db.cursor()
         c.execute(
@@ -152,7 +152,7 @@ class TestBitString(ChemicaLiteTestCase):
             "mol_bfp_signature('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
             ")")
         w = next(c)[0]
-        self.assertEqual(w, 341)
+        self.assertEqual(w, 355)
         c.execute(
             "select bfp_weight("
             "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
@@ -167,4 +167,3 @@ if __name__=="__main__":
     errors = len(result.errors)
     failures = len(result.failures)
     sys.exit(errors + failures)
-
