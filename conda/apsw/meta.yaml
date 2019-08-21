@@ -1,22 +1,24 @@
 package:
   name: apsw
-  version: "3.13.0.r1"
+  version: "3.28.0.post1"
 
 source:
   git_url: https://github.com/rogerbinns/apsw.git
-  git_tag: 3.13.0-r1
+  git_tag: 3.28.0-r1
 
 build:
-  number: 1
+  number: 0
 
 requirements:
   build:
-    - sqlite
+    - {{ compiler('c') }}
+  host:
     - python
     - setuptools
+    - icu
   run:
-    - sqlite
     - python
+    - icu
 
 test:
   imports:
