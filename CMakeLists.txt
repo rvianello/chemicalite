@@ -21,7 +21,7 @@ set_target_properties(chemicalite PROPERTIES PREFIX "")
 target_link_libraries(chemicalite PUBLIC
                       RDKit::Descriptors RDKit::Fingerprints RDKit::GraphMol  ${SQLite3_LIBRARIES})
 
-#add_subdirectory(examples)
+add_subdirectory(examples)
 
 option(CHEMICALITE_ENABLE_NATIVE_OPT
        "enable compiler optimization for the native architecture" ON)
