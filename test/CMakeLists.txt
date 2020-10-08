@@ -2,7 +2,7 @@ add_library(testcommon testcommon.c)
 
 macro(chemicalite_ctest test)
     add_executable(${test} ${test}.c)
-    target_link_libraries(${test} testcommon ${SQLITE3_LIBRARY})
+    target_link_libraries(${test} testcommon ${SQLite3_LIBRARIES})
     add_test(${test} ${test} ${ARGN})
 endmacro(chemicalite_ctest)
 

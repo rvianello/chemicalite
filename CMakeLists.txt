@@ -1,15 +1,10 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.14)
 
 project(chemicalite)
 
-set(CMAKE_MODULE_PATH
-    ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
+find_package(SQLite3 REQUIRED)
+include_directories(${SQLite3_INCLUDE_DIRS})
 
-find_package(Sqlite3 REQUIRED)
-include_directories(${SQLITE3_INCLUDE_DIR})
-
-find_package(Threads)
-find_package(Eigen3 REQUIRED)
 find_package(RDKit REQUIRED)
 include_directories(${RDKit_INCLUDE_DIRS})
 
@@ -18,20 +13,20 @@ add_library(chemicalite MODULE
 	    bfp_ops.c
  	    bitstring.c
 	    rdtree.c
-            chemicalite.c
-            rdkit_adapter.cpp)
+        chemicalite.c
+        rdkit_adapter.cpp)
 
 set_target_properties(chemicalite PROPERTIES PREFIX "")
 
 target_link_libraries(chemicalite PUBLIC
-                      Descriptors Fingerprints GraphMol  ${SQLITE3_LIBRARY})
+                      RDKit::Descriptors RDKit::Fingerprints RDKit::GraphMol  ${SQLite3_LIBRARIES})
 
-add_subdirectory(examples)
+#add_subdirectory(examples)
 
 option(CHEMICALITE_ENABLE_NATIVE_OPT
        "enable compiler optimization for the native architecture" ON)
 option(CHEMICALITE_ENABLE_TESTS "enable tests" ON)
-option(CHEMICALITE_ENABLE_PYTHON_TESTS "enable python tests" ON)
+option(CHEMICALITE_ENABLE_PYTHON_TESTS "enable python tests" OFF)
 
 if (CHEMICALITE_ENABLE_TESTS)
     enable_testing()
