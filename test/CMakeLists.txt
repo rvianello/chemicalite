@@ -15,7 +15,7 @@ chemicalite_ctest(rdtree_single_select_by_subset)
 if (CHEMICALITE_ENABLE_PYTHON_TESTS)
     macro(chemicalite_pytest module)
         add_test(${module}
-                 python ${CMAKE_CURRENT_SOURCE_DIR}/${module}.py)
+                 ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${module}.py)
     endmacro(chemicalite_pytest)
 
     chemicalite_pytest(load_extension)

@@ -24,7 +24,7 @@ target_link_libraries(chemicalite PUBLIC
 add_subdirectory(examples)
 
 option(CHEMICALITE_ENABLE_NATIVE_OPT
-       "enable compiler optimization for the native architecture" ON)
+       "enable compiler optimization for the native architecture" ${RDKit_USE_OPTIMIZED_POPCNT})
 option(CHEMICALITE_ENABLE_TESTS "enable tests" ON)
 option(CHEMICALITE_ENABLE_PYTHON_TESTS "enable python tests" OFF)
 
@@ -32,7 +32,8 @@ if (CHEMICALITE_ENABLE_TESTS)
     enable_testing()
     add_subdirectory(test)
     if (CHEMICALITE_ENABLE_PYTHON_TESTS)
-        find_package(PythonInterp REQUIRED)
+        find_package (Python3 COMPONENTS Interpreter)
+        # FIXME should also check that APSW is available
     endif (CHEMICALITE_ENABLE_PYTHON_TESTS)
 endif (CHEMICALITE_ENABLE_TESTS)
 
