@@ -22,10 +22,8 @@ RUN dnf install -y \
     g++ \
     git \
     make \
-    #python3-ipython \
     sqlite-devel \
     valgrind \
-    #zlib-devel \
     #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \
