@@ -29,8 +29,7 @@ static int byte_popcounts[] = {
 int bfp_op_weight(int length, u8 *bfp)
 {
   int total_popcount = 0; 
-  int i;
-  
+
   int ilength = length / sizeof(POPCNT_TYPE);
 
   POPCNT_TYPE * ibfp = (POPCNT_TYPE *) bfp;
@@ -61,7 +60,7 @@ int bfp_op_weight(int length, u8 *bfp)
 int bfp_op_subset_weight(int length, u8 *bfp, u8 byte_mask)
 {
   int total_popcount = 0; 
-  int i;
+  unsigned int i;
 
   POPCNT_TYPE mask = byte_mask;
   for (i = 1; i < sizeof(POPCNT_TYPE); ++i) {
@@ -98,8 +97,6 @@ int bfp_op_subset_weight(int length, u8 *bfp, u8 byte_mask)
 
 void bfp_op_union(int length, u8 *bfp1, u8 *bfp2)
 {
-  int i;
-  
   int ilength = length / sizeof(POPCNT_TYPE);
 
   POPCNT_TYPE * ibfp1 = (POPCNT_TYPE *) bfp1;
@@ -130,7 +127,6 @@ void bfp_op_union(int length, u8 *bfp1, u8 *bfp2)
 int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2)
 {
   int growth = 0; 
-  int i;
   
   int ilength = length / sizeof(POPCNT_TYPE);
 
@@ -167,8 +163,7 @@ int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2)
 int bfp_op_iweight(int length, u8 *bfp1, u8 *bfp2)
 {
   int intersect_popcount = 0;
-  int i;
-  
+
   int ilength = length / sizeof(POPCNT_TYPE);
 
   POPCNT_TYPE * ibfp1 = (POPCNT_TYPE *) bfp1;
@@ -201,7 +196,6 @@ int bfp_op_iweight(int length, u8 *bfp1, u8 *bfp2)
 int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2)
 {
   int contains = 1;
-  int i;
 
   int ilength = length / sizeof(POPCNT_TYPE);
 
@@ -231,7 +225,6 @@ int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2)
 int bfp_op_intersects(int length, u8 *bfp1, u8 *bfp2)
 {
   int intersects = 0;
-  int i;
 
   int ilength = length / sizeof(POPCNT_TYPE);
 
@@ -265,7 +258,6 @@ double bfp_op_tanimoto(int length, u8 *afp, u8 *bfp)
   // Nsame / (Na + Nb - Nsame)
   int union_popcount = 0;
   int intersect_popcount = 0;
-  int i;
 
   int ilength = length / sizeof(POPCNT_TYPE);
 
@@ -319,7 +311,6 @@ double bfp_op_dice(int length, u8 *afp, u8 *bfp)
   // 2 * Nsame / (Na + Nb)
   int intersect_popcount = 0;
   int total_popcount = 0; 
-  int i;
   
   int ilength = length / sizeof(POPCNT_TYPE);
 

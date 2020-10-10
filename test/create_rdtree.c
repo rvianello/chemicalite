@@ -5,7 +5,7 @@
 /*
 ** verify rdtree virtual table and storage backend are created
 */
-int main(int argc, char *argv[])
+int main()
 {
   int rc = SQLITE_OK;
   char *errMsg = 0;

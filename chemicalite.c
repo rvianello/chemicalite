@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <math.h>
 #include <assert.h>
 
 #include <sqlite3ext.h>
@@ -26,8 +27,8 @@ static void create_molecule_rdtree_f(sqlite3_context* ctx,
   }
 
   sqlite3 *db = sqlite3_context_db_handle(ctx);
-  const char *table = sqlite3_value_text(argv[0]);
-  const char *column = sqlite3_value_text(argv[1]);
+  const char *table = (const char *)sqlite3_value_text(argv[0]);
+  const char *column = (const char *)sqlite3_value_text(argv[1]);
 
   int rc = SQLITE_OK;
 
@@ -167,6 +168,7 @@ int sqlite3_chemicalite_init(sqlite3 *db)
 int sqlite3_extension_init(sqlite3 *db, char **pzErrMsg,
 			   const sqlite3_api_routines *pApi)
 {
+  pzErrMsg = pzErrMsg; /* unused */
   SQLITE_EXTENSION_INIT2(pApi)
   return sqlite3_chemicalite_init(db);
 }

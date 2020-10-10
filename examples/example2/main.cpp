@@ -78,7 +78,7 @@ void close_database(sqlite3 * db)
 }
 
 
-int main(int argc, char * argv[])
+int main(int, char * argv[])
 {
   const char * db_path = argv[1];
   const char * substructure = argv[2];

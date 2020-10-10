@@ -609,11 +609,12 @@ static i64 nodeGetRowid(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
 ** for the item's fingerprint. On internal nodes the min weight contributes
 ** to defining the cell bounds
 */
+/* unused
 static int nodeGetMinWeight(RDtree *pRDtree, RDtreeNode *pNode, int iItem)
 {
   assert(iItem < NITEM(pNode));
-  return readInt16(&pNode->zData[4 + pRDtree->nBytesPerItem*iItem + 8 /* rowid */]);
-}
+  return readInt16(&pNode->zData[4 + pRDtree->nBytesPerItem*iItem + 8]);
+} */
 
 /* Return the max weight computed on the fingerprints associated to this
 ** item. If pNode is a leaf node then this is the actual population count
@@ -1043,7 +1044,6 @@ static int findLeafNode(RDtree *pRDtree, i64 iRowid, RDtreeNode **ppLeaf)
 */
 static int deserializeMatchArg(sqlite3_value *pValue, RDtreeConstraint *pCons)
 {
-  RDtreeMatchArg *p;
   int nBlob;
 
   /* Check that value is actually a blob. */
@@ -1083,6 +1083,8 @@ static int rdtreeFilter(sqlite3_vtab_cursor *pVtabCursor,
   RDtreeNode *pRoot = 0;
   int ii;
   int rc = SQLITE_OK;
+
+  idxStr = idxStr; /* unused */
 
   rdtreeReference(pRDtree);
 
@@ -1175,6 +1177,8 @@ static int rdtreeBestIndex(sqlite3_vtab *tab, sqlite3_index_info *pIdxInfo)
   int rc = SQLITE_OK;
   int ii;
 
+  tab = tab; /* unused */
+
   assert( pIdxInfo->idxStr==0 );
 
   for(ii = 0; ii < pIdxInfo->nConstraint; ii++) {
@@ -1260,7 +1264,6 @@ static int chooseLeafSubset(RDtree *pRDtree,
     ** the smallest weight.
     */
     for (iItem = 0; iItem < nItem; iItem++) {
-      int bBest = 0;
       int growth;
       int weight;
       nodeGetItem(pRDtree, pNode, iItem, &item);
@@ -1312,7 +1315,6 @@ static int chooseLeafSimilarity(RDtree *pRDtree,
     ** is inserted into it.
     */
     for (iItem = 0; iItem < nItem; iItem++) {
-      int bBest = 0;
       double distance;
       int growth;
       nodeGetItem(pRDtree, pNode, iItem, &item);
@@ -1557,6 +1559,9 @@ static void pickNextGeneric(RDtree *pRDtree,
   int preferRight = 0;
   double dMaxPreference = -1.;
   int ii;
+
+  pLeftBounds = pLeftBounds; pRightBounds = pRightBounds; /* unused */
+
   for(ii = 0; ii < nItem; ii++){
     if( aiUsed[ii]==0 ){
       double left 
@@ -1568,7 +1573,7 @@ static void pickNextGeneric(RDtree *pRDtree,
       double diff = left - right;
       double preference = 0.;
       if ((left + right) > 0.) {
-	preference = abs(diff)/(left + right);
+	preference = fabs(diff)/(left + right);
       }
       if (iSelect < 0 || preference > dMaxPreference) {
         dMaxPreference = preference;
@@ -1592,6 +1597,9 @@ static void pickNextSubset(RDtree *pRDtree,
   int preferRight = 0;
   double dMaxPreference = -1.;
   int ii;
+
+  pLeftBounds = pLeftBounds; pRightBounds = pRightBounds; /* unused */
+
   for(ii = 0; ii < nItem; ii++){
     if( aiUsed[ii]==0 ){
       double left 
@@ -1603,7 +1611,7 @@ static void pickNextSubset(RDtree *pRDtree,
       double diff = left - right;
       double preference = 0.;
       if ((left + right) > 0.) {
-	preference = abs(diff)/(left + right);
+	preference = fabs(diff)/(left + right);
       }
       if (iSelect < 0 || preference > dMaxPreference) {
         dMaxPreference = preference;
@@ -1628,6 +1636,9 @@ static void pickNextSimilarity(RDtree *pRDtree,
   int preferRight = 0;
   double dMaxPreference = -1.;
   int ii;
+
+  pRDtree = pRDtree; pLeftBounds = pLeftBounds; pRightBounds = pRightBounds; /* unused */
+
   for(ii = 0; ii < nItem; ii++){
     if( aiUsed[ii]==0 ){
       double left = itemWeightDistance(&aItem[ii], pLeftSeed);
@@ -1743,6 +1754,8 @@ static void pickSeedsSimilarity(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
   int iRightSeed = 1;
   double dDistance;
   double dMaxDistance = 0.;
+
+  pRDtree = pRDtree; /* unused */
 
   for (ii = 0; ii < nItem; ii++) {
     for (jj = ii + 1; jj < nItem; jj++) {
@@ -2489,7 +2502,8 @@ static sqlite3_module rdtreeModule = {
   rdtreeRename,                /* xRename - rename the table */
   0,                           /* xSavepoint */
   0,                           /* xRelease */
-  0                            /* xRollbackTo */
+  0,                           /* xRollbackTo */
+  0                            /* xShadowName */
 };
 
 static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
@@ -2733,6 +2747,8 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
   int nName;            /* Length of string argv[2] */
 
   int iBfpSize = MOL_SIGNATURE_SIZE;  /* Default size of binary fingerprint */
+
+  pAux = pAux; /* unused */
 
   /* perform arg checking */
   if (argc < 5) {

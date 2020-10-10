@@ -32,7 +32,7 @@ int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
   /* or a text string - by default assumed to be a SMILES */
   else if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
     rc = sqlite3_value_bytes(arg) <= MOL_MAX_TXT_LENGTH ?
-      txt_to_mol(sqlite3_value_text(arg), AS_SMILES, ppMol) : SQLITE_TOOBIG;
+      txt_to_mol((const char *)sqlite3_value_text(arg), AS_SMILES, ppMol) : SQLITE_TOOBIG;
   }
   return rc;
 }
@@ -56,7 +56,7 @@ static void cast_to_molecule(sqlite3_context* ctx,
 
     u8 *pBlob = 0;
     int sz = 0;
-    int rc = txt_to_blob(sqlite3_value_text(arg), mode, &pBlob, &sz);
+    int rc = txt_to_blob((const char *)sqlite3_value_text(arg), mode, &pBlob, &sz);
     if (rc != SQLITE_OK) {
       sqlite3_result_error_code(ctx, rc);
       return;

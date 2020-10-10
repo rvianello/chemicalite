@@ -6,7 +6,7 @@
 ** verify succesful insertion of a molecular signature into a newly created
 ** rdtree virtual table.
 */
-int main(int argc, char *argv[])
+int main()
 {
   int rc = SQLITE_OK;
   char *errMsg = 0;

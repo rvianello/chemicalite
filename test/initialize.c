@@ -5,7 +5,7 @@
 /*
 ** verify the extension is correctly loaded
 */
-int main(int argc, char *argv[])
+int main()
 {
   char *errMsg = 0;
   sqlite3 *db = 0;
