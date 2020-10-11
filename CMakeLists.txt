@@ -38,7 +38,7 @@ option(CHEMICALITE_ENABLE_PYTHON_TESTS "enable python tests" OFF)
 
 if (CHEMICALITE_ENABLE_TESTS)
     enable_testing()
-    add_subdirectory(test)
+    add_subdirectory(tests)
     if (CHEMICALITE_ENABLE_PYTHON_TESTS)
         find_package (Python3 COMPONENTS Interpreter)
         # FIXME should also check that APSW is available
