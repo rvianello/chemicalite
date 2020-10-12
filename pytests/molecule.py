@@ -1,11 +1,7 @@
 #!/bin/env python
-import unittest
+import sqlite3
 import sys
-
-try:
-    import apsw
-except ImportError:
-    pass
+import unittest
 
 from chemicalite import ChemicaLiteTestCase
 
@@ -15,15 +11,15 @@ class TestMolecule(ChemicaLiteTestCase):
         c = self.db.cursor()
         c.execute("select mol('CCC')")
         c.execute("select mol('C[*]C')")
-        self.assertRaises(apsw.SQLError,lambda : c.execute("select mol('[C,N]')"))
-        self.assertRaises(apsw.SQLError,lambda : c.execute("select mol('BAD')"))
+        self.assertRaises(sqlite3.OperationalError,lambda : c.execute("select mol('[C,N]')"))
+        self.assertRaises(sqlite3.OperationalError,lambda : c.execute("select mol('BAD')"))
 
     def test_cast_to_qmol(self):
         c = self.db.cursor()        
         c.execute("select qmol('CCC')")
         c.execute("select qmol('C[*]C')")
         c.execute("select qmol('[C,N]')")
-        self.assertRaises(apsw.SQLError,lambda : c.execute("select qmol('BAD')"))
+        self.assertRaises(sqlite3.OperationalError,lambda : c.execute("select qmol('BAD')"))
 
     def test_mol_to_smiles(self):
         c = self.db.cursor()

@@ -1,11 +1,7 @@
 #!/bin/env python
-import unittest
+import sqlite3
 import sys
-
-try:
-    import apsw
-except:
-    pass
+import unittest
 
 from chemicalite import ChemicaLiteTestCase
 
@@ -132,13 +128,13 @@ class TestBitString(ChemicaLiteTestCase):
 
     def test_mol_arg_mismatch(self):
         c = self.db.cursor()
-        self.assertRaises(apsw.MismatchError, lambda :
+        self.assertRaises(sqlite3.IntegrityError, lambda :
             c.execute(
                 "select bfp_dice("
                 "mol('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), "
                 "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
                 ")"))
-        self.assertRaises(apsw.MismatchError, lambda :
+        self.assertRaises(sqlite3.IntegrityError, lambda :
             c.execute(
                 "select bfp_tanimoto("
                 "mol('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), "

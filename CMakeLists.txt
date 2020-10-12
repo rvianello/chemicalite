@@ -34,7 +34,7 @@ add_subdirectory(examples)
 option(CHEMICALITE_ENABLE_NATIVE_OPT
        "enable compiler optimization for the native architecture" ${RDKit_USE_OPTIMIZED_POPCNT})
 option(CHEMICALITE_ENABLE_TESTS "enable tests" ON)
-option(CHEMICALITE_ENABLE_PYTHON_TESTS "enable python tests" OFF)
+option(CHEMICALITE_ENABLE_PYTHON_TESTS "enable python tests" ON)
 
 if (CHEMICALITE_ENABLE_TESTS)
     enable_testing()
