@@ -48,7 +48,7 @@ class TestRDtree(ChemicaLiteTestCase):
         c.execute(
             "select count(*) from xyz where "
             "id match rdtree_subset(bfp_dummy(128, ?))", (value,))
-        d = next(c)[0]
+        d = c.fetchone()[0]
         print("Found: ", d)
         self.assertEqual(d, expected)
 

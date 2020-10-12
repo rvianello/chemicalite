@@ -14,14 +14,14 @@ class TestBitString(ChemicaLiteTestCase):
             "mol_layered_bfp('Nc1ccccc1COC'), "
             "mol_layered_bfp('Nc1ccccc1COC')"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
         c.execute(
             "select bfp_dice("
             "mol_layered_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), "
             "mol_layered_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
 
     def test_rdkit(self):
@@ -31,14 +31,14 @@ class TestBitString(ChemicaLiteTestCase):
             "mol_rdkit_bfp('Nc1ccccc1COC'), "
             "mol_rdkit_bfp('Nc1ccccc1COC')"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
         c.execute(
             "select bfp_dice("
             "mol_rdkit_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), "
             "mol_rdkit_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
 
     def test_atom_pairs(self):
@@ -48,14 +48,14 @@ class TestBitString(ChemicaLiteTestCase):
             "mol_atom_pairs_bfp('Nc1ccccc1COC'), "
             "mol_atom_pairs_bfp('Nc1ccccc1COC')"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
         c.execute(
             "select bfp_dice("
             "mol_atom_pairs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), "
             "mol_atom_pairs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
 
     def test_topological_torsion(self):
@@ -65,14 +65,14 @@ class TestBitString(ChemicaLiteTestCase):
             "mol_topological_torsion_bfp('Nc1ccccc1COC'), "
             "mol_topological_torsion_bfp('Nc1ccccc1COC')"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
         c.execute(
             "select bfp_dice("
             "mol_topological_torsion_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), "
             "mol_topological_torsion_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
 
     def test_maccs(self):
@@ -82,14 +82,14 @@ class TestBitString(ChemicaLiteTestCase):
             "mol_maccs_bfp('Nc1ccccc1COC'), "
             "mol_maccs_bfp('Nc1ccccc1COC')"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
         c.execute(
             "select bfp_dice("
             "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), "
             "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
 
     def test_morgan(self):
@@ -99,14 +99,14 @@ class TestBitString(ChemicaLiteTestCase):
             "mol_morgan_bfp('Nc1ccccc1COC', 6), "
             "mol_morgan_bfp('Nc1ccccc1COC', 6)"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
         c.execute(
             "select bfp_dice("
             "mol_morgan_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12', 6), "
             "mol_morgan_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12', 6)"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
 
     def test_feat_morgan(self):
@@ -116,14 +116,14 @@ class TestBitString(ChemicaLiteTestCase):
             "mol_feat_morgan_bfp('Nc1ccccc1COC', 6), "
             "mol_feat_morgan_bfp('Nc1ccccc1COC', 6)"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
         c.execute(
             "select bfp_dice("
             "mol_feat_morgan_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12', 6), "
             "mol_feat_morgan_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12', 6)"
             ")")
-        d = next(c)[0]
+        d = c.fetchone()[0]
         self.assertEqual(d, 1.0)
 
     def test_mol_arg_mismatch(self):
@@ -147,13 +147,13 @@ class TestBitString(ChemicaLiteTestCase):
             "select bfp_weight("
             "mol_bfp_signature('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
             ")")
-        w = next(c)[0]
+        w = c.fetchone()[0]
         self.assertEqual(w, 355)
         c.execute(
             "select bfp_weight("
             "mol_maccs_bfp('Cn1cnc2n(C)c(=O)n(C)c(=O)c12')"
             ")")
-        w = next(c)[0]
+        w = c.fetchone()[0]
         self.assertEqual(w, 46)
 
 
