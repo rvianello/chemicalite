@@ -18,6 +18,7 @@ RUN dnf install -y \
     catch-devel \
     cmake \
     cppcheck \
+    findutils \
     eigen3-devel \
     g++ \
     git \
@@ -26,6 +27,7 @@ RUN dnf install -y \
     # python3-apsw \
     sqlite-devel \
     valgrind \
+    which \
     #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \
