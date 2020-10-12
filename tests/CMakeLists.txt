@@ -11,17 +11,3 @@ chemicalite_ctest(create_rdtree)
 chemicalite_ctest(rdtree_1st_insert)
 chemicalite_ctest(rdtree_single_select_by_id)
 chemicalite_ctest(rdtree_single_select_by_subset)
-
-if (CHEMICALITE_ENABLE_PYTHON_TESTS)
-    macro(chemicalite_pytest module)
-        add_test(${module}
-                 ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${module}.py)
-    endmacro(chemicalite_pytest)
-
-    chemicalite_pytest(load_extension)
-    chemicalite_pytest(molecule)
-    chemicalite_pytest(descriptors)
-    chemicalite_pytest(bitstring)
-    chemicalite_pytest(rdtree)
-endif (CHEMICALITE_ENABLE_PYTHON_TESTS)
-

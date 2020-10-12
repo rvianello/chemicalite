@@ -22,6 +22,8 @@ RUN dnf install -y \
     g++ \
     git \
     make \
+    python3-ipython \
+    # python3-apsw \
     sqlite-devel \
     valgrind \
     #
