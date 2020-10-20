@@ -140,10 +140,16 @@ static void create_molecule_rdtree_f(sqlite3_context* ctx,
 /*
 ** Register the chemicalite module with database handle db.
 */
-int sqlite3_chemicalite_init(sqlite3 *db)
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
+			   const sqlite3_api_routines *pApi)
 {
   int rc = SQLITE_OK;
-  
+  pzErrMsg = pzErrMsg; /* unused */
+  SQLITE_EXTENSION_INIT2(pApi)
+
   if (rc == SQLITE_OK) {
     rc = chemicalite_init_molecule(db);
   }
@@ -163,12 +169,4 @@ int sqlite3_chemicalite_init(sqlite3 *db)
   CREATE_SQLITE_BINARY_FUNCTION(create_molecule_rdtree, rc);
   
   return rc;
-}
-
-int sqlite3_extension_init(sqlite3 *db, char **pzErrMsg,
-			   const sqlite3_api_routines *pApi)
-{
-  pzErrMsg = pzErrMsg; /* unused */
-  SQLITE_EXTENSION_INIT2(pApi)
-  return sqlite3_chemicalite_init(db);
 }
