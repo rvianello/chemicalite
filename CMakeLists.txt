@@ -16,25 +16,13 @@ include_directories(${SQLite3_INCLUDE_DIRS})
 find_package(RDKit REQUIRED)
 include_directories(${RDKit_INCLUDE_DIRS})
 
-add_library(chemicalite MODULE
- 	    molecule.c
-	    bfp_ops.c
- 	    bitstring.c
-	    rdtree.c
-        chemicalite.c
-        rdkit_adapter.cpp)
-
-set_target_properties(chemicalite PROPERTIES PREFIX "")
-
-target_link_libraries(chemicalite PUBLIC
-                      RDKit::Descriptors RDKit::Fingerprints RDKit::GraphMol  ${SQLite3_LIBRARIES})
-
-add_subdirectory(examples)
+add_subdirectory(src)
 
 option(CHEMICALITE_ENABLE_NATIVE_OPT
        "enable compiler optimization for the native architecture" ${RDKit_USE_OPTIMIZED_POPCNT})
 option(CHEMICALITE_ENABLE_TESTS "enable tests" ON)
 option(CHEMICALITE_ENABLE_PYTHON_TESTS "enable python tests" ON)
+option(CHEMICALITE_BUILD_EXAMPLES "build the example programs" ON)
 
 if (CHEMICALITE_ENABLE_TESTS)
     enable_testing()
@@ -52,3 +40,7 @@ if (CHEMICALITE_ENABLE_NATIVE_OPT)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
     endif (CMAKE_COMPILER_IS_GNUCC)
 endif (CHEMICALITE_ENABLE_NATIVE_OPT)
+
+if (CHEMICALITE_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif (CHEMICALITE_BUILD_EXAMPLES)
