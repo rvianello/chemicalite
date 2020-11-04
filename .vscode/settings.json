@@ -2,5 +2,5 @@
     "cmake.configureOnOpen": false,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "C_Cpp.errorSquiggles": "Enabled",
-    "restructuredtext.confPath": "${workspaceFolder}/docs"
+    "python.pythonPath": "/usr/bin/python3"
 }
