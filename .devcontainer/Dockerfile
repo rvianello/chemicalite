@@ -1,7 +1,7 @@
 ARG fedora_release=32
-ARG rdkit_release=2020.03.6
-#FROM rvianello/fedora-rdkit-cpp:${fedora_release}-${rdkit_release}
-FROM fedora-rdkit-cpp-dev:latest
+ARG rdkit_release=2020.09.1
+FROM rvianello/fedora-rdkit-cpp:${fedora_release}-${rdkit_release}
+#FROM fedora-rdkit-cpp-dev:latest
 
 # This Dockerfile image has a non-root user with sudo access. Use the "remoteUser"
 # property in devcontainer.json to use it. On Linux, the container user's GID/UIDs
