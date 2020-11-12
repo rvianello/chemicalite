@@ -17,7 +17,7 @@ SQLITE_EXTENSION_INIT1
 static void create_molecule_rdtree_f(sqlite3_context* ctx, 
 				     int argc, sqlite3_value** argv)
 {
-  assert(argc == 2);
+  assert(argc == 2); argc = argc;
 
   /* check arguments type */
   if (sqlite3_value_type(argv[0]) != SQLITE_TEXT ||

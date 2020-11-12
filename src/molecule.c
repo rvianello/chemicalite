@@ -43,7 +43,7 @@ int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
 static void cast_to_molecule(sqlite3_context* ctx, 
 			     int argc, sqlite3_value** argv, int mode)
 {
-  assert(argc == 1);
+  assert(argc == 1); argc = argc;
   sqlite3_value *arg = argv[0];
 
   /* build the molecule binary repr from a text string */
@@ -92,7 +92,7 @@ static void qmol_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 */
 static void mol_smiles_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 {
-  assert(argc == 1);
+  assert(argc == 1); argc = argc;
   int rc = SQLITE_OK;
 
   Mol *pMol = 0;
@@ -116,7 +116,7 @@ static void mol_smiles_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 #define COMPARE_STRUCTURES(func)					\
   static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
   {									\
-    assert(argc == 2);							\
+    assert(argc == 2); argc = argc; \
     int rc = SQLITE_OK;							\
 									\
     Mol *p1 = 0;							\
@@ -173,7 +173,7 @@ COMPARE_STRUCTURES(mol_cmp)
 #define MOL_DESCRIPTOR(func, type) \
   static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
   {									\
-    assert(argc == 1);							\
+    assert(argc == 1); argc = argc; \
 									\
     Mol *pMol = 0;							\
     int rc = fetch_mol_arg(argv[0], &pMol);				\
