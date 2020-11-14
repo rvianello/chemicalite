@@ -51,6 +51,7 @@ jobs:
         run: |
           conda activate chemicalite-build
           cmake -D CMAKE_BUILD_TYPE=Release .
+          cmake --build . --config Release
           conda deactivate
       # Destroy the build environment
       - name: Destroy the build environment
