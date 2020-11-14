@@ -1077,14 +1077,13 @@ static int rdtreeFilter(sqlite3_vtab_cursor *pVtabCursor,
 			int idxNum, const char *idxStr,
 			int argc, sqlite3_value **argv)
 {
+  UNUSED(idxStr);
   RDtree *pRDtree = (RDtree *)pVtabCursor->pVtab;
   RDtreeCursor *pCsr = (RDtreeCursor *)pVtabCursor;
 
   RDtreeNode *pRoot = 0;
   int ii;
   int rc = SQLITE_OK;
-
-  idxStr = idxStr; /* unused */
 
   rdtreeReference(pRDtree);
 
@@ -1174,10 +1173,9 @@ static int rdtreeFilter(sqlite3_vtab_cursor *pVtabCursor,
 */
 static int rdtreeBestIndex(sqlite3_vtab *tab, sqlite3_index_info *pIdxInfo)
 {
+  UNUSED(tab);
   int rc = SQLITE_OK;
   int ii;
-
-  tab = tab; /* unused */
 
   assert( pIdxInfo->idxStr==0 );
 
@@ -1555,12 +1553,12 @@ static void pickNextGeneric(RDtree *pRDtree,
 			    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
 			    RDtreeItem **ppNext, int *pPreferRight)
 {
+  UNUSED(pLeftBounds);
+  UNUSED(pRightBounds);
   int iSelect = -1;
   int preferRight = 0;
   double dMaxPreference = -1.;
   int ii;
-
-  pLeftBounds = pLeftBounds; pRightBounds = pRightBounds; /* unused */
 
   for(ii = 0; ii < nItem; ii++){
     if( aiUsed[ii]==0 ){
@@ -1593,12 +1591,12 @@ static void pickNextSubset(RDtree *pRDtree,
 			   RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
 			   RDtreeItem **ppNext, int *pPreferRight)
 {
+  UNUSED(pLeftBounds);
+  UNUSED(pRightBounds);
   int iSelect = -1;
   int preferRight = 0;
   double dMaxPreference = -1.;
   int ii;
-
-  pLeftBounds = pLeftBounds; pRightBounds = pRightBounds; /* unused */
 
   for(ii = 0; ii < nItem; ii++){
     if( aiUsed[ii]==0 ){
@@ -1632,12 +1630,13 @@ static void pickNextSimilarity(RDtree *pRDtree,
 			       RDtreeItem *pRightBounds,
 			       RDtreeItem **ppNext, int *pPreferRight)
 {
+  UNUSED(pRDtree);
+  UNUSED(pLeftBounds);
+  UNUSED(pRightBounds);
   int iSelect = -1;
   int preferRight = 0;
   double dMaxPreference = -1.;
   int ii;
-
-  pRDtree = pRDtree; pLeftBounds = pLeftBounds; pRightBounds = pRightBounds; /* unused */
 
   for(ii = 0; ii < nItem; ii++){
     if( aiUsed[ii]==0 ){
@@ -1747,6 +1746,7 @@ static void pickSeedsSubset(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
 static void pickSeedsSimilarity(RDtree *pRDtree, RDtreeItem *aItem, int nItem, 
 				int *piLeftSeed, int *piRightSeed)
 {
+  UNUSED(pRDtree);
   int ii;
   int jj;
 
@@ -1754,8 +1754,6 @@ static void pickSeedsSimilarity(RDtree *pRDtree, RDtreeItem *aItem, int nItem,
   int iRightSeed = 1;
   double dDistance;
   double dMaxDistance = 0.;
-
-  pRDtree = pRDtree; /* unused */
 
   for (ii = 0; ii < nItem; ii++) {
     for (jj = ii + 1; jj < nItem; jj++) {
@@ -2741,14 +2739,13 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
 		      sqlite3_vtab **ppVtab, char **pzErr,
 		      int isCreate)
 {
+  UNUSED(pAux);
   int rc = SQLITE_OK;
   RDtree *pRDtree;
   int nDb;              /* Length of string argv[1] */
   int nName;            /* Length of string argv[2] */
 
   int iBfpSize = MOL_SIGNATURE_SIZE;  /* Default size of binary fingerprint */
-
-  pAux = pAux; /* unused */
 
   /* perform arg checking */
   if (argc < 5) {
