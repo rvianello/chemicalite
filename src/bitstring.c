@@ -36,7 +36,8 @@ int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
   static void func##_f(sqlite3_context* ctx,				\
 		       int argc, sqlite3_value** argv)			\
   {									\
-    assert(argc == 1); argc = argc; \
+    UNUSED(argc); \
+    assert(argc == 1); \
     int rc = SQLITE_OK;							\
 									\
     Bfp * pBfp = 0;							\
@@ -84,7 +85,8 @@ MOL_TO_BFP(mol_maccs_bfp)
   static void func##_f(sqlite3_context* ctx,				\
 		       int argc, sqlite3_value** argv)			\
   {									\
-    assert(argc == 2); argc = argc; \
+    UNUSED(argc); \
+    assert(argc == 2); \
     int rc = SQLITE_OK;							\
 									\
     Bfp * pBfp = 0;							\
@@ -140,7 +142,8 @@ MOL_TO_BFP(mol_bfp_signature)
   static void bfp_##sim##_f(sqlite3_context* ctx,			\
 			     int argc, sqlite3_value** argv)		\
   {									\
-    assert(argc == 2); argc = argc; \
+    UNUSED(argc); \
+    assert(argc == 2); \
     double similarity = 0.;						\
     int rc = SQLITE_OK;							\
 									\
@@ -201,7 +204,8 @@ COMPARE_BITSTRINGS(dice)
 static void bfp_dummy_f(sqlite3_context* ctx,
 			int argc, sqlite3_value** argv)
 {
-  assert(argc == 2); argc = argc;
+  UNUSED(argc);
+  assert(argc == 2);
   int rc = SQLITE_OK;
   int len, value;
 
@@ -254,7 +258,8 @@ static void bfp_dummy_f(sqlite3_context* ctx,
 static void bfp_length_f(sqlite3_context* ctx,
 			 int argc, sqlite3_value** argv)
 {
-  assert(argc == 1); argc = argc;
+  UNUSED(argc);
+  assert(argc == 1);
   int rc = SQLITE_OK;
   
   Bfp *pBfp = 0;
@@ -273,7 +278,8 @@ static void bfp_length_f(sqlite3_context* ctx,
 static void bfp_weight_f(sqlite3_context* ctx,
 			 int argc, sqlite3_value** argv)
 {
-  assert(argc == 1); argc = argc;
+  UNUSED(argc);
+  assert(argc == 1);
   int rc = SQLITE_OK;
   
   Bfp *pBfp = 0;

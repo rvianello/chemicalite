@@ -10,4 +10,6 @@
 #define CREATE_SQLITE_BINARY_FUNCTION(func, rc) \
   CREATE_SQLITE_FUNCTION(2, func, rc)
 
+#define UNUSED(x) do { (void)(x); } while (0)
+
 #endif

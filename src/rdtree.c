@@ -2884,7 +2884,8 @@ static RDtreeMatchOp subsetMatchOp = { 0, subsetTest, subsetTest };
 static void rdtree_subset_f(sqlite3_context* ctx, 
 			    int argc, sqlite3_value** argv)
 {
-  assert(argc == 1); argc = argc;
+  UNUSED(argc);
+  assert(argc == 1);
 
   int sz;
   RDtreeMatchArg *pMatchArg;
@@ -3123,7 +3124,8 @@ static RDtreeMatchOp tanimotoMatchOp = {
 static void rdtree_tanimoto_f(sqlite3_context* ctx, 
 			      int argc, sqlite3_value** argv)
 {
-  assert(argc == 2); argc = argc;
+  UNUSED(argc);
+  assert(argc == 2);
 
   int sz;
   RDtreeMatchArg *pMatchArg;
