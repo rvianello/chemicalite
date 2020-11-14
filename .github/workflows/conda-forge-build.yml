@@ -20,7 +20,7 @@ jobs:
             miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh"
             c-compiler: clang_osx-64
             cxx-compiler: clangxx_osx-64
-            link-path-env-var: DYLD_FALLBACK_LIBRARY_PATH
+            link-path-env-var: DYLD_LIBRARY_PATH
         rdkit:
           - 2020.09.1
         build-type:
