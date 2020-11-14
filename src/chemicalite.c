@@ -147,8 +147,8 @@ __declspec(dllexport)
 int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
 			   const sqlite3_api_routines *pApi)
 {
+  UNUSED(pzErrMsg);
   int rc = SQLITE_OK;
-  pzErrMsg = pzErrMsg; /* unused */
   SQLITE_EXTENSION_INIT2(pApi)
 
   if (rc == SQLITE_OK) {
