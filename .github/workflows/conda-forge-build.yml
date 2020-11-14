@@ -5,7 +5,7 @@ on: [push]
 jobs:
 
   build:
-    name: conda-forge build (${{ matrix.config.os }})
+    name: build (${{ matrix.config.os }} ${{ matrix.build-type }} rdkit:${{ matrix.rdkit }})
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
@@ -21,6 +21,9 @@ jobs:
             cxx-compiler: clangxx_osx-64
         rdkit:
           - 2020.09.1
+        build-type:
+          - Release
+          - Debug
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
@@ -50,8 +53,8 @@ jobs:
         shell: bash -l {0}
         run: |
           conda activate chemicalite-build
-          cmake -D CMAKE_BUILD_TYPE=Release .
-          cmake --build . --config Release
+          cmake -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} .
+          cmake --build . --config ${{ matrix.build-type }}
           conda deactivate
       # Destroy the build environment
       - name: Destroy the build environment
