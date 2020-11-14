@@ -1,11 +1,11 @@
-name: build in conda
+name: conda-forge build
 
 on: [push]
 
 jobs:
 
   build:
-    name: build in conda (${{ matrix.config.os }})
+    name: conda-forge build (${{ matrix.config.os }})
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
@@ -13,11 +13,14 @@ jobs:
         config:
           - os: ubuntu-latest
             miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh"
+            c-compiler: gcc_linux-64
+            cxx-compiler: gxx_linux-64
           - os: macos-latest
             miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh"
-          # exclude windows for now
-          #- os: windows-latest
-          #  miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe"
+            c-compiler: clang_osx-64
+            cxx-compiler: clangxx_osx-64
+        rdkit:
+          - 2020.09.1
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
@@ -28,12 +31,21 @@ jobs:
           allow-softlinks: true
           show-channel-urls: true
           use-only-tar-bz2: true
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
+          auto-activate-base: false
+      # Display some diagnostic info and configure the available conda installation
+      - name: Run conda info
         shell: bash -l {0}
-        run: conda info
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          conda config --set always_yes yes --set changeps1 no
+          conda info
+      # Create an environment for building and testing chemicalite
+      - name: Create the conda environment
+        shell: bash -l {0}
+        run: >
+          conda create -n chemicalite-build
+          cmake ${{ matrix.config.c-compiler }} ${{ matrix.config.cxx-compiler }}
+          rdkit=${{ matrix.rdkit }}
+      # Destroy the build environment
+      - name: Destroy the build environment
+        run: conda remove -n chemicalite-build --all
+
