@@ -11,7 +11,7 @@ add_library(chemicalite MODULE
 set_target_properties(chemicalite PROPERTIES PREFIX "")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    set_target_properties(OpenImageIO PROPERTIES SUFFIX .dylib)
+    set_target_properties(chemicalite PROPERTIES SUFFIX .dylib)
 endif()
 
 target_link_libraries(chemicalite PUBLIC
