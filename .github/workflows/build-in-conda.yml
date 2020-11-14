@@ -13,6 +13,7 @@ jobs:
       matrix:
         config:
           - {os: ubuntu-latest, miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh" }
+          - {os: macos-latest, miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh" }
           - {os: windows-latest, miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe" }
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
