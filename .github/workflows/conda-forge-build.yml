@@ -44,7 +44,7 @@ jobs:
         run: >
           conda create -n chemicalite-build
           cmake ${{ matrix.config.c-compiler }} ${{ matrix.config.cxx-compiler }}
-          rdkit=${{ matrix.rdkit }}
+          rdkit=${{ matrix.rdkit }} eigen
       # Build and test
       - name: Build and test the chemicalite extension
         shell: bash -l {0}
