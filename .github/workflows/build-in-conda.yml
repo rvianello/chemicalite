@@ -6,19 +6,21 @@ on: [push]
 jobs:
   # This workflow contains a single job called "build"
   build:
-    name: build in conda (${{ matrix.os }})
+    name: build in conda (${{ matrix.config.os }})
     # The type of runner that the job will run on
-    runs-on: ${{ matrix.os }})
+    runs-on: ${{ matrix.config.os }})
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest"]
+        config:
+          - {os: ubuntu-latest, miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh" }
+          - {os: windows-latest, miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe" }
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          installer-url: https://github.com/conda-forge/miniforge/releases/latest/download/${{ fromJson('{ "ubuntu-latest": "Miniforge3-Linux-x86_64.sh", "windows-latest": "Miniforge3-Windows-x86_64.exe" }')[matrix.os] }}
+          installer-url: ${{ matrix.config.miniforge-url }}
           allow-softlinks: true
           show-channel-urls: true
           use-only-tar-bz2: true
