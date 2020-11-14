@@ -10,6 +10,7 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ${{ matrix.config.os }}
     strategy:
+      fail-fast: false
       matrix:
         config:
           - {os: ubuntu-latest, miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh" }
