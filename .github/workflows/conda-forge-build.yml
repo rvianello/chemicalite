@@ -57,7 +57,7 @@ jobs:
           conda activate chemicalite-build
           cmake -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} .
           cmake --build . --config ${{ matrix.build-type }}
-          ${{ matrix.config.link-path-env-var }}=$PWD/src ctest -C ${{ matrix.build-type }}
+          ${{ matrix.config.link-path-env-var }}=$PWD/src ctest -C ${{ matrix.build-type }} --output-on-failure
           conda deactivate
       # Destroy the build environment
       - name: Destroy the build environment
