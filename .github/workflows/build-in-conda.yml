@@ -2,24 +2,25 @@ name: build in conda
 
 on: [push]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
+
   build:
     name: build in conda (${{ matrix.config.os }})
-    # The type of runner that the job will run on
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
       matrix:
         config:
-          - {os: ubuntu-latest, miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh" }
-          - {os: macos-latest, miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh" }
-          - {os: windows-latest, miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe" }
-    # Steps represent a sequence of tasks that will be executed as part of the job
+          - os: ubuntu-latest
+            miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh"
+          - os: macos-latest
+            miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-MacOSX-x86_64.sh"
+          - os: windows-latest
+            miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe"
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
+      # Setup a miniforge distribution
       - uses: conda-incubator/setup-miniconda@v2
         with:
           installer-url: ${{ matrix.config.miniforge-url }}
@@ -30,7 +31,6 @@ jobs:
       - name: Run a one-line script
         shell: bash -l {0}
         run: conda info
-
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
         run: |
