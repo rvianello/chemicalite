@@ -45,6 +45,13 @@ jobs:
           conda create -n chemicalite-build
           cmake ${{ matrix.config.c-compiler }} ${{ matrix.config.cxx-compiler }}
           rdkit=${{ matrix.rdkit }}
+      # Build and test
+      - name: Build and test the chemicalite extension
+        shell: bash -l {0}
+        run: |
+          conda activate chemicalite-build
+          cmake -D CMAKE_BUILD_TYPE=Release .
+          conda deactivate
       # Destroy the build environment
       - name: Destroy the build environment
         run: conda remove -n chemicalite-build --all
