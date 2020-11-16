@@ -84,7 +84,9 @@ jobs:
       # Setup a miniforge distribution
       - uses: conda-incubator/setup-miniconda@v2
         with:
-          installer-url: ${{ matrix.config.miniforge-url }}
+          #installer-url: ${{ matrix.config.miniforge-url }}
+          channels: conda-forge
+          channel-priority: strict
           allow-softlinks: true
           show-channel-urls: true
           use-only-tar-bz2: true
