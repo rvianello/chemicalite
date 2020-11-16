@@ -108,7 +108,7 @@ jobs:
         shell: bash -l {0}
         run: |
           conda activate chemicalite-build
-          cmake -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} .
+          cmake --debug-output -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} .
           cmake --build . --config ${{ matrix.build-type }}
           ls $PWD/src
           PATH=$PWD/src:$PATH ctest -C ${{ matrix.build-type }} --output-on-failure
