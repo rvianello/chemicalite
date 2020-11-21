@@ -8,9 +8,10 @@ Data types
 * `qmol`: an rdkit molecule containing query features (i.e. constructed from SMARTS). Can be created from a SMARTS using the `qmol` function, for example: `qmol('c1cccc[c,n]1')` creates a query molecule from the SMARTS `'c1cccc[c,n]1'`
 * `bfp`: a bit vector fingerprint
 
-In most places where a `mol` or `qmol` is expected, a text string can be used instead and is implicitly interpreted as a SMILES. Use an explicit cast in case a SMARTS is being passed.
+In most places where a `mol` or `qmol` is expected, a text string can be used instead and is implicitly interpreted as a SMILES. Use an explicit cast in case a SMARTS is used.
 
-*Note*: All of the above data types are serialized and stored in the form of binary blobs. No attempt is made at implementing any sort of type system that could allow the code to recognize if the wrong data is passed as input to a procedure. Some care is therefore recommended.
+.. note::
+  All of the above data types are serialized and stored in the form of binary blobs. No attempt is made at implementing any kind of type system that could allow the code to recognize if the wrong data is passed as input to a procedure. Some care is therefore recommended.
 
 Operators
 ---------

@@ -6,14 +6,17 @@
 ChemicaLite
 ===========
 
+ChemicaLite is a chemical database cartridge for SQLite.
+
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
+   installation
    build
-   tutorial_1st
-   tutorial_2nd
+   .. tutorial_1st
+   .. tutorial_2nd
    api
    links
 
