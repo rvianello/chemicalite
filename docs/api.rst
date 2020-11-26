@@ -80,3 +80,10 @@ Fingerprints
 * `bfp_dice(bfp, bfp)`
 * `bfp_length(bfp)`
 * `bfp_weight(bfp)`
+
+Utility
+.......
+
+* `chemicalite_version()`
+* `rdkit_version()`
+* `boost_version()`
