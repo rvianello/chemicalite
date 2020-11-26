@@ -195,11 +195,11 @@ int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
   /*   rc = chemicalite_init_XYZ(db); */
   /* } */
 
-  CREATE_SQLITE_NULLARY_FUNCTION(chemicalite_version, rc);
-  CREATE_SQLITE_NULLARY_FUNCTION(rdkit_version, rc);
-  CREATE_SQLITE_NULLARY_FUNCTION(boost_version, rc);
+  CREATE_SQLITE_NULLARY_FUNCTION(chemicalite_version);
+  CREATE_SQLITE_NULLARY_FUNCTION(rdkit_version);
+  CREATE_SQLITE_NULLARY_FUNCTION(boost_version);
 
-  CREATE_SQLITE_BINARY_FUNCTION(create_molecule_rdtree, rc);
+  CREATE_SQLITE_BINARY_FUNCTION(create_molecule_rdtree);
   
   return rc;
 }

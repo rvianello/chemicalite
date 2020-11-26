@@ -299,24 +299,24 @@ int chemicalite_init_bitstring(sqlite3 *db)
 {
   int rc = SQLITE_OK;
 
-  CREATE_SQLITE_BINARY_FUNCTION(bfp_tanimoto, rc);
-  CREATE_SQLITE_BINARY_FUNCTION(bfp_dice, rc);
+  CREATE_SQLITE_BINARY_FUNCTION(bfp_tanimoto);
+  CREATE_SQLITE_BINARY_FUNCTION(bfp_dice);
 
-  CREATE_SQLITE_UNARY_FUNCTION(bfp_length, rc);
-  CREATE_SQLITE_UNARY_FUNCTION(bfp_weight, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(bfp_length);
+  CREATE_SQLITE_UNARY_FUNCTION(bfp_weight);
 
-  CREATE_SQLITE_UNARY_FUNCTION(mol_layered_bfp, rc);
-  CREATE_SQLITE_UNARY_FUNCTION(mol_rdkit_bfp, rc);
-  CREATE_SQLITE_UNARY_FUNCTION(mol_atom_pairs_bfp, rc);
-  CREATE_SQLITE_UNARY_FUNCTION(mol_topological_torsion_bfp, rc);
-  CREATE_SQLITE_UNARY_FUNCTION(mol_maccs_bfp, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_layered_bfp);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_rdkit_bfp);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_atom_pairs_bfp);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_topological_torsion_bfp);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_maccs_bfp);
 
-  CREATE_SQLITE_BINARY_FUNCTION(mol_morgan_bfp, rc);
-  CREATE_SQLITE_BINARY_FUNCTION(mol_feat_morgan_bfp, rc);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_morgan_bfp);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_feat_morgan_bfp);
 
-  CREATE_SQLITE_UNARY_FUNCTION(mol_bfp_signature, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_bfp_signature);
 
-  CREATE_SQLITE_BINARY_FUNCTION(bfp_dummy, rc);
+  CREATE_SQLITE_BINARY_FUNCTION(bfp_dummy);
 
   return rc;
 }

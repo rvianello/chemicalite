@@ -3175,8 +3175,8 @@ int chemicalite_init_rdtree(sqlite3 *db)
 				  );
   }
 
-  CREATE_SQLITE_UNARY_FUNCTION(rdtree_subset, rc);
-  CREATE_SQLITE_BINARY_FUNCTION(rdtree_tanimoto, rc);
+  CREATE_SQLITE_UNARY_FUNCTION(rdtree_subset);
+  CREATE_SQLITE_BINARY_FUNCTION(rdtree_tanimoto);
 
   return rc;
 }
