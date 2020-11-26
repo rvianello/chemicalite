@@ -1,5 +1,5 @@
-ARG fedora_release=32
-ARG rdkit_release=2020.09.1
+ARG fedora_release=33
+ARG rdkit_release=2020.09.2
 FROM rvianello/fedora-rdkit-cpp:${fedora_release}-${rdkit_release}
 #FROM fedora-rdkit-cpp-dev:latest
 
