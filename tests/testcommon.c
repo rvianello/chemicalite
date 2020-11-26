@@ -121,3 +121,22 @@ int select_integer(sqlite3 *db, const char * sql, int *pInt)
   return rc;
 }
 
+int select_text(sqlite3 *db, const char * sql, const char **pTxt)
+{
+  sqlite3_stmt *pStmt;
+
+  int rc = sqlite3_prepare(db, sql, -1, &pStmt, 0);
+
+  if (SQLITE_OK == rc) {
+    int rc2 = sqlite3_step(pStmt);
+    if (rc2 != SQLITE_ROW) {
+      rc = rc2;
+    }  
+    else {
+      *pTxt = (const char *)sqlite3_column_text(pStmt, 0);
+    }
+  }
+
+  sqlite3_finalize(pStmt);
+  return rc;
+}

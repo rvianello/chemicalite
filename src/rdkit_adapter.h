@@ -71,7 +71,11 @@ extern "C" {
 
   /* generation of structural signature */
   int mol_bfp_signature(Mol *pMol, Bfp **ppBfp);
-  
+
+  /* version info for the rdkit package */
+  const char * rdkit_version();
+  const char * boost_version();
+    
 #ifdef __cplusplus
 } /* extern "C" { */
 #endif

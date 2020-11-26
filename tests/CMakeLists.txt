@@ -11,3 +11,5 @@ chemicalite_ctest(create_rdtree)
 chemicalite_ctest(rdtree_1st_insert)
 chemicalite_ctest(rdtree_single_select_by_id)
 chemicalite_ctest(rdtree_single_select_by_subset)
+chemicalite_ctest(versions)
+

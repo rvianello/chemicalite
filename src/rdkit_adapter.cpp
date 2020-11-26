@@ -5,6 +5,7 @@
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
 
+#include <RDGeneral/versions.h>
 #include <GraphMol/RDKitBase.h>
 #include <GraphMol/MolPickler.h>
 #include <GraphMol/Descriptors/MolDescriptors.h>
@@ -571,3 +572,14 @@ int mol_bfp_signature(Mol *pMol, Bfp **ppBfp)
   return rc;
 }
 
+// RDKit version info ////////////////////////////////////////////////////////
+
+const char * rdkit_version()
+{
+  return RDKit::rdkitVersion;
+}
+
+const char * boost_version()
+{
+  return RDKit::boostVersion;
+}

@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.14)
 
 project(chemicalite)
 
+set(CHEMICALITE_VERSION "2020.11.2dev")
+
+add_compile_definitions("CHEMICALITE_VERSION=${CHEMICALITE_VERSION}")
+
 if (MSVC)
     # warning level 4 and all warnings as errors
     add_compile_options(/W4 /WX)

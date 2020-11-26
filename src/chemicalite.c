@@ -6,10 +6,38 @@
 SQLITE_EXTENSION_INIT1
 
 #include "chemicalite.h"
+#include "rdkit_adapter.h"
 #include "molecule.h"
 #include "bitstring.h"
 #include "rdtree.h"
 #include "utils.h"
+
+/*
+** Return the version info for this extension
+*/
+static void chemicalite_version_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  UNUSED(argc);
+  UNUSED(argv);
+
+  sqlite3_result_text(ctx, XSTRINGIFY(CHEMICALITE_VERSION), -1, SQLITE_STATIC);
+}
+
+static void rdkit_version_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  UNUSED(argc);
+  UNUSED(argv);
+
+  sqlite3_result_text(ctx, rdkit_version(), -1, SQLITE_STATIC);
+}
+
+static void boost_version_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  UNUSED(argc);
+  UNUSED(argv);
+
+  sqlite3_result_text(ctx, boost_version(), -1, SQLITE_STATIC);
+}
 
 /*
 ** Create an rdtree index for a molecule column
@@ -166,6 +194,10 @@ int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
   /* if (rc == SQLITE_OK) { */
   /*   rc = chemicalite_init_XYZ(db); */
   /* } */
+
+  CREATE_SQLITE_NULLARY_FUNCTION(chemicalite_version, rc);
+  CREATE_SQLITE_NULLARY_FUNCTION(rdkit_version, rc);
+  CREATE_SQLITE_NULLARY_FUNCTION(boost_version, rc);
 
   CREATE_SQLITE_BINARY_FUNCTION(create_molecule_rdtree, rc);
   
