@@ -13,7 +13,7 @@ To install the ChemicaLite extension using conda, just specify the `chemicalite/
 
 For example::
 
-    $ conda install -c chemicalite/label/dev chemicalite
+    $ conda install -c ric/label/dev chemicalite
 
  
 
