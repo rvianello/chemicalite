@@ -20,11 +20,20 @@ static void free_bfp_auxdata(void * aux)
 
 int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
 {
-  int rc = SQLITE_MISMATCH;
+  int rc = SQLITE_OK;
+  int value_type = sqlite3_value_type(arg);
   /* Check that value is a blob */
-  if (sqlite3_value_type(arg) == SQLITE_BLOB) {
+  if (value_type == SQLITE_BLOB) {
     int sz = sqlite3_value_bytes(arg);
     rc = blob_to_bfp(sqlite3_value_blob(arg), sz, ppBfp);
+  }
+  /* Or if it's a NULL - we will most often return NULL on NULL input*/
+  else if (value_type == SQLITE_NULL) {
+    *ppBfp = 0;
+  }
+  /* and if we don't know what to do with this value type */
+  else {
+    rc = SQLITE_MISMATCH;
   }
   return rc;
 }
@@ -32,47 +41,54 @@ int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
 /*
 ** Mol -> Bfp conversion
 */
-#define MOL_TO_BFP(func)						\
-  static void func##_f(sqlite3_context* ctx,				\
-		       int argc, sqlite3_value** argv)			\
-  {									\
+#define MOL_TO_BFP(func) \
+  static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
+  { \
     UNUSED(argc); \
     assert(argc == 1); \
-    int rc = SQLITE_OK;							\
-									\
-    Bfp * pBfp = 0;							\
-    u8 * pBlob = 0;							\
-    int sz = 0;								\
-									\
-    void * aux = sqlite3_get_auxdata(ctx, 0);				\
-    if (aux) {								\
-      pBfp = (Bfp *) aux;						\
-    }									\
-    else {								\
-      Mol *pMol = 0;							\
-      rc = fetch_mol_arg(argv[0], &pMol);				\
-									\
-      if (rc == SQLITE_OK) {						\
-	rc = func(pMol, &pBfp);						\
-      }									\
-									\
-      if (rc == SQLITE_OK) {						\
-	sqlite3_set_auxdata(ctx, 0, (void *) pBfp, free_bfp_auxdata);	\
-      }									\
-									\
-      free_mol(pMol);	/* no-op if failed and pMol == 0 */		\
-    }									\
-									\
-    if (rc == SQLITE_OK) {						\
-      rc = bfp_to_blob(pBfp, &pBlob, &sz);				\
-    }									\
-									\
-    if (rc == SQLITE_OK) {						\
-      sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free);		\
-    }									\
-    else {								\
-      sqlite3_result_error_code(ctx, rc);				\
-    }									\
+    int rc = SQLITE_OK; \
+  \
+    Bfp * pBfp = 0; \
+    u8 * pBlob = 0; \
+    int sz = 0; \
+  \
+    void * aux = sqlite3_get_auxdata(ctx, 0); \
+    if (aux) { \
+      pBfp = (Bfp *) aux; \
+    } \
+    else { \
+      Mol *pMol = 0; \
+      rc = fetch_mol_arg(argv[0], &pMol); \
+  \
+      if (rc == SQLITE_OK && pMol) { \
+        rc = func(pMol, &pBfp); \
+      } \
+  \
+      if (rc == SQLITE_OK) { \
+        sqlite3_set_auxdata(ctx, 0, (void *) pBfp, free_bfp_auxdata);	\
+      } \
+  \
+      free_mol(pMol);	/* no-op if failed and pMol == 0 */ \
+    } \
+  \
+    if (rc != SQLITE_OK) { \
+      sqlite3_result_error_code(ctx, rc); \
+      return; \
+    } \
+  \
+    if (!pBfp) { \
+      sqlite3_result_null(ctx); \
+      return; \
+    } \
+  \
+    rc = bfp_to_blob(pBfp, &pBlob, &sz); \
+  \
+    if (rc == SQLITE_OK) { \
+      sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free); \
+    } \
+    else { \
+      sqlite3_result_error_code(ctx, rc); \
+    } \
   }
     
 MOL_TO_BFP(mol_layered_bfp)
@@ -81,49 +97,57 @@ MOL_TO_BFP(mol_atom_pairs_bfp)
 MOL_TO_BFP(mol_topological_torsion_bfp)
 MOL_TO_BFP(mol_maccs_bfp)
 
-#define MOL_TO_MORGAN_BFP(func)						\
-  static void func##_f(sqlite3_context* ctx,				\
-		       int argc, sqlite3_value** argv)			\
-  {									\
+#define MOL_TO_MORGAN_BFP(func) \
+  static void func##_f(sqlite3_context* ctx, \
+		       int argc, sqlite3_value** argv) \
+  { \
     UNUSED(argc); \
     assert(argc == 2); \
-    int rc = SQLITE_OK;							\
-									\
-    Bfp * pBfp = 0;							\
-    u8 * pBlob = 0;							\
-    int sz = 0;								\
-									\
-    int radius = sqlite3_value_int(argv[1]);				\
-									\
-    void * aux = sqlite3_get_auxdata(ctx, 0);				\
-    if (aux) {								\
-      pBfp = (Bfp *) aux;						\
-    }									\
-    else {								\
-      Mol *pMol = 0;							\
-      rc = fetch_mol_arg(argv[0], &pMol);				\
-									\
-      if (rc == SQLITE_OK) {						\
-	rc = func(pMol, radius, &pBfp);					\
-      }									\
-									\
-      if (rc == SQLITE_OK) {						\
-	sqlite3_set_auxdata(ctx, 0, (void *) pBfp, free_bfp_auxdata);	\
-      }									\
-									\
-      free_mol(pMol);	/* no-op if failed and pMol == 0 */		\
-    }									\
-									\
-    if (rc == SQLITE_OK) {						\
-      rc = bfp_to_blob(pBfp, &pBlob, &sz);				\
-    }									\
-									\
-    if (rc == SQLITE_OK) {						\
-      sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free);		\
-    }									\
-    else {								\
-      sqlite3_result_error_code(ctx, rc);				\
-    }									\
+    int rc = SQLITE_OK; \
+  \
+    Bfp * pBfp = 0; \
+    u8 * pBlob = 0; \
+    int sz = 0; \
+  \
+    int radius = sqlite3_value_int(argv[1]); \
+  \
+    void * aux = sqlite3_get_auxdata(ctx, 0); \
+    if (aux) { \
+      pBfp = (Bfp *) aux; \
+    } \
+    else { \
+      Mol *pMol = 0; \
+      rc = fetch_mol_arg(argv[0], &pMol); \
+  \
+      if (rc == SQLITE_OK && pMol) { \
+        rc = func(pMol, radius, &pBfp); \
+      } \
+  \
+      if (rc == SQLITE_OK) { \
+        sqlite3_set_auxdata(ctx, 0, (void *) pBfp, free_bfp_auxdata);	\
+      } \
+  \
+      free_mol(pMol);	/* no-op if failed and pMol == 0 */ \
+    } \
+  \
+    if (rc != SQLITE_OK) { \
+      sqlite3_result_error_code(ctx, rc); \
+      return; \
+    } \
+  \
+    if (!pBfp) { \
+      sqlite3_result_null(ctx); \
+      return; \
+    } \
+  \
+    rc = bfp_to_blob(pBfp, &pBlob, &sz); \
+  \
+    if (rc == SQLITE_OK) { \
+      sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free); \
+    } \
+    else { \
+      sqlite3_result_error_code(ctx, rc); \
+    } \
   }
 
 MOL_TO_MORGAN_BFP(mol_morgan_bfp)
@@ -138,58 +162,56 @@ MOL_TO_BFP(mol_bfp_signature)
 ** bitstring similarity
 */
 
-#define COMPARE_BITSTRINGS(sim)					\
-  static void bfp_##sim##_f(sqlite3_context* ctx,			\
-			     int argc, sqlite3_value** argv)		\
-  {									\
+#define COMPARE_BITSTRINGS(sim) \
+  static void bfp_##sim##_f(sqlite3_context* ctx, \
+			     int argc, sqlite3_value** argv) \
+  { \
     UNUSED(argc); \
     assert(argc == 2); \
-    double similarity = 0.;						\
-    int rc = SQLITE_OK;							\
-									\
-    Bfp *p1 = 0;							\
-    Bfp *p2 = 0;							\
-									\
-    void * aux1 = sqlite3_get_auxdata(ctx, 0);				\
-    if (aux1) {								\
-      p1 = (Bfp *) aux1;						\
-    }									\
-    else {								\
-      if ((rc = fetch_bfp_arg(argv[0], &p1)) != SQLITE_OK) {		\
-	goto sim##_f_end;						\
-      }									\
-      else {								\
-	sqlite3_set_auxdata(ctx, 0, (void *) p1, free_bfp_auxdata);	\
-      }									\
-    }									\
-									\
-    void * aux2 = sqlite3_get_auxdata(ctx, 1);				\
-    if (aux2) {								\
-      p2 = (Bfp *) aux2;						\
-    }									\
-    else {								\
-      if ((rc = fetch_bfp_arg(argv[1], &p2)) != SQLITE_OK) {		\
-	goto sim##_f_end;						\
-      }									\
-      else {								\
-	sqlite3_set_auxdata(ctx, 1, (void *) p2, free_bfp_auxdata);	\
-      }									\
-    }									\
-									\
-    if (bfp_length(p1) != bfp_length(p2)) {				\
-      rc = SQLITE_MISMATCH;						\
-    }									\
-    else {								\
-      similarity = bfp_##sim(p1, p2);					\
-    }									\
-      									\
-  sim##_f_end:								\
-    if (rc == SQLITE_OK) {						\
-      sqlite3_result_double(ctx, similarity);				\
-    }									\
-    else {								\
-      sqlite3_result_error_code(ctx, rc);				\
-    }									\
+    double similarity = 0.; \
+    int rc = SQLITE_OK; \
+  \
+    Bfp *p1 = 0; \
+    Bfp *p2 = 0; \
+	\
+    void * aux1 = sqlite3_get_auxdata(ctx, 0); \
+    if (aux1) { \
+      p1 = (Bfp *) aux1; \
+    } \
+    else { \
+      if ((rc = fetch_bfp_arg(argv[0], &p1)) != SQLITE_OK) { \
+        sqlite3_result_error_code(ctx, rc); \
+        return; \
+      } \
+      else { \
+        sqlite3_set_auxdata(ctx, 0, (void *) p1, free_bfp_auxdata);	\
+      } \
+    } \
+  \
+    void * aux2 = sqlite3_get_auxdata(ctx, 1); \
+    if (aux2) { \
+      p2 = (Bfp *) aux2; \
+    } \
+    else { \
+      if ((rc = fetch_bfp_arg(argv[1], &p2)) != SQLITE_OK) { \
+        sqlite3_result_error_code(ctx, rc); \
+        return; \
+      } \
+      else { \
+        sqlite3_set_auxdata(ctx, 1, (void *) p2, free_bfp_auxdata);	\
+      } \
+    } \
+	\
+    if (!p1 || !p2) { \
+      sqlite3_result_null(ctx); \
+    } \
+    else if (bfp_length(p1) != bfp_length(p2)) { \
+      sqlite3_result_error_code(ctx, SQLITE_MISMATCH); \
+    } \
+    else { \
+      similarity = bfp_##sim(p1, p2); \
+      sqlite3_result_double(ctx, similarity); \
+    } \
   }
 
 /*
@@ -236,7 +258,7 @@ static void bfp_dummy_f(sqlite3_context* ctx,
       u8 *p = pBlob; 
       int ii;
       for (ii = 0; ii < len; ++ii) {
-	*p++ = value;
+        *p++ = value;
       }
     }
 
@@ -265,13 +287,16 @@ static void bfp_length_f(sqlite3_context* ctx,
   Bfp *pBfp = 0;
   rc = fetch_bfp_arg(argv[0], &pBfp);
 
-  if (rc == SQLITE_OK) {
+  if (rc != SQLITE_OK) {
+    sqlite3_result_error_code(ctx, rc);
+  }
+  else if (!pBfp) {
+    sqlite3_result_null(ctx);
+  }
+  else {
     int length = bfp_length(pBfp);
     free_bfp(pBfp);
     sqlite3_result_int(ctx, length);    
-  }
-  else {
-    sqlite3_result_error_code(ctx, rc);
   }
 }
 
@@ -285,13 +310,16 @@ static void bfp_weight_f(sqlite3_context* ctx,
   Bfp *pBfp = 0;
   rc = fetch_bfp_arg(argv[0], &pBfp);
 
-  if (rc == SQLITE_OK) {
+  if (rc != SQLITE_OK) {
+    sqlite3_result_error_code(ctx, rc);
+  }
+  else if (!pBfp) {
+    sqlite3_result_null(ctx);
+  }
+  else {
     int weight = bfp_weight(pBfp);
     free_bfp(pBfp);
     sqlite3_result_int(ctx, weight);    
-  }
-  else {
-    sqlite3_result_error_code(ctx, rc);
   }
 }
 

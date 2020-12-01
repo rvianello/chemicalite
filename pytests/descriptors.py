@@ -14,7 +14,12 @@ class TestDescriptors(ChemicaLiteTestCase):
         c.execute("select mol_mw('CO')")
         d = c.fetchone()[0]
         self.assertAlmostEqual(d, 32.042, places=4)
-        
+
+        c.execute("select mol_mw(NULL)")
+        self.assertIsNone(c.fetchone()[0])
+        c.execute("select mol_mw('BAD')")
+        self.assertIsNone(c.fetchone()[0])
+
     def test_logp(self):
         c = self.db.cursor()
         c.execute("select mol_logp('c1ccccc1')")
@@ -27,6 +32,9 @@ class TestDescriptors(ChemicaLiteTestCase):
         d = c.fetchone()[0]
         self.assertAlmostEqual(d, 0.0908999, places=4)
 
+        c.execute("select mol_logp(NULL)")
+        self.assertIsNone(c.fetchone()[0])
+
     def test_tpsa(self):
         c = self.db.cursor()
         c.execute("select mol_tpsa('c1ccccc1')")
@@ -35,6 +43,9 @@ class TestDescriptors(ChemicaLiteTestCase):
         c.execute("select mol_tpsa('CC(=O)O')")
         d = c.fetchone()[0]
         self.assertAlmostEqual(d, 37.3, places=4)
+
+        c.execute("select mol_tpsa(NULL)")
+        self.assertIsNone(c.fetchone()[0])
 
     def test_num_atms(self):
         c = self.db.cursor()
@@ -45,6 +56,9 @@ class TestDescriptors(ChemicaLiteTestCase):
         d = c.fetchone()[0]
         self.assertEqual(d, 8)
 
+        c.execute("select mol_num_atms(NULL)")
+        self.assertIsNone(c.fetchone()[0])
+
     def test_num_rings(self):
         c = self.db.cursor()
         c.execute("select mol_num_rings('c1ccccc1')")
@@ -53,6 +67,9 @@ class TestDescriptors(ChemicaLiteTestCase):
         c.execute("select mol_num_rings('CC(=O)O')")
         d = c.fetchone()[0]
         self.assertEqual(d, 0)
+
+        c.execute("select mol_num_rings(NULL)")
+        self.assertIsNone(c.fetchone()[0])
 
 if __name__=="__main__":
     suite = unittest.TestLoader().loadTestsFromTestCase(TestDescriptors)

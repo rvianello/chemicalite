@@ -63,8 +63,6 @@ int txt_to_mol(const char * txt, int as_smarts, Mol **ppMol)
   assert(txt);
   int rc = SQLITE_OK;
 
-  *ppMol = 0;
-
   try {
     std::string data(txt);
     RDKit::ROMol *pROMol = as_smarts ?
@@ -73,8 +71,9 @@ int txt_to_mol(const char * txt, int as_smarts, Mol **ppMol)
   } 
   catch (...) {
     // problem generating molecule from smiles
-    rc = SQLITE_ERROR;
+    *ppMol = 0;
   }
+
   if (!*ppMol) {
     // parse error
     rc = SQLITE_ERROR;
@@ -115,7 +114,6 @@ int mol_to_txt(Mol *pMol, int as_smarts, char **pTxt)
 int blob_to_mol(const u8 *pBlob, int len, Mol **ppMol)
 {
   assert(pBlob);
-  *ppMol = 0;
 
   int rc = SQLITE_OK;
 
@@ -126,7 +124,7 @@ int blob_to_mol(const u8 *pBlob, int len, Mol **ppMol)
   } 
   catch (...) {
     // problem generating molecule from blob data
-    rc = SQLITE_ERROR;
+    *ppMol = 0;
   }
   
   if (!(*ppMol)) {
