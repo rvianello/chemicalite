@@ -25,6 +25,59 @@ class TestRDtree(ChemicaLiteTestCase):
         for value in range(256):
             self._count_subset_matches(value)
 
+    def test_github_00003(self):
+
+        self._create_vtab()
+
+        c = self.db.cursor()
+
+        # insert a first bfp (any bfp would do, but the original github
+        # ticket used an empty one)
+        c.execute(
+            "insert into xyz(id, signature) values(1, bfp_dummy(128, 0))")
+
+        # and then update the record with a different bfp
+        c.execute(
+            "update xyz set signature=bfp_dummy(128, 42) where id=1")
+
+    def test_github_00003_bis(self):
+
+        self._create_vtab()
+
+        c = self.db.cursor()
+
+        # insert a first bfp (any bfp would do, but the original github
+        # ticket used an empty one)
+        c.execute(
+            "insert into xyz(id, signature) values(1, bfp_dummy(128, 0))")
+
+        # insert a second one, and show that update then works
+        c.execute(
+            "insert into xyz(id, signature) values(2, bfp_dummy(128, 33))")
+
+        # and then update the record with a different bfp
+        c.execute(
+            "update xyz set signature=bfp_dummy(128, 42) where id=1")
+
+    def test_github_00003_tris(self):
+
+        self._create_vtab()
+
+        c = self.db.cursor()
+
+        # insert a first bfp (any bfp would do, but the original github
+        # ticket used an empty one)
+        c.execute(
+            "insert into xyz(id, signature) values(1, bfp_dummy(128, 0))")
+
+        # insert a second one, to see if it really works
+        c.execute(
+            "insert into xyz(id, signature) values(2, bfp_dummy(128, 33))")
+
+        # but now update the second (and last record)
+        c.execute(
+            "update xyz set signature=bfp_dummy(128, 42) where id=2")
+
     def _create_vtab(self):
         c = self.db.cursor()
         c.execute(

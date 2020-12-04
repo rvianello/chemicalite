@@ -737,6 +737,7 @@ static int rdtreeDestroy(sqlite3_vtab *pVtab)
   RDtree *pRDtree = (RDtree *)pVtab;
   int rc = SQLITE_OK;
  
+  /* FIXME missing deletion of table _weightfreq */
   char *zCreate = sqlite3_mprintf("DROP TABLE '%q'.'%q_node';"
 				  "DROP TABLE '%q'.'%q_rowid';"
 				  "DROP TABLE '%q'.'%q_parent';"
@@ -2258,15 +2259,15 @@ static int rdtreeDeleteRowid(RDtree *pRDtree, sqlite3_int64 iDelete)
   if (rc == SQLITE_OK) {
     rc = nodeRowidIndex(pRDtree, pLeaf, iDelete, &iItem);
     if (rc == SQLITE_OK) {
-      rc = deleteItem(pRDtree, pLeaf, iItem, 0);
-    }
-    if (rc == SQLITE_OK) {
       u8 *pBfp = nodeGetBfp(pRDtree, pLeaf, iItem);
       rc = bitfreqDecrement(pRDtree, pBfp);
     }
     if (rc == SQLITE_OK) {
       int weight = nodeGetMaxWeight(pRDtree, pLeaf, iItem);
       rc = weightfreqDecrement(pRDtree, weight);
+    }
+    if (rc == SQLITE_OK) {
+      rc = deleteItem(pRDtree, pLeaf, iItem, 0);
     }
     rc2 = nodeRelease(pRDtree, pLeaf);
     if (rc == SQLITE_OK) {
