@@ -737,12 +737,13 @@ static int rdtreeDestroy(sqlite3_vtab *pVtab)
   RDtree *pRDtree = (RDtree *)pVtab;
   int rc = SQLITE_OK;
  
-  /* FIXME missing deletion of table _weightfreq */
   char *zCreate = sqlite3_mprintf("DROP TABLE '%q'.'%q_node';"
 				  "DROP TABLE '%q'.'%q_rowid';"
 				  "DROP TABLE '%q'.'%q_parent';"
-				  "DROP TABLE '%q'.'%q_bitfreq';",
+				  "DROP TABLE '%q'.'%q_bitfreq';"
+				  "DROP TABLE '%q'.'%q_weightfreq';",
 				  pRDtree->zDb, pRDtree->zName, 
+				  pRDtree->zDb, pRDtree->zName,
 				  pRDtree->zDb, pRDtree->zName,
 				  pRDtree->zDb, pRDtree->zName,
 				  pRDtree->zDb, pRDtree->zName);
