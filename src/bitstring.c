@@ -34,6 +34,7 @@ int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
   /* and if we don't know what to do with this value type */
   else {
     rc = SQLITE_MISMATCH;
+    sqlite3_log(rc, "bfp args must be of type text, blob or NULL");
   }
   return rc;
 }

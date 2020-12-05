@@ -72,11 +72,21 @@ int txt_to_mol(const char * txt, int as_smarts, Mol **ppMol)
   catch (...) {
     // problem generating molecule from smiles
     *ppMol = 0;
+    sqlite3_log(
+      SQLITE_ERROR,
+      "Conversion from '%s' to %s triggered an exception.",
+      txt, as_smarts ? "qmol" : "mol"
+      );
   }
 
   if (!*ppMol) {
     // parse error
     rc = SQLITE_ERROR;
+    sqlite3_log(
+      SQLITE_ERROR,
+      "Could not convert '%s' to %s",
+      txt, as_smarts ? "qmol" : "mol"
+      );
   }
 
   return rc;

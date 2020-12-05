@@ -34,6 +34,11 @@ int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
   else if (value_type == SQLITE3_TEXT) {
     if (sqlite3_value_bytes(arg) > MOL_MAX_TXT_LENGTH) {
       rc = SQLITE_TOOBIG;
+      sqlite3_log(
+        rc,
+        "Input string exceeds the maximum allowed length for a mol text representation (%d)",
+        MOL_MAX_TXT_LENGTH
+        );
     } else {
       /* txt_to_mol will return an error if the conversion failed
       ** resulting in a null pointer. the error is not captured here
@@ -49,6 +54,7 @@ int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
   /* finally if it's not a value type we can use, return an error */
   else {
     rc = SQLITE_MISMATCH;
+    sqlite3_log(rc, "mol args must be of type text, blob or NULL");
   }
   return rc;
 }
@@ -63,10 +69,18 @@ static void cast_to_molecule(sqlite3_context* ctx,
   assert(argc == 1);
   sqlite3_value *arg = argv[0];
 
+  int value_type = sqlite3_value_type(arg);
+
   /* build the molecule binary repr from a text string */
-  if (sqlite3_value_type(arg) == SQLITE3_TEXT) {
+  if (value_type == SQLITE3_TEXT) {
     
     if (sqlite3_value_bytes(arg) > MOL_MAX_TXT_LENGTH) {
+      sqlite3_log(
+        SQLITE_TOOBIG,
+        "Input string exceeds the maximum allowed length for a %s text representation (%d)",
+        mode == AS_SMARTS ? "qmol" : "mol",
+        MOL_MAX_TXT_LENGTH
+        );
       sqlite3_result_error_toobig(ctx);
       return;
     }
@@ -92,8 +106,16 @@ static void cast_to_molecule(sqlite3_context* ctx,
 
   }
   /* not a string */
+  else if (value_type == SQLITE_NULL) {
+    sqlite3_result_null(ctx);
+  }
   else {
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
+    sqlite3_log(
+      SQLITE_MISMATCH,
+      "%s args must be of type text, blob or NULL",
+      mode == AS_SMARTS ? "qmol" : "mol"
+      );
   }
 }
 
