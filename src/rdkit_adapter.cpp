@@ -81,9 +81,9 @@ int txt_to_mol(const char * txt, int as_smarts, Mol **ppMol)
 
   if (!*ppMol) {
     // parse error
-    rc = SQLITE_ERROR;
+    rc = SQLITE_WARNING;
     sqlite3_log(
-      SQLITE_ERROR,
+      rc,
       "Could not convert '%s' to %s",
       txt, as_smarts ? "qmol" : "mol"
       );
