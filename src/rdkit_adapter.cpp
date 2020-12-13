@@ -21,6 +21,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <DataStructs/BitOps.h>
 
 #include "chemicalite.h"
+#include "logging.h"
 #include "bfp_ops.h"
 #include "rdkit_adapter.h"
 
@@ -72,7 +73,7 @@ int txt_to_mol(const char * txt, int as_smarts, Mol **ppMol)
   catch (...) {
     // problem generating molecule from smiles
     *ppMol = 0;
-    sqlite3_log(
+    chemicalite_log(
       SQLITE_ERROR,
       "Conversion from '%s' to %s triggered an exception.",
       txt, as_smarts ? "qmol" : "mol"
@@ -82,7 +83,7 @@ int txt_to_mol(const char * txt, int as_smarts, Mol **ppMol)
   if (!*ppMol) {
     // parse error
     rc = SQLITE_WARNING;
-    sqlite3_log(
+    chemicalite_log(
       rc,
       "Could not convert '%s' to %s",
       txt, as_smarts ? "qmol" : "mol"

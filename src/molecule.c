@@ -8,6 +8,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "rdkit_adapter.h"
 #include "utils.h"
 #include "molecule.h"
+#include "logging.h"
 
 static const int MOL_MAX_TXT_LENGTH = 2048;
 static const int AS_SMILES = 0;
@@ -34,7 +35,7 @@ int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
   else if (value_type == SQLITE3_TEXT) {
     if (sqlite3_value_bytes(arg) > MOL_MAX_TXT_LENGTH) {
       rc = SQLITE_TOOBIG;
-      sqlite3_log(
+      chemicalite_log(
         rc,
         "Input string exceeds the maximum allowed length for a mol text representation (%d)",
         MOL_MAX_TXT_LENGTH
@@ -54,7 +55,7 @@ int fetch_mol_arg(sqlite3_value* arg, Mol **ppMol)
   /* finally if it's not a value type we can use, return an error */
   else {
     rc = SQLITE_MISMATCH;
-    sqlite3_log(rc, "mol args must be of type text, blob or NULL");
+    chemicalite_log(rc, "mol args must be of type text, blob or NULL");
   }
   return rc;
 }
@@ -75,7 +76,7 @@ static void cast_to_molecule(sqlite3_context* ctx,
   if (value_type == SQLITE3_TEXT) {
     
     if (sqlite3_value_bytes(arg) > MOL_MAX_TXT_LENGTH) {
-      sqlite3_log(
+      chemicalite_log(
         SQLITE_TOOBIG,
         "Input string exceeds the maximum allowed length for a %s text representation (%d)",
         mode == AS_SMARTS ? "qmol" : "mol",
@@ -111,7 +112,7 @@ static void cast_to_molecule(sqlite3_context* ctx,
   }
   else {
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
-    sqlite3_log(
+    chemicalite_log(
       SQLITE_MISMATCH,
       "%s args must be of type text, blob or NULL",
       mode == AS_SMARTS ? "qmol" : "mol"

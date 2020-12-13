@@ -7,6 +7,7 @@ SQLITE_EXTENSION_INIT1
 
 #include "chemicalite.h"
 #include "rdkit_adapter.h"
+#include "settings.h"
 #include "molecule.h"
 #include "bitstring.h"
 #include "rdtree.h"
@@ -179,6 +180,10 @@ int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
   int rc = SQLITE_OK;
   SQLITE_EXTENSION_INIT2(pApi)
 
+  if (rc == SQLITE_OK) {
+    rc = chemicalite_init_settings(db);
+  }
+  
   if (rc == SQLITE_OK) {
     rc = chemicalite_init_molecule(db);
   }

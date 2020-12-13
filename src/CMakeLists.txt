@@ -1,6 +1,8 @@
 include(GNUInstallDirs)
 
 add_library(chemicalite MODULE
+        settings.c
+        logging.c
  	    molecule.c
 	    bfp_ops.c
  	    bitstring.c
