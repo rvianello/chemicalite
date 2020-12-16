@@ -100,11 +100,12 @@ static void cast_to_molecule(sqlite3_context* ctx,
     rc = mol_to_blob(pMol, &pBlob, &sz);
     if (rc != SQLITE_OK) {
       sqlite3_result_error_code(ctx, rc);
-      return;
+    }
+    else {
+      sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free);
     }
 
-    sqlite3_result_blob(ctx, pBlob, sz, sqlite3_free);
-
+    free_mol(pMol);
   }
   /* not a string */
   else if (value_type == SQLITE_NULL) {
