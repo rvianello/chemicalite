@@ -38,13 +38,13 @@ int main()
     printf("Successful creation of virtual rdtree table "
 	   "w/ options 'WHATEVER'\n");
   }
-  else if ((rc = create_rdtree_ex(db, "abc", 128, "OPT_FOR_SUBSET_QUERIES",
+  else if ((rc = create_rdtree_ex(db, "def", 128, "OPT_FOR_SUBSET_QUERIES",
 				  &errMsg))
 	    != SQLITE_OK) {
     printf("Couldn't create virtual rdtree table "
 	   "w/ options 'OPT_FOR_SUBSET_QUERIES'\n");
   }
-  else if ((rc = create_rdtree_ex(db, "def", 128, "OPT_FOR_SIMILARITY_QUERIES",
+  else if ((rc = create_rdtree_ex(db, "ghi", 128, "OPT_FOR_SIMILARITY_QUERIES",
 				  &errMsg))
 	    != SQLITE_OK) {
     printf("Couldn't create virtual rdtree table "

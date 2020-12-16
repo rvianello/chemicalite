@@ -133,7 +133,13 @@ int select_text(sqlite3 *db, const char * sql, const char **pTxt)
       rc = rc2;
     }  
     else {
-      *pTxt = (const char *)sqlite3_column_text(pStmt, 0);
+      /* we need to make a copy here, otherwise the call to 
+      sqlite3_finalize below may (will) invalidate the value
+      before we use it */
+      *pTxt = strdup((const char *)sqlite3_column_text(pStmt, 0));
+      if (!*pTxt) {
+        rc = SQLITE_NOMEM;
+      }
     }
   }
 

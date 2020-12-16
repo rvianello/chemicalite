@@ -1,5 +1,5 @@
 macro(chemicalite_pytest module)
-    add_test(${module}
+    add_test(test_python_${module}
                 ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${module}.py)
 endmacro(chemicalite_pytest)
 

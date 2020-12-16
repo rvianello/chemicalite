@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -30,14 +31,22 @@ int main()
     rc = SQLITE_ERROR;
   }
 
+  free((void *)txt);
+  txt = NULL;
+  
   /* For RDKit and Boost only exercise the functions, w/out checking the output */
   if (SQLITE_OK == rc) {
-      rc = select_text(db, "SELECT rdkit_version()", &txt);
+    rc = select_text(db, "SELECT rdkit_version()", &txt);
   }
+
+  free((void *)txt);
+  txt = NULL;
 
   if (SQLITE_OK == rc) {
       rc = select_text(db, "SELECT boost_version()", &txt);
   }
+
+  free((void *)txt);
 
   int rc2 = sqlite3_close(db);
 

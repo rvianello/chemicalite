@@ -7,6 +7,7 @@ macro(chemicalite_ctest test)
 endmacro(chemicalite_ctest)
 
 chemicalite_ctest(initialize)
+chemicalite_ctest(smiles_roundtrip)
 chemicalite_ctest(create_rdtree)
 chemicalite_ctest(rdtree_1st_insert)
 chemicalite_ctest(rdtree_single_select_by_id)

@@ -29,7 +29,13 @@ option(CHEMICALITE_ENABLE_PYTHON_TESTS "enable python tests" ON)
 option(CHEMICALITE_BUILD_EXAMPLES "build the example programs" ON)
 
 if (CHEMICALITE_ENABLE_TESTS)
+    find_program(MEMORYCHECK_COMMAND NAMES valgrind)
+    set(MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full")
+
+    include(CTest)
+
     enable_testing()
+
     add_subdirectory(tests)
     if (CHEMICALITE_ENABLE_PYTHON_TESTS)
         find_package (Python3 COMPONENTS Interpreter)
