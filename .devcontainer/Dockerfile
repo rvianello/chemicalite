@@ -21,6 +21,7 @@ RUN dnf install -y \
     findutils \
     eigen3-devel \
     g++ \
+    gdb \
     git \
     make \
     python3-ipython \
