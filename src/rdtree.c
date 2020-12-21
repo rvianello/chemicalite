@@ -1178,17 +1178,31 @@ static int rdtreeBestIndex(sqlite3_vtab *tab, sqlite3_index_info *pIdxInfo)
   UNUSED(tab);
   int rc = SQLITE_OK;
   int ii;
+  int bMatch = 0; /* True if there exists a MATCH constraint */
+  int iIdx = 0;  /* argv index/counter */
 
   assert( pIdxInfo->idxStr==0 );
+
+  /* The comment below directly from SQLite's rtree extension */
+  /* Check if there exists a MATCH constraint - even an unusable one. If there
+  ** is, do not consider the lookup-by-rowid plan as using such a plan would
+  ** require the VDBE to evaluate the MATCH constraint, which is not currently
+  ** possible. */
+  for(ii=0; ii<pIdxInfo->nConstraint; ii++){
+    if( pIdxInfo->aConstraint[ii].op==SQLITE_INDEX_CONSTRAINT_MATCH ){
+      bMatch = 1;
+    }
+  }
 
   for(ii = 0; ii < pIdxInfo->nConstraint; ii++) {
 
     struct sqlite3_index_constraint *p = &pIdxInfo->aConstraint[ii];
 
-    if (!p->usable) { 
-      continue; 
+    if (!p->usable) {
+      continue;
     }
-    else if (p->iColumn == 0 && p->op == SQLITE_INDEX_CONSTRAINT_EQ) {
+
+    if (bMatch==0 && p->iColumn == 0 && p->op == SQLITE_INDEX_CONSTRAINT_EQ) {
       /* We have an equality constraint on the rowid. Use strategy 1. */
       int jj;
       for (jj = 0; jj < ii; jj++){
@@ -1202,21 +1216,28 @@ static int rdtreeBestIndex(sqlite3_vtab *tab, sqlite3_index_info *pIdxInfo)
       /* This strategy involves a two rowid lookups on an B-Tree structures
       ** and then a linear search of an RD-Tree node. This should be 
       ** considered almost as quick as a direct rowid lookup (for which 
-      ** sqlite uses an internal cost of 0.0).
+      ** sqlite uses an internal cost of 0.0). It is expected to return
+      ** a single row.
       */ 
-      pIdxInfo->estimatedCost = 10.0;
+      pIdxInfo->estimatedCost = 30.0;
+      pIdxInfo->estimatedRows = 1;
+      pIdxInfo->idxFlags = SQLITE_INDEX_SCAN_UNIQUE;
       return SQLITE_OK;
     }
-    else if (p->op == SQLITE_INDEX_CONSTRAINT_MATCH) {
-      /* We have a match constraint. Use strategy 2.
-      */
-      pIdxInfo->aConstraintUsage[ii].argvIndex = ii + 1;
+
+    if (p->op == SQLITE_INDEX_CONSTRAINT_MATCH) {
+      pIdxInfo->aConstraintUsage[ii].argvIndex = ++iIdx;
       pIdxInfo->aConstraintUsage[ii].omit = 1;
     }
   }
 
   pIdxInfo->idxNum = 2;
   pIdxInfo->estimatedCost = (2000000.0 / (double)(pIdxInfo->nConstraint + 1));
+  /* TODO add estimated rows
+  nRow = pRtree->nRowEst >> (iIdx/2);
+  pIdxInfo->estimatedCost = (double)6.0 * (double)nRow;
+  pIdxInfo->estimatedRows = nRow;
+  */
   return rc;
 }
 
