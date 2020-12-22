@@ -26,7 +26,7 @@ int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
   /* Check that value is a blob */
   if (value_type == SQLITE_BLOB) {
     int sz = sqlite3_value_bytes(arg);
-    rc = blob_to_bfp(sqlite3_value_blob(arg), sz, ppBfp);
+    rc = blob_to_bfp((const u8*)sqlite3_value_blob(arg), sz, ppBfp);
   }
   /* Or if it's a NULL - we will most often return NULL on NULL input*/
   else if (value_type == SQLITE_NULL) {
@@ -43,11 +43,11 @@ int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
 /*
 ** Mol -> Bfp conversion
 */
-#define MOL_TO_BFP(func) \
+#define MOL_TO_BFP(func, default_length) \
   static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
   { \
-    UNUSED(argc); \
-    assert(argc == 1); \
+    assert(argc >= 1); \
+    assert(argc <= 2); \
     int rc = SQLITE_OK; \
   \
     Bfp * pBfp = 0; \
@@ -62,8 +62,13 @@ int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
       Mol *pMol = 0; \
       rc = fetch_mol_arg(argv[0], &pMol); \
   \
+      if (rc == SQLITE_OK && argc > 1 && sqlite3_value_type(argv[1]) != SQLITE_INTEGER) { \
+        rc = SQLITE_MISMATCH; \
+      } \
+  \
       if (rc == SQLITE_OK && pMol) { \
-        rc = func(pMol, &pBfp); \
+        int length = (argc > 1) ? sqlite3_value_int(argv[1]) : default_length; \
+        rc = func(pMol, length, &pBfp); \
       } \
   \
       if (rc == SQLITE_OK) { \
@@ -93,25 +98,27 @@ int fetch_bfp_arg(sqlite3_value* arg, Bfp **ppBfp)
     } \
   }
     
-MOL_TO_BFP(mol_layered_bfp)
-MOL_TO_BFP(mol_rdkit_bfp)
-MOL_TO_BFP(mol_atom_pairs_bfp)
-MOL_TO_BFP(mol_topological_torsion_bfp)
-MOL_TO_BFP(mol_maccs_bfp)
+MOL_TO_BFP(mol_layered_bfp, DEFAULT_LAYERED_BFP_LENGTH)
+MOL_TO_BFP(mol_rdkit_bfp, DEFAULT_LAYERED_BFP_LENGTH)
+MOL_TO_BFP(mol_atom_pairs_bfp, DEFAULT_HASHED_PAIR_BFP_LENGTH)
+MOL_TO_BFP(mol_topological_torsion_bfp, DEFAULT_HASHED_TORSION_BFP_LENGTH)
 
-#define MOL_TO_MORGAN_BFP(func) \
+/* the constructor for the MACCS bfp is created with a dummy default length
+** this is just for convenience, the SQL function taking two args is not created
+*/
+MOL_TO_BFP(mol_maccs_bfp, -1)
+
+#define MOL_TO_MORGAN_BFP(func, default_length) \
   static void func##_f(sqlite3_context* ctx, \
 		       int argc, sqlite3_value** argv) \
   { \
-    UNUSED(argc); \
-    assert(argc == 2); \
+    assert(argc >= 2); \
+    assert(argc <= 3); \
     int rc = SQLITE_OK; \
   \
     Bfp * pBfp = 0; \
     u8 * pBlob = 0; \
     int sz = 0; \
-  \
-    int radius = sqlite3_value_int(argv[1]); \
   \
     void * aux = sqlite3_get_auxdata(ctx, 0); \
     if (aux) { \
@@ -121,8 +128,18 @@ MOL_TO_BFP(mol_maccs_bfp)
       Mol *pMol = 0; \
       rc = fetch_mol_arg(argv[0], &pMol); \
   \
+      if (rc == SQLITE_OK && sqlite3_value_type(argv[1]) != SQLITE_INTEGER) { \
+        rc = SQLITE_MISMATCH; \
+      } \
+  \
+      if (rc == SQLITE_OK && argc > 2 && sqlite3_value_type(argv[2]) != SQLITE_INTEGER) { \
+        rc = SQLITE_MISMATCH; \
+      } \
+  \
       if (rc == SQLITE_OK && pMol) { \
-        rc = func(pMol, radius, &pBfp); \
+        int radius = sqlite3_value_int(argv[1]); \
+        int length = (argc > 2) ? sqlite3_value_int(argv[2]) : default_length; \
+        rc = func(pMol, radius, length, &pBfp); \
       } \
   \
       if (rc == SQLITE_OK) { \
@@ -152,13 +169,13 @@ MOL_TO_BFP(mol_maccs_bfp)
     } \
   }
 
-MOL_TO_MORGAN_BFP(mol_morgan_bfp)
-MOL_TO_MORGAN_BFP(mol_feat_morgan_bfp)
+MOL_TO_MORGAN_BFP(mol_morgan_bfp, DEFAULT_MORGAN_BFP_LENGTH)
+MOL_TO_MORGAN_BFP(mol_feat_morgan_bfp, DEFAULT_MORGAN_BFP_LENGTH)
 
 /*
 ** Slightly different, but still a bfp
 */
-MOL_TO_BFP(mol_bfp_signature)
+MOL_TO_BFP(mol_bfp_signature, DEFAULT_SSS_BFP_LENGTH)
 
 /*
 ** bitstring similarity
@@ -245,8 +262,8 @@ static void bfp_dummy_f(sqlite3_context* ctx,
   else {
 
     len = sqlite3_value_int(argv[0]);
+    len /= 8; /* input length is now expected as # of bits, for consistency w/ bfp constructors */
     if (len <= 0) { len = 1; }
-    if (len > MAX_BITSTRING_SIZE) { len = MAX_BITSTRING_SIZE; }
 
     value = sqlite3_value_int(argv[1]);
     if (value < 0) { value = 0; }
@@ -336,15 +353,24 @@ int chemicalite_init_bitstring(sqlite3 *db)
   CREATE_SQLITE_UNARY_FUNCTION(bfp_weight);
 
   CREATE_SQLITE_UNARY_FUNCTION(mol_layered_bfp);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_layered_bfp);
   CREATE_SQLITE_UNARY_FUNCTION(mol_rdkit_bfp);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_rdkit_bfp);
   CREATE_SQLITE_UNARY_FUNCTION(mol_atom_pairs_bfp);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_atom_pairs_bfp);
   CREATE_SQLITE_UNARY_FUNCTION(mol_topological_torsion_bfp);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_topological_torsion_bfp);
+
   CREATE_SQLITE_UNARY_FUNCTION(mol_maccs_bfp);
+  /* there is no 2-args variant for mol_maccs_bfp */
 
   CREATE_SQLITE_BINARY_FUNCTION(mol_morgan_bfp);
+  CREATE_SQLITE_TERNARY_FUNCTION(mol_morgan_bfp);
   CREATE_SQLITE_BINARY_FUNCTION(mol_feat_morgan_bfp);
+  CREATE_SQLITE_TERNARY_FUNCTION(mol_feat_morgan_bfp);
 
   CREATE_SQLITE_UNARY_FUNCTION(mol_bfp_signature);
+  CREATE_SQLITE_BINARY_FUNCTION(mol_bfp_signature);
 
   CREATE_SQLITE_BINARY_FUNCTION(bfp_dummy);
 

@@ -61,16 +61,16 @@ extern "C" {
   int bfp_weight(Bfp *pBfp);
 
   /* mol -> bfp */
-  int mol_layered_bfp(Mol *pMol, Bfp **ppBfp);
-  int mol_rdkit_bfp(Mol *pMol, Bfp **ppBfp);
-  int mol_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp);
-  int mol_feat_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp);
-  int mol_atom_pairs_bfp(Mol *pMol, Bfp **ppBfp);
-  int mol_topological_torsion_bfp(Mol *pMol, Bfp **ppBfp);
-  int mol_maccs_bfp(Mol *pMol, Bfp **ppBfp);
+  int mol_layered_bfp(Mol *pMol, int length, Bfp **ppBfp);
+  int mol_rdkit_bfp(Mol *pMol, int length, Bfp **ppBfp);
+  int mol_morgan_bfp(Mol *pMol, int radius, int length, Bfp **ppBfp);
+  int mol_feat_morgan_bfp(Mol *pMol, int radius, int length, Bfp **ppBfp);
+  int mol_atom_pairs_bfp(Mol *pMol, int length, Bfp **ppBfp);
+  int mol_topological_torsion_bfp(Mol *pMol, int length, Bfp **ppBfp);
+  int mol_maccs_bfp(Mol *pMol, int length, Bfp **ppBfp);
 
   /* generation of structural signature */
-  int mol_bfp_signature(Mol *pMol, Bfp **ppBfp);
+  int mol_bfp_signature(Mol *pMol, int length, Bfp **ppBfp);
 
   /* version info for the rdkit package */
   const char * rdkit_version();

@@ -49,14 +49,6 @@ struct Bfp : std::string {
 
 void free_bfp(Bfp *pBfp) { delete pBfp; }
 
-namespace {
-  const unsigned int SSS_FP_SIZE            = 8*MOL_SIGNATURE_SIZE;
-  const unsigned int LAYERED_FP_SIZE        = 1024;
-  const unsigned int MORGAN_FP_SIZE         = 512;
-  const unsigned int HASHED_TORSION_FP_SIZE = 1024;
-  const unsigned int HASHED_PAIR_FP_SIZE    = 2048;
-}
-
 // SMILES/SMARTS <-> Molecule ////////////////////////////////////////////////
 
 int txt_to_mol(const char * txt, int as_smarts, Mol **ppMol)
@@ -361,7 +353,7 @@ int bfp_weight(Bfp *pBfp)
 
 // Molecule -> Bfp /////////////////////////////////////////////////////
 
-int mol_layered_bfp(Mol *pMol, Bfp **ppBfp)
+int mol_layered_bfp(Mol *pMol, int length, Bfp **ppBfp)
 {
   assert(pMol);
 
@@ -370,7 +362,7 @@ int mol_layered_bfp(Mol *pMol, Bfp **ppBfp)
 
   try {
     ExplicitBitVect *bv 
-      = RDKit::LayeredFingerprintMol(*pMol, 0xFFFFFFFF, 1, 7, LAYERED_FP_SIZE);
+      = RDKit::LayeredFingerprintMol(*pMol, 0xFFFFFFFF, 1, 7, length);
     if (bv) {
       *ppBfp = new Bfp(BitVectToBinaryText(*bv));
       delete bv;
@@ -387,7 +379,7 @@ int mol_layered_bfp(Mol *pMol, Bfp **ppBfp)
   return rc;
 }
 
-int mol_rdkit_bfp(Mol *pMol, Bfp **ppBfp)
+int mol_rdkit_bfp(Mol *pMol, int length, Bfp **ppBfp)
 {
   assert(pMol);
 
@@ -396,7 +388,7 @@ int mol_rdkit_bfp(Mol *pMol, Bfp **ppBfp)
 
   try {
     ExplicitBitVect *bv 
-      = RDKit::RDKFingerprintMol(*pMol, 1, 6, LAYERED_FP_SIZE, 2);
+      = RDKit::RDKFingerprintMol(*pMol, 1, 6, length, 2);
     if (bv) {
       *ppBfp = new Bfp(BitVectToBinaryText(*bv));
       delete bv;
@@ -413,7 +405,7 @@ int mol_rdkit_bfp(Mol *pMol, Bfp **ppBfp)
   return rc;
 }
 
-int mol_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp)
+int mol_morgan_bfp(Mol *pMol, int radius, int length, Bfp **ppBfp)
 {
   assert(pMol);
 
@@ -425,7 +417,7 @@ int mol_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp)
     RDKit::MorganFingerprints::getConnectivityInvariants(*pMol, invars, true);
     ExplicitBitVect *bv 
       = RDKit::MorganFingerprints::getFingerprintAsBitVect(*pMol, radius,
-							   MORGAN_FP_SIZE,
+							   length,
 							   &invars);
     if (bv) {
       *ppBfp = new Bfp(BitVectToBinaryText(*bv));
@@ -443,7 +435,7 @@ int mol_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp)
   return rc;
 }
 
-int mol_feat_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp)
+int mol_feat_morgan_bfp(Mol *pMol, int radius, int length, Bfp **ppBfp)
 {
   assert(pMol);
 
@@ -455,7 +447,7 @@ int mol_feat_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp)
     RDKit::MorganFingerprints::getFeatureInvariants(*pMol, invars);
     ExplicitBitVect *bv 
       = RDKit::MorganFingerprints::getFingerprintAsBitVect(*pMol, radius,
-							   MORGAN_FP_SIZE,
+							   length,
 							   &invars);
     if (bv) {
       *ppBfp = new Bfp(BitVectToBinaryText(*bv));
@@ -473,7 +465,7 @@ int mol_feat_morgan_bfp(Mol *pMol, int radius, Bfp **ppBfp)
   return rc;
 }
 
-int mol_atom_pairs_bfp(Mol *pMol, Bfp **ppBfp)
+int mol_atom_pairs_bfp(Mol *pMol, int length, Bfp **ppBfp)
 {
   assert(pMol);
 
@@ -482,8 +474,7 @@ int mol_atom_pairs_bfp(Mol *pMol, Bfp **ppBfp)
 
   try {
     ExplicitBitVect *bv 
-      = RDKit::AtomPairs::getHashedAtomPairFingerprintAsBitVect(*pMol,
-								HASHED_PAIR_FP_SIZE);
+      = RDKit::AtomPairs::getHashedAtomPairFingerprintAsBitVect(*pMol, length);
     if (bv) {
       *ppBfp = new Bfp(BitVectToBinaryText(*bv));
       delete bv;
@@ -500,7 +491,7 @@ int mol_atom_pairs_bfp(Mol *pMol, Bfp **ppBfp)
   return rc;
 }
 
-int mol_topological_torsion_bfp(Mol *pMol, Bfp **ppBfp)
+int mol_topological_torsion_bfp(Mol *pMol, int length, Bfp **ppBfp)
 {
   assert(pMol);
 
@@ -509,8 +500,7 @@ int mol_topological_torsion_bfp(Mol *pMol, Bfp **ppBfp)
 
   try {
     ExplicitBitVect *bv 
-      = RDKit::AtomPairs::getHashedTopologicalTorsionFingerprintAsBitVect(*pMol,
-									  HASHED_TORSION_FP_SIZE);
+      = RDKit::AtomPairs::getHashedTopologicalTorsionFingerprintAsBitVect(*pMol, length);
     if (bv) {
       *ppBfp = new Bfp(BitVectToBinaryText(*bv));
       delete bv;
@@ -527,7 +517,7 @@ int mol_topological_torsion_bfp(Mol *pMol, Bfp **ppBfp)
   return rc;
 }
 
-int mol_maccs_bfp(Mol *pMol, Bfp **ppBfp)
+int mol_maccs_bfp(Mol *pMol, int /* unused length */, Bfp **ppBfp)
 {
   assert(pMol);
 
@@ -555,7 +545,7 @@ int mol_maccs_bfp(Mol *pMol, Bfp **ppBfp)
 
 // Molecule -> signature /////////////////////////////////////////////////////
 
-int mol_bfp_signature(Mol *pMol, Bfp **ppBfp)
+int mol_bfp_signature(Mol *pMol, int length, Bfp **ppBfp)
 {
   assert(pMol);
 
@@ -564,7 +554,7 @@ int mol_bfp_signature(Mol *pMol, Bfp **ppBfp)
 
   try {
     ExplicitBitVect *bv 
-      = RDKit::PatternFingerprintMol(*pMol, SSS_FP_SIZE);
+      = RDKit::PatternFingerprintMol(*pMol, length);
     if (bv) {
       *ppBfp = new Bfp(BitVectToBinaryText(*bv));
       delete bv;

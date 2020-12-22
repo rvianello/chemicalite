@@ -33,11 +33,11 @@ class TestRDtree(ChemicaLiteTestCase):
         # insert a first bfp (any bfp would do, but the original github
         # ticket used an empty one)
         c.execute(
-            "insert into xyz(id, signature) values(1, bfp_dummy(128, 0))")
+            "insert into xyz(id, signature) values(1, bfp_dummy(1024, 0))")
 
         # and then update the record with a different bfp
         c.execute(
-            "update xyz set signature=bfp_dummy(128, 42) where id=1")
+            "update xyz set signature=bfp_dummy(1024, 42) where id=1")
 
     def test_github_00003_bis(self):
 
@@ -48,15 +48,15 @@ class TestRDtree(ChemicaLiteTestCase):
         # insert a first bfp (any bfp would do, but the original github
         # ticket used an empty one)
         c.execute(
-            "insert into xyz(id, signature) values(1, bfp_dummy(128, 0))")
+            "insert into xyz(id, signature) values(1, bfp_dummy(1024, 0))")
 
         # insert a second one, and show that update then works
         c.execute(
-            "insert into xyz(id, signature) values(2, bfp_dummy(128, 33))")
+            "insert into xyz(id, signature) values(2, bfp_dummy(1024, 33))")
 
         # and then update the record with a different bfp
         c.execute(
-            "update xyz set signature=bfp_dummy(128, 42) where id=1")
+            "update xyz set signature=bfp_dummy(1024, 42) where id=1")
 
     def test_github_00003_tris(self):
 
@@ -67,15 +67,15 @@ class TestRDtree(ChemicaLiteTestCase):
         # insert a first bfp (any bfp would do, but the original github
         # ticket used an empty one)
         c.execute(
-            "insert into xyz(id, signature) values(1, bfp_dummy(128, 0))")
+            "insert into xyz(id, signature) values(1, bfp_dummy(1024, 0))")
 
         # insert a second one, to see if it really works
         c.execute(
-            "insert into xyz(id, signature) values(2, bfp_dummy(128, 33))")
+            "insert into xyz(id, signature) values(2, bfp_dummy(1024, 33))")
 
         # but now update the second (and last record)
         c.execute(
-            "update xyz set signature=bfp_dummy(128, 42) where id=2")
+            "update xyz set signature=bfp_dummy(1024, 42) where id=2")
 
     def _create_vtab(self):
         c = self.db.cursor()
@@ -90,7 +90,7 @@ class TestRDtree(ChemicaLiteTestCase):
         for v in values:
             c.execute(
                 "insert into xyz(id, signature) "
-                "values(?, bfp_dummy(128, ?))", (v, v))
+                "values(?, bfp_dummy(1024, ?))", (v, v))
 
     def _count_subset_matches(self, value):
         print("Testing resultset count for value ", value)
@@ -99,7 +99,7 @@ class TestRDtree(ChemicaLiteTestCase):
         c = self.db.cursor()
         c.execute(
             "select count(*) from xyz where "
-            "id match rdtree_subset(bfp_dummy(128, ?))", (value,))
+            "id match rdtree_subset(bfp_dummy(1024, ?))", (value,))
         d = c.fetchone()[0]
         print("Found: ", d)
         self.assertEqual(d, expected)
