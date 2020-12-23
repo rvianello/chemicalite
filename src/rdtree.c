@@ -2602,15 +2602,15 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
     for (i=0; i < pRDtree->iBfpSize*8; ++i) {
       rc = sqlite3_bind_int(initBitfreqStmt, 1, i);
       if (rc != SQLITE_OK) {
-	break;
+        break;
       }
       rc = sqlite3_step(initBitfreqStmt);
       if (rc != SQLITE_DONE) {
-	break;
+        break;
       }
       else {
-	/* reassign the rc status and keep the error handling simple */
-	rc = SQLITE_OK; 
+        /* reassign the rc status and keep the error handling simple */
+        rc = SQLITE_OK; 
       }
       sqlite3_reset(initBitfreqStmt);
     }
@@ -2627,8 +2627,7 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
       return SQLITE_NOMEM;
     }
     sqlite3_stmt * initWeightfreqStmt = 0;
-    rc = sqlite3_prepare_v2(pRDtree->db, zInitWeightfreq, -1,
-			    &initWeightfreqStmt, 0);
+    rc = sqlite3_prepare_v2(pRDtree->db, zInitWeightfreq, -1, &initWeightfreqStmt, 0);
     sqlite3_free(zInitWeightfreq);
     if (rc != SQLITE_OK) {
       return rc;
@@ -2637,16 +2636,16 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
     for (i=0; i <= pRDtree->iBfpSize*8; ++i) {
       rc = sqlite3_bind_int(initWeightfreqStmt, 1, i);
       if (rc != SQLITE_OK) {
-	break;
+        break;
       }
       rc = sqlite3_step(initWeightfreqStmt);
       
       if (rc != SQLITE_DONE) {
-	break;
+        break;
       }
       else {
-	/* reassign the rc status and keep the error handling simple */
-	rc = SQLITE_OK; 
+        /* reassign the rc status and keep the error handling simple */
+        rc = SQLITE_OK; 
       }
       sqlite3_reset(initWeightfreqStmt);
     }
@@ -2673,7 +2672,7 @@ static int rdtreeSqlInit(RDtree *pRDtree, int isCreate)
   for (i=0; i<N_STATEMENT && rc==SQLITE_OK; i++) {
     char *zSql = sqlite3_mprintf(azSql[i], pRDtree->zDb, pRDtree->zName);
     if (zSql) {
-      rc = sqlite3_prepare_v2(pRDtree->db, zSql, -1, appStmt[i], 0); 
+      rc = sqlite3_prepare_v3(pRDtree->db, zSql, -1, SQLITE_PREPARE_PERSISTENT, appStmt[i], 0);
     }
     else {
       rc = SQLITE_NOMEM;
