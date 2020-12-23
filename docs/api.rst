@@ -69,13 +69,20 @@ Fingerprints
 ............
 
 * `mol_layered_bfp(mol)`
+* `mol_layered_bfp(mol, int)`
 * `mol_rdkit_bfp(mol)`
+* `mol_rdkit_bfp(mol, int)`
 * `mol_atom_pairs_bfp(mol)`
+* `mol_atom_pairs_bfp(mol, int)`
 * `mol_topological_torsion_bfp(mol)`
+* `mol_topological_torsion_bfp(mol, int)`
 * `mol_maccs_bfp(mol)`
 * `mol_morgan_bfp(mol, int)`
+* `mol_morgan_bfp(mol, int, int)`
 * `mol_feat_morgan_bfp(mol, int)`
+* `mol_feat_morgan_bfp(mol, int, int)`
 * `mol_bfp_signature(mol)`
+* `mol_bfp_signature(mol, int)`
 * `bfp_tanimoto(bfp, bfp)`
 * `bfp_dice(bfp, bfp)`
 * `bfp_length(bfp)`
