@@ -7,9 +7,6 @@ typedef uint8_t u8;
 
 typedef struct Mol Mol;
 typedef struct Bfp Bfp;
- 
-#define MOL_SIGNATURE_SIZE 256
-#define MAX_BITSTRING_SIZE 256
 
 #define DEFAULT_SSS_BFP_LENGTH 2048
 #define DEFAULT_LAYERED_BFP_LENGTH 1024

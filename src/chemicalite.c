@@ -66,8 +66,8 @@ static void create_molecule_rdtree_f(sqlite3_context* ctx,
 
   char * create_index
     = sqlite3_mprintf("CREATE VIRTUAL TABLE 'str_idx_%q_%q' USING\n"
-		      "rdtree(id, s bytes(%d), OPT_FOR_SUBSET_QUERIES)",
-		      table, column, MOL_SIGNATURE_SIZE);
+		      "rdtree(id, s bits(%d), OPT_FOR_SUBSET_QUERIES)",
+		      table, column, DEFAULT_SSS_BFP_LENGTH);
 
   if (!create_index) {
     rc = SQLITE_NOMEM;

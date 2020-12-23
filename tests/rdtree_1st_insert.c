@@ -24,7 +24,7 @@ int main()
     closedb = 0;
     printf("Failed database initialization\n");
   }
-  else if ((rc = create_rdtree(db, "xyz", 4, &errMsg)) != SQLITE_OK) {
+  else if ((rc = create_rdtree(db, "xyz", 32, &errMsg)) != SQLITE_OK) {
     printf("Failed creation of virtual rdtree table\n");
   }
   else if ((rc = insert_bitstring(db, "xyz", -1, 

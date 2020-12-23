@@ -13,6 +13,8 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "utils.h"
 #include "rdtree.h"
 
+#define RDTREE_MAX_BITSTRING_SIZE 256
+
 /* 
 ** This index data structure is based on (and *very* similar to) the
 ** SQLite's r-tree and r*-tree implementation, with the necessary variations
@@ -218,8 +220,8 @@ struct RDtreeConstraint {
   /* Ok this part is a bit ugly and these data structures will benefit some
   ** redesign. FIXME
   */
-  u8 aBfp[MAX_BITSTRING_SIZE];        /* Constraint value. */
-  u8 aBfpFilter[MAX_BITSTRING_SIZE];  /* Subset constraint value */
+  u8 aBfp[RDTREE_MAX_BITSTRING_SIZE];        /* Constraint value. */
+  u8 aBfpFilter[RDTREE_MAX_BITSTRING_SIZE];  /* Subset constraint value */
   int iWeight;
   double dParam;
   RDtreeMatchOp *op;
@@ -270,7 +272,7 @@ struct RDtreeItem {
   i64 iRowid;
   int iMinWeight;
   int iMaxWeight;
-  u8 aBfp[MAX_BITSTRING_SIZE];
+  u8 aBfp[RDTREE_MAX_BITSTRING_SIZE];
 };
 
 static int itemWeight(RDtree *pRDtree, RDtreeItem *pItem)
@@ -2768,7 +2770,7 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
   int nDb;              /* Length of string argv[1] */
   int nName;            /* Length of string argv[2] */
 
-  int iBfpSize = MOL_SIGNATURE_SIZE;  /* Default size of binary fingerprint */
+  int iBfpSize;         /* Length (in bytes) of stored binary fingerprint */
 
   /* perform arg checking */
   if (argc < 5) {
@@ -2783,8 +2785,28 @@ static int rdtreeInit(sqlite3 *db, void *pAux,
   }
 
   int sz;
-  if (sscanf(argv[4], "%*s bytes( %d )", &sz) == 1) {
+  if (sscanf(argv[4], "%*s bits( %d )", &sz) == 1) {
+      if (sz <= 0 || sz % 8) {
+        *pzErr = sqlite3_mprintf("invalid number of bits for a stored fingerprint: '%d'", sz);
+        return SQLITE_ERROR;
+      }
+      iBfpSize = sz/8;
+  }
+  else if (sscanf(argv[4], "%*s bytes( %d )", &sz) == 1) {
+      if (sz <= 0) {
+        *pzErr = sqlite3_mprintf("invalid number of bytes for a stored fingerprint: '%d'", sz);
+        return SQLITE_ERROR;
+      }
       iBfpSize = sz;
+  }
+  else {
+    *pzErr = sqlite3_mprintf("unable to parse the fingerprint size from: '%s'", argv[4]);
+    return SQLITE_ERROR;
+  }
+
+  if (iBfpSize > RDTREE_MAX_BITSTRING_SIZE) {
+    *pzErr = sqlite3_mprintf("the requested fingerpring size exceeds the supported max value: %d bytes", RDTREE_MAX_BITSTRING_SIZE);
+    return SQLITE_ERROR;
   }
 
   unsigned int flags = RDTREE_FLAGS_UNASSIGNED;
@@ -2916,7 +2938,7 @@ static void rdtree_subset_f(sqlite3_context* ctx,
     rc = SQLITE_MISMATCH;
   }
   /* Check that the blob is not bigger than the max allowed bfp */
-  else if ((sz = sqlite3_value_bytes(argv[0])) > MAX_BITSTRING_SIZE) {
+  else if ((sz = sqlite3_value_bytes(argv[0])) > RDTREE_MAX_BITSTRING_SIZE) {
     rc = SQLITE_TOOBIG;
   }
   else if (!(pMatchArg = 
@@ -3156,7 +3178,7 @@ static void rdtree_tanimoto_f(sqlite3_context* ctx,
     rc = SQLITE_MISMATCH;
   }
   /* Check that the blob is not bigger than the max allowed bfp */
-  else if ((sz = sqlite3_value_bytes(argv[0])) > MAX_BITSTRING_SIZE) {
+  else if ((sz = sqlite3_value_bytes(argv[0])) > RDTREE_MAX_BITSTRING_SIZE) {
     rc = SQLITE_TOOBIG;
   }
   /* Check that the second argument is a float number */
