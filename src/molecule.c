@@ -274,6 +274,55 @@ MOL_DESCRIPTOR(mol_num_rotatable_bnds, int)
 MOL_DESCRIPTOR(mol_num_hetatms, int)
 MOL_DESCRIPTOR(mol_num_rings, int)
 
+/*
+** molecular hash functions
+*/
+
+#define MOL_HASH(func) \
+  static void func##_f(sqlite3_context* ctx, int argc, sqlite3_value** argv) \
+  { \
+    UNUSED(argc); \
+    assert(argc == 1); \
+	\
+    char * hash = 0; \
+    Mol *pMol = 0; \
+    int rc = fetch_mol_arg(argv[0], &pMol); \
+	\
+    if (rc != SQLITE_OK) { \
+      sqlite3_result_error_code(ctx, rc); \
+    } \
+    else if (!pMol) { \
+      sqlite3_result_null(ctx); \
+    } \
+    else if ( (rc = func(pMol, &hash)) != SQLITE_OK ) { \
+      sqlite3_result_error_code(ctx, rc); \
+    } \
+    else { \
+      sqlite3_result_text(ctx, hash, -1, sqlite3_free); \
+    } \
+  \
+    free_mol(pMol); \
+  }
+
+MOL_HASH(mol_hash_anonymousgraph)
+MOL_HASH(mol_hash_elementgraph)
+MOL_HASH(mol_hash_canonicalsmiles)
+MOL_HASH(mol_hash_murckoscaffold)
+MOL_HASH(mol_hash_extendedmurcko)
+MOL_HASH(mol_hash_molformula)
+MOL_HASH(mol_hash_atombondcounts)
+MOL_HASH(mol_hash_degreevector)
+MOL_HASH(mol_hash_mesomer)
+MOL_HASH(mol_hash_hetatomtautomer)
+MOL_HASH(mol_hash_hetatomprotomer)
+MOL_HASH(mol_hash_redoxpair)
+MOL_HASH(mol_hash_regioisomer)
+MOL_HASH(mol_hash_netcharge)
+MOL_HASH(mol_hash_smallworldindexbr)
+MOL_HASH(mol_hash_smallworldindexbrl)
+MOL_HASH(mol_hash_arthorsubstructureorder)
+
+
 int chemicalite_init_molecule(sqlite3 *db)
 {
   int rc = SQLITE_OK;
@@ -312,5 +361,23 @@ int chemicalite_init_molecule(sqlite3 *db)
   CREATE_SQLITE_UNARY_FUNCTION(mol_num_hetatms);
   CREATE_SQLITE_UNARY_FUNCTION(mol_num_rings);
   
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_anonymousgraph);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_elementgraph);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_canonicalsmiles);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_murckoscaffold);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_extendedmurcko);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_molformula);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_atombondcounts);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_degreevector);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_mesomer);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_hetatomtautomer);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_hetatomprotomer);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_redoxpair);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_regioisomer);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_netcharge);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_smallworldindexbr);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_smallworldindexbrl);
+  CREATE_SQLITE_UNARY_FUNCTION(mol_hash_arthorsubstructureorder);
+
   return rc;
 }

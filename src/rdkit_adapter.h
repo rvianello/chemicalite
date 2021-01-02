@@ -49,6 +49,24 @@ extern "C" {
   int mol_num_hetatms(Mol *pMol);
   int mol_num_rings(Mol *pMol);
 
+  int mol_hash_anonymousgraph(Mol *pMol, char **pHash);
+  int mol_hash_elementgraph(Mol *pMol, char **pHash);
+  int mol_hash_canonicalsmiles(Mol *pMol, char **pHash);
+  int mol_hash_murckoscaffold(Mol *pMol, char **pHash);
+  int mol_hash_extendedmurcko(Mol *pMol, char **pHash);
+  int mol_hash_molformula(Mol *pMol, char **pHash);
+  int mol_hash_atombondcounts(Mol *pMol, char **pHash);
+  int mol_hash_degreevector(Mol *pMol, char **pHash);
+  int mol_hash_mesomer(Mol *pMol, char **pHash);
+  int mol_hash_hetatomtautomer(Mol *pMol, char **pHash);
+  int mol_hash_hetatomprotomer(Mol *pMol, char **pHash);
+  int mol_hash_redoxpair(Mol *pMol, char **pHash);
+  int mol_hash_regioisomer(Mol *pMol, char **pHash);
+  int mol_hash_netcharge(Mol *pMol, char **pHash);
+  int mol_hash_smallworldindexbr(Mol *pMol, char **pHash);
+  int mol_hash_smallworldindexbrl(Mol *pMol, char **pHash);
+  int mol_hash_arthorsubstructureorder(Mol *pMol, char **pHash);
+
   /* bfp data type interconversion */
   int bfp_to_blob(Bfp *pBfp, u8 **ppBlob, int *pLen);
   int blob_to_bfp(const u8 *pBlob, int len, Bfp **ppBfp);

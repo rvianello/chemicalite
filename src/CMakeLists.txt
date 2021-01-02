@@ -17,6 +17,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 target_link_libraries(chemicalite PUBLIC
-                      RDKit::Descriptors RDKit::Fingerprints RDKit::GraphMol  ${SQLite3_LIBRARIES})
+                      RDKit::MolHash RDKit::Descriptors RDKit::Fingerprints RDKit::GraphMol
+                      ${SQLite3_LIBRARIES})
 
 install(TARGETS chemicalite LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})

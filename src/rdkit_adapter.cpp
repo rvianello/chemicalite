@@ -9,6 +9,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <GraphMol/RDKitBase.h>
 #include <GraphMol/MolPickler.h>
 #include <GraphMol/Descriptors/MolDescriptors.h>
+#include <GraphMol/MolHash/MolHash.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/SmilesParse/SmartsWrite.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
@@ -279,6 +280,50 @@ int mol_num_hvyatms(Mol *pMol)
   return pMol->getNumAtoms(true);
 }
 
+// Molecular hash functions ///////////////////////////////////////////
+
+static int mol_hash(Mol *pMol, RDKit::MolHash::HashFunction func, char **pHash)
+{
+  assert(pMol);
+  *pHash = 0;
+  int rc = SQLITE_OK;
+
+  std::string txt;
+  try {
+    RDKit::RWMol mol_copy(*pMol);
+    txt.assign(RDKit::MolHash::MolHash(&mol_copy, func));
+  }
+  catch (...) {
+    rc = SQLITE_ERROR;
+  }
+
+  if (rc == SQLITE_OK) {
+    *pHash = sqlite3_mprintf("%s", txt.c_str());
+    if (!(*pHash)) {
+      rc = SQLITE_NOMEM;
+    }
+  }
+
+  return rc;
+}
+
+  int mol_hash_anonymousgraph(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::AnonymousGraph, pHash);}
+  int mol_hash_elementgraph(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::ElementGraph, pHash);}
+  int mol_hash_canonicalsmiles(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::CanonicalSmiles, pHash);}
+  int mol_hash_murckoscaffold(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::MurckoScaffold, pHash);}
+  int mol_hash_extendedmurcko(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::ExtendedMurcko, pHash);}
+  int mol_hash_molformula(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::MolFormula, pHash);}
+  int mol_hash_atombondcounts(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::AtomBondCounts, pHash);}
+  int mol_hash_degreevector(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::DegreeVector, pHash);}
+  int mol_hash_mesomer(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::Mesomer, pHash);}
+  int mol_hash_hetatomtautomer(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::HetAtomTautomer, pHash);}
+  int mol_hash_hetatomprotomer(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::HetAtomProtomer, pHash);}
+  int mol_hash_redoxpair(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::RedoxPair, pHash);}
+  int mol_hash_regioisomer(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::Regioisomer, pHash);}
+  int mol_hash_netcharge(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::NetCharge, pHash);}
+  int mol_hash_smallworldindexbr(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::SmallWorldIndexBR, pHash);}
+  int mol_hash_smallworldindexbrl(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::SmallWorldIndexBRL, pHash);}
+  int mol_hash_arthorsubstructureorder(Mol *pMol, char **pHash) {return mol_hash(pMol, RDKit::MolHash::HashFunction::ArthorSubstructureOrder, pHash);}
 
 // Bfp <-> Blob ///////////////////////////////////////////////////////
 
