@@ -6,6 +6,7 @@ endmacro(chemicalite_pytest)
 chemicalite_pytest(load_extension)
 chemicalite_pytest(molecule)
 chemicalite_pytest(descriptors)
+chemicalite_pytest(molhash)
 chemicalite_pytest(bitstring)
 chemicalite_pytest(rdtree)
 
