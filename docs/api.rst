@@ -65,6 +65,27 @@ Descriptors
 * `mol_chi0n(mol)` - `mol_chi4n(mol)`
 * `mol_kappa1(mol)` - `mol_kappa3(mol)`
 
+Hash Functions
+..............
+
+* `mol_hash_anonymousgraph(mol)`
+* `mol_hash_elementgraph(mol)`
+* `mol_hash_canonicalsmiles(mol)`
+* `mol_hash_murckoscaffold(mol)`
+* `mol_hash_extendedmurcko(mol)`
+* `mol_hash_molformula(mol)`
+* `mol_hash_atombondcounts(mol)`
+* `mol_hash_degreevector(mol)`
+* `mol_hash_mesomer(mol)`
+* `mol_hash_hetatomtautomer(mol)`
+* `mol_hash_hetatomprotomer(mol)`
+* `mol_hash_redoxpair(mol)`
+* `mol_hash_regioisomer(mol)`
+* `mol_hash_netcharge(mol)`
+* `mol_hash_smallworldindexbr(mol)`
+* `mol_hash_smallworldindexbrl(mol)`
+* `mol_hash_arthorsubstructureorder(mol)`
+
 Fingerprints
 ............
 
