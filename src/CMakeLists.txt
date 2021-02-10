@@ -1,14 +1,15 @@
 include(GNUInstallDirs)
 
 add_library(chemicalite MODULE
-        settings.c
-        logging.c
- 	    molecule.c
-	    bfp_ops.c
- 	    bitstring.c
-	    rdtree.c
-        chemicalite.c
-        rdkit_adapter.cpp)
+        #settings.c
+        #logging.c
+        #molecule.c
+        #bfp_ops.c
+        #bitstring.c
+        #rdtree.c
+        chemicalite.cpp
+        #rdkit_adapter.cpp
+        )
 
 set_target_properties(chemicalite PROPERTIES PREFIX "")
 

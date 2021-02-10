@@ -1,17 +1,23 @@
+#if 0
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
+#endif
 
 #include <sqlite3ext.h>
 SQLITE_EXTENSION_INIT1
 
+#include <RDGeneral/versions.h>
+
+#if 0
 #include "chemicalite.h"
 #include "rdkit_adapter.h"
 #include "settings.h"
 #include "molecule.h"
 #include "bitstring.h"
 #include "rdtree.h"
-#include "utils.h"
+#endif
+#include "utils.hpp"
 
 /*
 ** Return the version info for this extension
@@ -29,7 +35,15 @@ static void rdkit_version_f(sqlite3_context* ctx, int argc, sqlite3_value** argv
   UNUSED(argc);
   UNUSED(argv);
 
-  sqlite3_result_text(ctx, rdkit_version(), -1, SQLITE_STATIC);
+  sqlite3_result_text(ctx, RDKit::rdkitVersion, -1, SQLITE_STATIC);
+}
+
+static void rdkit_build_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  UNUSED(argc);
+  UNUSED(argv);
+
+  sqlite3_result_text(ctx, RDKit::rdkitBuild, -1, SQLITE_STATIC);
 }
 
 static void boost_version_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
@@ -37,9 +51,10 @@ static void boost_version_f(sqlite3_context* ctx, int argc, sqlite3_value** argv
   UNUSED(argc);
   UNUSED(argv);
 
-  sqlite3_result_text(ctx, boost_version(), -1, SQLITE_STATIC);
+  sqlite3_result_text(ctx, RDKit::boostVersion, -1, SQLITE_STATIC);
 }
 
+#if 0
 /*
 ** Create an rdtree index for a molecule column
 */
@@ -166,6 +181,7 @@ static void create_molecule_rdtree_f(sqlite3_context* ctx,
     sqlite3_result_int(ctx, 1);
   }
 }
+#endif // #if 0
 
 /*
 ** Register the chemicalite module with database handle db.
@@ -173,13 +189,14 @@ static void create_molecule_rdtree_f(sqlite3_context* ctx,
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
-int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
+extern "C" int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
 			   const sqlite3_api_routines *pApi)
 {
   UNUSED(pzErrMsg);
   int rc = SQLITE_OK;
   SQLITE_EXTENSION_INIT2(pApi)
 
+#if 0
   if (rc == SQLITE_OK) {
     rc = chemicalite_init_settings(db);
   }
@@ -199,12 +216,16 @@ int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
   /* if (rc == SQLITE_OK) { */
   /*   rc = chemicalite_init_XYZ(db); */
   /* } */
+#endif
 
   CREATE_SQLITE_NULLARY_FUNCTION(chemicalite_version);
   CREATE_SQLITE_NULLARY_FUNCTION(rdkit_version);
+  CREATE_SQLITE_NULLARY_FUNCTION(rdkit_build);
   CREATE_SQLITE_NULLARY_FUNCTION(boost_version);
 
+#if 0
   CREATE_SQLITE_BINARY_FUNCTION(create_molecule_rdtree);
-  
+#endif
+
   return rc;
 }
