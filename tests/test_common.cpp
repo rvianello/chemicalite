@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
-#include "testcommon.h"
+#include "test_common.hpp"
 
 int database_setup(const char * dbname, sqlite3 **pDb, char **pErrMsg)
 {

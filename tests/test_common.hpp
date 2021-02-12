@@ -1,9 +1,9 @@
-#ifndef CHEMICALITE_C_TESTCOMMON_INCLUDED
-#define CHEMICALITE_C_TESTCOMMON_INCLUDED
+#ifndef CHEMICALITE_TESTCOMMON_INCLUDED
+#define CHEMICALITE_TESTCOMMON_INCLUDED
 #include <sqlite3.h>
 
 #include "../src/chemicalite.h"
-#include "../src/utils.h"
+#include "../src/utils.hpp"
 
 int database_setup(const char * dbname, sqlite3 **pDb, char **pErrMsg);
 int create_rdtree(sqlite3 *db, const char * name, int len, char **pErrMsg);

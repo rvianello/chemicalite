@@ -7,6 +7,7 @@ add_library(chemicalite MODULE
         #bfp_ops.c
         #bitstring.c
         #rdtree.c
+        mol.cpp
         chemicalite.cpp
         #rdkit_adapter.cpp
         )
