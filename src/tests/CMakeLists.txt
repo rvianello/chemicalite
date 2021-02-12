@@ -3,12 +3,18 @@ include(Catch)
 
 set(TEST_CHEMICALITE_SRC_FILES
     test_main.cpp
-    test_common.cpp
-    #test_version_info.cpp
+    test_version_info.cpp
 )
 
 add_executable(test_chemicalite ${TEST_CHEMICALITE_SRC_FILES})
-target_link_libraries(test_chemicalite Catch2::Catch2 ${SQLite3_LIBRARIES})
+
+target_link_libraries(
+    test_chemicalite
+    Catch2::Catch2
+    ${CHEMICALITE_RDKIT_LIBRARIES}
+    ${SQLite3_LIBRARIES}
+    )
+
 catch_discover_tests(test_chemicalite)
 
 #add_library(testcommon testcommon.c)
