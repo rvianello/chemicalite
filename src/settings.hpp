@@ -3,7 +3,7 @@
 
 int chemicalite_init_settings(sqlite3 *db);
 
-enum ChemicaliteSetting {
+enum ChemicaLiteSetting {
   LOGGING,
 #ifdef ENABLE_TEST_SETTINGS
   ANSWER,
@@ -11,7 +11,7 @@ enum ChemicaliteSetting {
 #endif
   CHEMICALITE_NUM_SETTINGS
 };
-typedef enum ChemicaliteSetting ChemicaliteSetting;
+typedef enum ChemicaLiteSetting ChemicaLiteSetting;
 
 enum ChemicaLiteOption {
   LOGGING_DISABLED, LOGGING_STDOUT, LOGGING_STDERR,
@@ -21,11 +21,11 @@ typedef enum ChemicaLiteOption ChemicaLiteOption;
 
 const char * chemicalite_option_label(ChemicaLiteOption option);
 
-int chemicalite_set_option(ChemicaliteSetting setting, ChemicaLiteOption value);
-int chemicalite_get_option(ChemicaliteSetting setting, ChemicaLiteOption *pValue);
-int chemicalite_set_int(ChemicaliteSetting setting, int value);
-int chemicalite_get_int(ChemicaliteSetting setting, int *pValue);
-int chemicalite_set_double(ChemicaliteSetting setting, double value);
-int chemicalite_get_double(ChemicaliteSetting setting, double *pValue);
+int chemicalite_set_option(ChemicaLiteSetting setting, ChemicaLiteOption value);
+int chemicalite_get_option(ChemicaLiteSetting setting, ChemicaLiteOption *pValue);
+int chemicalite_set_int(ChemicaLiteSetting setting, int value);
+int chemicalite_get_int(ChemicaLiteSetting setting, int *pValue);
+int chemicalite_set_double(ChemicaLiteSetting setting, double value);
+int chemicalite_get_double(ChemicaLiteSetting setting, double *pValue);
 
 #endif

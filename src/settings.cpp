@@ -1,34 +1,40 @@
-#include <assert.h>
-#include <stdint.h>
+#include <cassert>
+#include <string>
 #include <string.h>
 #include <strings.h>
 
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
 
-#include "settings.h"
-#include "utils.h"
+#include "settings.hpp"
+#include "utils.hpp"
 
 enum SettingType { OPTION, INTEGER, REAL };
 typedef enum SettingType SettingType;
 
 struct Setting {
-  char key[16];
+  Setting(const char * setting, ChemicaLiteOption value)
+    : key(setting), type(OPTION), option(value) {}  
+  Setting(const char * setting, int value)
+    : key(setting), type(INTEGER), integer(value) {}
+  Setting(const char * setting, double value)
+    : key(setting), type(REAL), real(value) {}
+  std::string key;
   SettingType type;
   union {
     ChemicaLiteOption option;
-    int32_t integer;
+    int integer;
     double real;
   };
 };
 typedef struct Setting Setting;
 
 static Setting settings[] = {
-  { "logging", OPTION, { .option = LOGGING_DISABLED } }
+  { "logging", LOGGING_DISABLED }
 #ifdef ENABLE_TEST_SETTINGS
   ,
-  { "answer", INTEGER, { .integer = 42 } },
-  { "pi", REAL, { .real = 3.14 } }
+  { "answer", 42 },
+  { "pi", 3.14 }
 #endif
 };
 
@@ -47,7 +53,7 @@ const char * chemicalite_option_label(ChemicaLiteOption option)
 /*
 ** Settings getters and setters
 */
-int chemicalite_set_option(ChemicaliteSetting setting, ChemicaLiteOption value)
+int chemicalite_set_option(ChemicaLiteSetting setting, ChemicaLiteOption value)
 {
   if (settings[setting].type != OPTION) {
     return SQLITE_MISMATCH;
@@ -62,7 +68,7 @@ int chemicalite_set_option(ChemicaliteSetting setting, ChemicaLiteOption value)
   return SQLITE_OK;
 }
 
-int chemicalite_get_option(ChemicaliteSetting setting, ChemicaLiteOption *pValue)
+int chemicalite_get_option(ChemicaLiteSetting setting, ChemicaLiteOption *pValue)
 {
   if (settings[setting].type != OPTION) {
     return SQLITE_MISMATCH;
@@ -71,7 +77,7 @@ int chemicalite_get_option(ChemicaliteSetting setting, ChemicaLiteOption *pValue
   return SQLITE_OK;
 }
 
-int chemicalite_set_int(ChemicaliteSetting setting, int value)
+int chemicalite_set_int(ChemicaLiteSetting setting, int value)
 {
   if (settings[setting].type != INTEGER) {
     return SQLITE_MISMATCH;
@@ -81,7 +87,7 @@ int chemicalite_set_int(ChemicaliteSetting setting, int value)
   return SQLITE_OK;
 }
 
-int chemicalite_get_int(ChemicaliteSetting setting, int *pValue)
+int chemicalite_get_int(ChemicaLiteSetting setting, int *pValue)
 {
   if (settings[setting].type != INTEGER) {
     return SQLITE_MISMATCH;
@@ -90,7 +96,7 @@ int chemicalite_get_int(ChemicaliteSetting setting, int *pValue)
   return SQLITE_OK;
 }
 
-int chemicalite_set_double(ChemicaliteSetting setting, double value)
+int chemicalite_set_double(ChemicaLiteSetting setting, double value)
 {
   if (settings[setting].type != REAL) {
     return SQLITE_MISMATCH;
@@ -100,7 +106,7 @@ int chemicalite_set_double(ChemicaliteSetting setting, double value)
   return SQLITE_OK;
 }
 
-int chemicalite_get_double(ChemicaliteSetting setting, double *pValue)
+int chemicalite_get_double(ChemicaLiteSetting setting, double *pValue)
 {
   if (settings[setting].type != REAL) {
     return SQLITE_MISMATCH;
@@ -225,7 +231,7 @@ static int settingsColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *ctx, in
   SettingsCursor *p = (SettingsCursor *)pCursor;
 
   if (N == 0) {
-    sqlite3_result_text(ctx, settings[p->rowid].key, -1, 0);
+    sqlite3_result_text(ctx, settings[p->rowid].key.c_str(), -1, 0);
   }
   else if (N == 1) {
     switch (settings[p->rowid].type) {
@@ -283,27 +289,27 @@ static int settingsUpdate(sqlite3_vtab *pVTab, int argc, sqlite3_value **argv, s
 
   /* now argv[2] is the key column, argv[3] the value column */
   if ( (sqlite3_value_type(argv[2]) != SQLITE_TEXT) ||
-       strcmp((const char *)sqlite3_value_text(argv[2]), settings[rowid].key) ) {
+       strcmp((const char *)sqlite3_value_text(argv[2]), settings[rowid].key.c_str()) ) {
     /* modifying the settings keys is not allowed */
     return SQLITE_CONSTRAINT;
   }
 
   int rc = SQLITE_OK;
   int value_type = sqlite3_value_type(argv[3]);
-
+  const char * value = nullptr;
+  ChemicaLiteOption option = CHEMICALITE_NUM_OPTIONS; /* initialize w/ invalid value */
+ 
   switch (value_type)
   {
   case SQLITE_INTEGER:
-    rc = chemicalite_set_int(rowid, sqlite3_value_int(argv[3]));
+    rc = chemicalite_set_int(static_cast<ChemicaLiteSetting>(rowid), sqlite3_value_int(argv[3]));
     break;
   case SQLITE_FLOAT:
-    rc = chemicalite_set_double(rowid, sqlite3_value_double(argv[3]));
+    rc = chemicalite_set_double(static_cast<ChemicaLiteSetting>(rowid), sqlite3_value_double(argv[3]));
     break;
   case SQLITE_TEXT:
-    ; /* add an empty statement after the case label, because a declaration is following */
-    ChemicaLiteOption option = CHEMICALITE_NUM_OPTIONS; /* initialize w/ invalid value */
-    const char * value = (const char *) sqlite3_value_text(argv[3]);
-    for (int i = 0; i < CHEMICALITE_NUM_OPTIONS; ++i) {
+    value = (const char *) sqlite3_value_text(argv[3]);
+    for (ChemicaLiteOption i : {LOGGING_DISABLED, LOGGING_STDOUT, LOGGING_STDERR}) {
         if (!strcasecmp(value, chemicalite_option_label(i))) {
             option = i;
             break;
@@ -314,7 +320,7 @@ static int settingsUpdate(sqlite3_vtab *pVTab, int argc, sqlite3_value **argv, s
         rc = SQLITE_CONSTRAINT;
     }
     else {
-        rc = chemicalite_set_option(rowid, option);
+        rc = chemicalite_set_option(static_cast<ChemicaLiteSetting>(rowid), option);
     }
     break;
   default:

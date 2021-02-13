@@ -17,6 +17,7 @@ SQLITE_EXTENSION_INIT1
 #include "bitstring.h"
 #include "rdtree.h"
 #endif
+#include "settings.hpp"
 #include "mol.hpp"
 #include "utils.hpp"
 
@@ -198,14 +199,14 @@ extern "C" int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
   SQLITE_EXTENSION_INIT2(pApi)
 
   if (rc == SQLITE_OK) {
-    rc = chemicalite_init_molecule(db);
-  }
-  
-#if 0
-  if (rc == SQLITE_OK) {
     rc = chemicalite_init_settings(db);
   }
-  
+
+  if (rc == SQLITE_OK) {
+    rc = chemicalite_init_molecule(db);
+  }
+
+#if 0
   if (rc == SQLITE_OK) {
     rc = chemicalite_init_bitstring(db);
   }
