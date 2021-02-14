@@ -21,11 +21,11 @@ typedef enum ChemicaLiteOption ChemicaLiteOption;
 
 const char * chemicalite_option_label(ChemicaLiteOption option);
 
-int chemicalite_set_option(ChemicaLiteSetting setting, ChemicaLiteOption value);
-int chemicalite_get_option(ChemicaLiteSetting setting, ChemicaLiteOption *pValue);
-int chemicalite_set_int(ChemicaLiteSetting setting, int value);
-int chemicalite_get_int(ChemicaLiteSetting setting, int *pValue);
-int chemicalite_set_double(ChemicaLiteSetting setting, double value);
-int chemicalite_get_double(ChemicaLiteSetting setting, double *pValue);
+int chemicalite_set(ChemicaLiteSetting setting, ChemicaLiteOption value);
+int chemicalite_get(ChemicaLiteSetting setting, ChemicaLiteOption *pValue);
+int chemicalite_set(ChemicaLiteSetting setting, int value);
+int chemicalite_get(ChemicaLiteSetting setting, int *pValue);
+int chemicalite_set(ChemicaLiteSetting setting, double value);
+int chemicalite_get(ChemicaLiteSetting setting, double *pValue);
 
 #endif

@@ -1,12 +1,12 @@
-#include <assert.h>
-#include <stdarg.h>
-#include <stdio.h>
+#include <cassert>
+#include <cstdarg>
+#include <cstdio>
 
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
 
-#include "logging.h"
-#include "settings.h"
+#include "logging.hpp"
+#include "settings.hpp"
 
 #define LOG_BUFFER_SIZE 512
 
@@ -23,7 +23,7 @@ void chemicalite_log(int iErrCode, const char *zFormat, ...)
   sqlite3_log(iErrCode, buffer);
 
   ChemicaLiteOption option;
-  int rc = chemicalite_get_option(LOGGING, &option);
+  int rc = chemicalite_get(LOGGING, &option);
   if (rc != SQLITE_OK) {
     sqlite3_log(SQLITE_INTERNAL, "Could not get chemicalite logging settings.");
   }
