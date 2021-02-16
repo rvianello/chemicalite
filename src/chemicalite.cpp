@@ -18,7 +18,7 @@ SQLITE_EXTENSION_INIT1
 #include "rdtree.h"
 #endif
 #include "settings.hpp"
-#include "mol.hpp"
+#include "mol_formats.hpp"
 #include "utils.hpp"
 
 /*
@@ -203,7 +203,7 @@ extern "C" int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
   }
 
   if (rc == SQLITE_OK) {
-    rc = chemicalite_init_molecule(db);
+    rc = chemicalite_init_mol_formats(db);
   }
 
 #if 0
