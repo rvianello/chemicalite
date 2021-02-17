@@ -4,7 +4,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <GraphMol/MolPickler.h>
 
 #include "mol.hpp"
-//#include "logging.hpp"
+#include "logging.hpp"
 //#include "utils.hpp"
 
 std::string mol_to_binary(const RDKit::ROMol *mol, int *rc)
@@ -44,4 +44,39 @@ RDKit::ROMol * binary_to_romol(const std::string &buf, int *rc)
 RDKit::RWMol * binary_to_rwmol(const std::string &buf, int *rc)
 {
   return binary_to_mol<RDKit::RWMol>(buf, rc);
+}
+
+template <typename MolT>
+MolT * arg_to_mol(sqlite3_value *arg, sqlite3_context * ctx, int *rc)
+{
+  int value_type = sqlite3_value_type(arg);
+
+  *rc = SQLITE_OK;
+  MolT *mol = nullptr;
+
+  /* NULL on NULL */
+  if (value_type == SQLITE_NULL) {
+    sqlite3_result_null(ctx);
+  }
+  /* not a binary blob */
+  else if (value_type != SQLITE_BLOB) {
+    *rc = SQLITE_MISMATCH;
+    chemicalite_log(SQLITE_MISMATCH, "input arg must be of type blob or NULL");
+  }
+  else {
+    std::string blob((const char *)sqlite3_value_blob(arg), sqlite3_value_bytes(arg));
+    mol = binary_to_mol<MolT>(blob, rc);
+  }
+
+  return mol;
+}
+
+RDKit::ROMol * arg_to_romol(sqlite3_value *arg, sqlite3_context * ctx, int *rc)
+{
+  return arg_to_mol<RDKit::ROMol>(arg, ctx, rc);
+}
+
+RDKit::RWMol * arg_to_rwmol(sqlite3_value *arg, sqlite3_context * ctx, int *rc)
+{
+  return arg_to_mol<RDKit::RWMol>(arg, ctx, rc);
 }

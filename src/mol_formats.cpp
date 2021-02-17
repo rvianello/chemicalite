@@ -18,24 +18,9 @@ static void mol_to_smiles(sqlite3_context* ctx, int argc, sqlite3_value** argv)
   assert(argc == 1);
 
   sqlite3_value *arg = argv[0];
-  int value_type = sqlite3_value_type(arg);
-
-  /* NULL on NULL */
-  if (value_type == SQLITE_NULL) {
-    sqlite3_result_null(ctx);
-    return;
-  }
-
-  /* not a binary blob */
-  if (value_type != SQLITE_BLOB) {
-    sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
-    chemicalite_log(SQLITE_MISMATCH, "input arg must be of type blob or NULL");
-    return;
-  }
 
   int rc = SQLITE_OK;
-  std::string blob((const char *)sqlite3_value_blob(arg), sqlite3_value_bytes(arg));
-  RDKit::ROMol * mol = binary_to_romol(blob, &rc);
+  RDKit::ROMol * mol = arg_to_romol(arg, ctx, &rc);
 
   if ( rc != SQLITE_OK ) {
     sqlite3_result_error_code(ctx, rc);
