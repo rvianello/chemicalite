@@ -23,6 +23,7 @@ set(CHEMICALITE_RDKIT_LIBRARIES
     RDKit::MolHash
     RDKit::Descriptors
     RDKit::Fingerprints
+    RDKit::FileParsers
     RDKit::GraphMol
     )
 
