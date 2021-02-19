@@ -5,6 +5,7 @@
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
 
+#include "utils.hpp"
 #include "logging.hpp"
 #include "settings.hpp"
 

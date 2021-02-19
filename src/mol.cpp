@@ -3,9 +3,9 @@ extern const sqlite3_api_routines *sqlite3_api;
 
 #include <GraphMol/MolPickler.h>
 
+#include "utils.hpp"
 #include "mol.hpp"
 #include "logging.hpp"
-//#include "utils.hpp"
 
 std::string mol_to_binary(const RDKit::ROMol *mol, int *rc)
 {

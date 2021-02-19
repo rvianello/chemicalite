@@ -6,8 +6,8 @@
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
 
-#include "settings.hpp"
 #include "utils.hpp"
+#include "settings.hpp"
 
 /*
  * I'm not super happy with this settings implementation (it looked a tiny bit more

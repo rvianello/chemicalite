@@ -8,10 +8,10 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <GraphMol/FileParsers/FileParsers.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
 
+#include "utils.hpp"
 #include "mol.hpp"
 #include "mol_formats.hpp"
 #include "logging.hpp"
-#include "utils.hpp"
 
 static void mol_to_smiles(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
 {
