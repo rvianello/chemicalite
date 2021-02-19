@@ -1,60 +1,9 @@
-#if 0
-#include <stdlib.h>
-#include <math.h>
-#include <assert.h>
-#endif
-
 #include <sqlite3ext.h>
 SQLITE_EXTENSION_INIT1
 
-#include <RDGeneral/versions.h>
-
-#if 0
-#include "chemicalite.h"
-#include "rdkit_adapter.h"
-#include "settings.h"
-#include "molecule.h"
-#include "bitstring.h"
-#include "rdtree.h"
-#endif
 #include "settings.hpp"
 #include "mol_formats.hpp"
-#include "utils.hpp"
-
-/*
-** Return the version info for this extension
-*/
-static void chemicalite_version_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
-{
-  UNUSED(argc);
-  UNUSED(argv);
-
-  sqlite3_result_text(ctx, XSTRINGIFY(CHEMICALITE_VERSION), -1, SQLITE_STATIC);
-}
-
-static void rdkit_version_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
-{
-  UNUSED(argc);
-  UNUSED(argv);
-
-  sqlite3_result_text(ctx, RDKit::rdkitVersion, -1, SQLITE_STATIC);
-}
-
-static void rdkit_build_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
-{
-  UNUSED(argc);
-  UNUSED(argv);
-
-  sqlite3_result_text(ctx, RDKit::rdkitBuild, -1, SQLITE_STATIC);
-}
-
-static void boost_version_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
-{
-  UNUSED(argc);
-  UNUSED(argv);
-
-  sqlite3_result_text(ctx, RDKit::boostVersion, -1, SQLITE_STATIC);
-}
+#include "versions.hpp"
 
 #if 0
 /*
@@ -191,12 +140,15 @@ static void create_molecule_rdtree_f(sqlite3_context* ctx,
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
-extern "C" int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
+extern "C" int sqlite3_chemicalite_init(sqlite3 *db, char ** /*pzErrMsg*/,
 			   const sqlite3_api_routines *pApi)
 {
-  UNUSED(pzErrMsg);
   int rc = SQLITE_OK;
   SQLITE_EXTENSION_INIT2(pApi)
+
+  if (rc == SQLITE_OK) {
+    rc = chemicalite_init_versions(db);
+  }
 
   if (rc == SQLITE_OK) {
     rc = chemicalite_init_settings(db);
@@ -219,11 +171,6 @@ extern "C" int sqlite3_chemicalite_init(sqlite3 *db, char **pzErrMsg,
   /*   rc = chemicalite_init_XYZ(db); */
   /* } */
 #endif
-
-  CREATE_SQLITE_NULLARY_FUNCTION(chemicalite_version);
-  CREATE_SQLITE_NULLARY_FUNCTION(rdkit_version);
-  CREATE_SQLITE_NULLARY_FUNCTION(rdkit_build);
-  CREATE_SQLITE_NULLARY_FUNCTION(boost_version);
 
 #if 0
   CREATE_SQLITE_BINARY_FUNCTION(create_molecule_rdtree);

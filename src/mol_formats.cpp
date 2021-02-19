@@ -13,11 +13,8 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "logging.hpp"
 #include "utils.hpp"
 
-static void mol_to_smiles(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+static void mol_to_smiles(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
 {
-  UNUSED(argc);
-  assert(argc == 1);
-
   sqlite3_value *arg = argv[0];
 
   int rc = SQLITE_OK;
@@ -34,11 +31,8 @@ static void mol_to_smiles(sqlite3_context* ctx, int argc, sqlite3_value** argv)
   delete mol;
 }
 
-static void mol_from_smiles(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+static void mol_from_smiles(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
 {
-  UNUSED(argc);
-  assert(argc == 1);
-
   sqlite3_value *arg = argv[0];
   int value_type = sqlite3_value_type(arg);
 
@@ -93,11 +87,8 @@ static void mol_from_smiles(sqlite3_context* ctx, int argc, sqlite3_value** argv
   }
 }
 
-static void mol_to_molblock(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+static void mol_to_molblock(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
 {
-  UNUSED(argc);
-  assert(argc == 1);
-
   sqlite3_value *arg = argv[0];
 
   int rc = SQLITE_OK;
@@ -114,11 +105,8 @@ static void mol_to_molblock(sqlite3_context* ctx, int argc, sqlite3_value** argv
   delete mol;
 }
 
-static void mol_from_molblock(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+static void mol_from_molblock(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
 {
-  UNUSED(argc);
-  assert(argc == 1);
-
   sqlite3_value *arg = argv[0];
   int value_type = sqlite3_value_type(arg);
 
@@ -173,7 +161,6 @@ static void mol_from_molblock(sqlite3_context* ctx, int argc, sqlite3_value** ar
 
 int chemicalite_init_mol_formats(sqlite3 *db)
 {
-  UNUSED(db);
   int rc = SQLITE_OK;
 
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_from_smiles", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, mol_from_smiles, 0, 0);

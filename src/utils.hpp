@@ -13,6 +13,4 @@
 #define CREATE_SQLITE_BINARY_FUNCTION(func) CREATE_SQLITE_FUNCTION(2, func)
 #define CREATE_SQLITE_TERNARY_FUNCTION(func) CREATE_SQLITE_FUNCTION(3, func)
 
-#define UNUSED(x) do { (void)(x); } while (0)
-
 #endif

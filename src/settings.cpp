@@ -131,17 +131,11 @@ struct SettingsTable {
 typedef struct SettingsTable SettingsTable;
 
 
-static int settingsConnect(sqlite3 *db, void *pAux,
-                           int argc, const char * const *argv,
+static int settingsConnect(sqlite3 *db, void */*pAux*/,
+                           int /*argc*/, const char * const */*argv*/,
                            sqlite3_vtab **ppVTab,
                            char **pzErr)
 {
-  UNUSED(db);
-  UNUSED(pAux);
-  UNUSED(argc);
-  UNUSED(argv);
-  UNUSED(pzErr);
-  
   assert(sizeof settings / sizeof settings[0] == CHEMICALITE_NUM_SETTINGS);
 
   SettingsTable *pSettings = (SettingsTable *) sqlite3_malloc(sizeof(SettingsTable));
@@ -164,9 +158,8 @@ static int settingsConnect(sqlite3 *db, void *pAux,
   return rc;
 }
 
-int settingsBestIndex(sqlite3_vtab *pVTab, sqlite3_index_info *pIndexInfo)
+int settingsBestIndex(sqlite3_vtab */*pVTab*/, sqlite3_index_info *pIndexInfo)
 {
-  UNUSED(pVTab);
   /* A forward scan is the only supported mode, this method is therefore very minimal */
   pIndexInfo->estimatedCost = 100000; 
   return SQLITE_OK;
@@ -184,9 +177,8 @@ struct SettingsCursor {
 };
 typedef struct SettingsCursor SettingsCursor;
 
-static int settingsOpen(sqlite3_vtab *pVTab, sqlite3_vtab_cursor **ppCursor)
+static int settingsOpen(sqlite3_vtab */*pVTab*/, sqlite3_vtab_cursor **ppCursor)
 {
-  UNUSED(pVTab);
   int rc = SQLITE_NOMEM;
   SettingsCursor *pCsr;
 
@@ -206,14 +198,9 @@ static int settingsClose(sqlite3_vtab_cursor *pCursor)
   return SQLITE_OK;
 }
 
-static int settingsFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char *idxStr,
-                          int argc, sqlite3_value **argv)
+static int settingsFilter(sqlite3_vtab_cursor *pCursor, int /*idxNum*/, const char */*idxStr*/,
+                          int /*argc*/, sqlite3_value **/*argv*/)
 {
-  UNUSED(idxNum);
-  UNUSED(idxStr);
-  UNUSED(argc);
-  UNUSED(argv);
-
   SettingsCursor *p = (SettingsCursor *)pCursor;
   p->rowid = 0;
 
@@ -267,11 +254,8 @@ static int settingsRowid(sqlite3_vtab_cursor *pCursor, sqlite_int64 *pRowid)
   return SQLITE_OK;
 }
 
-static int settingsUpdate(sqlite3_vtab *pVTab, int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
+static int settingsUpdate(sqlite3_vtab */*pVTab*/, int argc, sqlite3_value **argv, sqlite_int64 */*pRowid*/)
 {
-  UNUSED(pVTab);
-  UNUSED(pRowid);
-
   if (argc == 1) {
     /* a pure delete operation, not allowed */
     return SQLITE_MISUSE;
