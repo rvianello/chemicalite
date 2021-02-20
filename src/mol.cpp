@@ -47,19 +47,14 @@ RDKit::RWMol * binary_to_rwmol(const std::string &buf, int *rc)
 }
 
 template <typename MolT>
-MolT * arg_to_mol(sqlite3_value *arg, sqlite3_context * ctx, int *rc)
+MolT * arg_to_mol(sqlite3_value *arg, sqlite3_context * /*ctx*/, int *rc)
 {
   int value_type = sqlite3_value_type(arg);
 
   *rc = SQLITE_OK;
   MolT *mol = nullptr;
 
-  /* NULL on NULL */
-  if (value_type == SQLITE_NULL) {
-    sqlite3_result_null(ctx);
-  }
-  /* not a binary blob */
-  else if (value_type != SQLITE_BLOB) {
+  if (value_type != SQLITE_BLOB) {
     *rc = SQLITE_MISMATCH;
     chemicalite_log(SQLITE_MISMATCH, "input arg must be of type blob or NULL");
   }

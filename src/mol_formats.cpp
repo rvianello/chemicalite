@@ -36,12 +36,6 @@ static void mol_from_smiles(sqlite3_context* ctx, int /*argc*/, sqlite3_value** 
   sqlite3_value *arg = argv[0];
   int value_type = sqlite3_value_type(arg);
 
-  /* NULL on NULL */
-  if (value_type == SQLITE_NULL) {
-    sqlite3_result_null(ctx);
-    return;
-  }
-
   /* not a string */
   if (value_type != SQLITE3_TEXT) {
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
@@ -110,12 +104,6 @@ static void mol_from_molblock(sqlite3_context* ctx, int /*argc*/, sqlite3_value*
   sqlite3_value *arg = argv[0];
   int value_type = sqlite3_value_type(arg);
 
-  /* NULL on NULL */
-  if (value_type == SQLITE_NULL) {
-    sqlite3_result_null(ctx);
-    return;
-  }
-
   /* not a string */
   if (value_type != SQLITE3_TEXT) {
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
@@ -163,11 +151,11 @@ int chemicalite_init_mol_formats(sqlite3 *db)
 {
   int rc = SQLITE_OK;
 
-  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_from_smiles", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, mol_from_smiles, 0, 0);
-  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_from_molblock", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, mol_from_molblock, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_from_smiles", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_from_smiles>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_from_molblock", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_from_molblock>, 0, 0);
 
-  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_to_smiles", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, mol_to_smiles, 0, 0);
-  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_to_molblock", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, mol_to_molblock, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_to_smiles", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_smiles>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_to_molblock", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_molblock>, 0, 0);
 
   return rc;
 }
