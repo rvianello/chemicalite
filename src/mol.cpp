@@ -7,52 +7,48 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "mol.hpp"
 #include "logging.hpp"
 
-std::string mol_to_binary(const RDKit::ROMol *mol, int *rc)
+std::string mol_to_binary(const RDKit::ROMol & mol)
 {
   std::string buf;
   try {
     RDKit::MolPickler::pickleMol(
       mol, buf,
       RDKit::PicklerOps::AllProps | RDKit::PicklerOps::CoordsAsDouble);
-    *rc = SQLITE_OK;
   }
   catch (...) {
-    *rc = SQLITE_ERROR;
+    chemicalite_log(SQLITE_ERROR, "Could not serialize mol to binary");
   }
   return buf;
 }
 
 template <typename MolT>
-MolT * binary_to_mol(const std::string &buf, int *rc)
+std::unique_ptr<MolT> binary_to_mol(const std::string &buf)
 {
-  MolT * mol = nullptr;
   try {
-    mol = new MolT(buf);
-    *rc = SQLITE_OK;
+    return std::unique_ptr<MolT>(new MolT(buf));
   }
   catch (...) {
-    *rc = SQLITE_ERROR;
+    chemicalite_log(SQLITE_ERROR, "Could not deserialize mol from binary");
   }
-  return mol;
+  return std::unique_ptr<MolT>();
 }
 
-RDKit::ROMol * binary_to_romol(const std::string &buf, int *rc)
+std::unique_ptr<RDKit::ROMol> binary_to_romol(const std::string &buf)
 {
-  return binary_to_mol<RDKit::ROMol>(buf, rc);
+  return binary_to_mol<RDKit::ROMol>(buf);
 }
 
-RDKit::RWMol * binary_to_rwmol(const std::string &buf, int *rc)
+std::unique_ptr<RDKit::RWMol> binary_to_rwmol(const std::string &buf)
 {
-  return binary_to_mol<RDKit::RWMol>(buf, rc);
+  return binary_to_mol<RDKit::RWMol>(buf);
 }
 
 template <typename MolT>
-MolT * arg_to_mol(sqlite3_value *arg, sqlite3_context * /*ctx*/, int *rc)
+std::unique_ptr<MolT> arg_to_mol(sqlite3_value *arg, sqlite3_context * /*ctx*/, int *rc)
 {
   int value_type = sqlite3_value_type(arg);
 
   *rc = SQLITE_OK;
-  MolT *mol = nullptr;
 
   if (value_type != SQLITE_BLOB) {
     *rc = SQLITE_MISMATCH;
@@ -60,18 +56,18 @@ MolT * arg_to_mol(sqlite3_value *arg, sqlite3_context * /*ctx*/, int *rc)
   }
   else {
     std::string blob((const char *)sqlite3_value_blob(arg), sqlite3_value_bytes(arg));
-    mol = binary_to_mol<MolT>(blob, rc);
+    return binary_to_mol<MolT>(blob);
   }
 
-  return mol;
+  return std::unique_ptr<MolT>();
 }
 
-RDKit::ROMol * arg_to_romol(sqlite3_value *arg, sqlite3_context * ctx, int *rc)
+std::unique_ptr<RDKit::ROMol> arg_to_romol(sqlite3_value *arg, sqlite3_context * ctx, int *rc)
 {
   return arg_to_mol<RDKit::ROMol>(arg, ctx, rc);
 }
 
-RDKit::RWMol * arg_to_rwmol(sqlite3_value *arg, sqlite3_context * ctx, int *rc)
+std::unique_ptr<RDKit::RWMol> arg_to_rwmol(sqlite3_value *arg, sqlite3_context * ctx, int *rc)
 {
   return arg_to_mol<RDKit::RWMol>(arg, ctx, rc);
 }
