@@ -14,7 +14,7 @@ static void free_romol_auxdata(void * aux)
 
 
 template <int (*F)(const RDKit::ROMol &, const RDKit::ROMol &)>
-static void func_f(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+static void func_f(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
 {
   int rc = SQLITE_OK;
 
