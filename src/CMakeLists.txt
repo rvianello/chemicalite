@@ -9,6 +9,7 @@ add_library(chemicalite MODULE
         #rdtree.c
         mol.cpp
         mol_formats.cpp
+        mol_compare.cpp
         versions.cpp
         chemicalite.cpp
         #rdkit_adapter.cpp
