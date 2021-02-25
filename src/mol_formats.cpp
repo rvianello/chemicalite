@@ -29,7 +29,7 @@ static void mol_to_binary_mol(sqlite3_context* ctx, int /*argc*/, sqlite3_value*
     sqlite3_result_null(ctx);
   }
   else {
-    sqlite3_result_text(ctx, bmol.c_str(), bmol.size(), SQLITE_TRANSIENT);
+    sqlite3_result_blob(ctx, bmol.c_str(), bmol.size(), SQLITE_TRANSIENT);
   }
 }
 

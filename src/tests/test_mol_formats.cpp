@@ -6,6 +6,7 @@
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/FileParsers/FileParsers.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
+#include <GraphMol/MolPickler.h>
 
 static const char * smiles_data[] = { 
   "c1ccccc1",
@@ -179,6 +180,69 @@ TEST_CASE("mol formats interconversion", "[mol]")
 
       std::unique_ptr<RDKit::ROMol> input_mol(RDKit::MolBlockToMol(molblock_input));
       std::unique_ptr<RDKit::ROMol> output_mol(RDKit::MolBlockToMol(molblock_output));
+      REQUIRE(RDKit::MolToSmiles(*input_mol) == RDKit::MolToSmiles(*output_mol));
+
+      rc = sqlite3_reset(pStmt);
+      REQUIRE(rc == SQLITE_OK);
+    }
+
+    sqlite3_finalize(pStmt);
+  }
+
+  SECTION("smiles to binary mol")
+  {
+    sqlite3_stmt *pStmt;
+    rc = sqlite3_prepare_v2(db, "SELECT mol_to_binary_mol(mol_from_smiles(:smiles))", -1, &pStmt, 0);
+    REQUIRE(rc == SQLITE_OK);
+
+    for (const char * smiles_input : smiles_data) {
+      rc = sqlite3_bind_text(pStmt, 1, smiles_input, -1, SQLITE_STATIC);
+      REQUIRE(rc == SQLITE_OK);
+
+      rc = sqlite3_step(pStmt);
+      REQUIRE(rc == SQLITE_ROW);
+
+      int value_type = sqlite3_column_type(pStmt, 0);
+      REQUIRE(value_type == SQLITE_BLOB);
+
+      int sz = sqlite3_column_bytes(pStmt, 0);
+      std::string pkl((const char *)sqlite3_column_blob(pStmt, 0), sz);
+      std::unique_ptr<RDKit::ROMol> input_mol(RDKit::SmilesToMol(smiles_input));
+      std::unique_ptr<RDKit::ROMol> output_mol(new RDKit::ROMol(pkl));
+      REQUIRE(RDKit::MolToSmiles(*input_mol) == RDKit::MolToSmiles(*output_mol));
+
+      rc = sqlite3_reset(pStmt);
+      REQUIRE(rc == SQLITE_OK);
+    }
+
+    sqlite3_finalize(pStmt);
+  }
+
+  SECTION("binary mol to smiles")
+  {
+    sqlite3_stmt *pStmt;
+    rc = sqlite3_prepare_v2(db, "SELECT mol_to_smiles(mol_from_binary_mol(:bmol))", -1, &pStmt, 0);
+    REQUIRE(rc == SQLITE_OK);
+
+    for (const char * smiles_input : smiles_data) {
+      std::unique_ptr<RDKit::ROMol> input_mol(RDKit::SmilesToMol(smiles_input));
+      std::string pkl;
+      RDKit::MolPickler::pickleMol(
+        *input_mol, pkl,
+        RDKit::PicklerOps::AllProps | RDKit::PicklerOps::CoordsAsDouble);
+
+      rc = sqlite3_bind_blob(pStmt, 1, pkl.c_str(), pkl.size(), SQLITE_TRANSIENT);
+      REQUIRE(rc == SQLITE_OK);
+
+      rc = sqlite3_step(pStmt);
+      REQUIRE(rc == SQLITE_ROW);
+
+      int value_type = sqlite3_column_type(pStmt, 0);
+      REQUIRE(value_type == SQLITE_TEXT);
+
+      std::string smiles_output = (const char *) sqlite3_column_text(pStmt, 0);
+      std::unique_ptr<RDKit::ROMol> output_mol(RDKit::SmilesToMol(smiles_output));
+
       REQUIRE(RDKit::MolToSmiles(*input_mol) == RDKit::MolToSmiles(*output_mol));
 
       rc = sqlite3_reset(pStmt);
