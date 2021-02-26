@@ -20,7 +20,7 @@ static void mol_to_binary_mol(sqlite3_context* ctx, int /*argc*/, sqlite3_value*
   sqlite3_value *arg = argv[0];
 
   int rc = SQLITE_OK;
-  std::string bmol = arg_to_binary_mol(arg, ctx, &rc);
+  std::string bmol = arg_to_binary_mol(arg, &rc);
 
   if ( rc != SQLITE_OK ) {
     sqlite3_result_error_code(ctx, rc);
@@ -86,7 +86,7 @@ static void mol_to_smiles(sqlite3_context* ctx, int /*argc*/, sqlite3_value** ar
   sqlite3_value *arg = argv[0];
 
   int rc = SQLITE_OK;
-  std::unique_ptr<RDKit::ROMol> mol(arg_to_romol(arg, ctx, &rc));
+  std::unique_ptr<RDKit::ROMol> mol(arg_to_romol(arg, &rc));
 
   if ( rc != SQLITE_OK ) {
     sqlite3_result_error_code(ctx, rc);
@@ -150,7 +150,7 @@ static void mol_to_molblock(sqlite3_context* ctx, int /*argc*/, sqlite3_value** 
   sqlite3_value *arg = argv[0];
 
   int rc = SQLITE_OK;
-  std::unique_ptr<RDKit::ROMol> mol(arg_to_romol(arg, ctx, &rc));
+  std::unique_ptr<RDKit::ROMol> mol(arg_to_romol(arg, &rc));
 
   if ( rc != SQLITE_OK ) {
     sqlite3_result_error_code(ctx, rc);

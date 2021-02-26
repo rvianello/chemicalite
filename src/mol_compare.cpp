@@ -75,7 +75,7 @@ static void mol_compare(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv
     p1 = (RDKit::ROMol *) aux1;
   }
   else {
-    p1 = arg_to_romol(argv[0], ctx, &rc);
+    p1 = arg_to_romol(argv[0], &rc);
     if (rc != SQLITE_OK) {
       sqlite3_result_error_code(ctx, rc);
       return;
@@ -90,7 +90,7 @@ static void mol_compare(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv
     p2 = (RDKit::ROMol *) aux2;
   }
   else {
-    p2 = arg_to_romol(argv[1], ctx, &rc);
+    p2 = arg_to_romol(argv[1], &rc);
     if (rc != SQLITE_OK) {
       sqlite3_result_error_code(ctx, rc);
       return;

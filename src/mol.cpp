@@ -78,7 +78,7 @@ RDKit::RWMol * blob_to_rwmol(const std::string &buf)
   return blob_to_mol<RDKit::RWMol>(buf);
 }
 
-std::string arg_to_binary_mol(sqlite3_value *arg, sqlite3_context * /*ctx*/, int *rc)
+std::string arg_to_binary_mol(sqlite3_value *arg, int *rc)
 {
   int value_type = sqlite3_value_type(arg);
 
@@ -97,7 +97,7 @@ std::string arg_to_binary_mol(sqlite3_value *arg, sqlite3_context * /*ctx*/, int
 }
 
 template <typename MolT>
-MolT * arg_to_mol(sqlite3_value *arg, sqlite3_context * /*ctx*/, int *rc)
+MolT * arg_to_mol(sqlite3_value *arg, int *rc)
 {
   int value_type = sqlite3_value_type(arg);
 
@@ -115,12 +115,12 @@ MolT * arg_to_mol(sqlite3_value *arg, sqlite3_context * /*ctx*/, int *rc)
   return nullptr;
 }
 
-RDKit::ROMol * arg_to_romol(sqlite3_value *arg, sqlite3_context * ctx, int *rc)
+RDKit::ROMol * arg_to_romol(sqlite3_value *arg, int *rc)
 {
-  return arg_to_mol<RDKit::ROMol>(arg, ctx, rc);
+  return arg_to_mol<RDKit::ROMol>(arg, rc);
 }
 
-RDKit::RWMol * arg_to_rwmol(sqlite3_value *arg, sqlite3_context * ctx, int *rc)
+RDKit::RWMol * arg_to_rwmol(sqlite3_value *arg, int *rc)
 {
-  return arg_to_mol<RDKit::RWMol>(arg, ctx, rc);
+  return arg_to_mol<RDKit::RWMol>(arg, rc);
 }
