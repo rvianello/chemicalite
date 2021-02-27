@@ -64,18 +64,19 @@ static void mol_from_binary_mol(sqlite3_context* ctx, int /*argc*/, sqlite3_valu
   }
 
   if (mol) {
-    std::string buf = binary_mol_to_blob(bmol);
-    if (buf.empty()) {
-      sqlite3_result_error_code(ctx, SQLITE_ERROR);
+    int rc = SQLITE_OK;
+    Blob blob = binary_mol_to_blob(bmol, &rc);
+    if (rc != SQLITE_OK) {
+      sqlite3_result_error_code(ctx, rc);
     }
     else {
-      sqlite3_result_blob(ctx, buf.c_str(), buf.size(), SQLITE_TRANSIENT);
+      sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
     }
   }
   else {
     chemicalite_log(
       SQLITE_WARNING,
-      "Could not serialize the input mol."
+      "Could not deserialize the input mol."
       );
     sqlite3_result_null(ctx);
   }
@@ -127,12 +128,13 @@ static void mol_from_smiles(sqlite3_context* ctx, int /*argc*/, sqlite3_value** 
   }
 
   if (mol) {
-    std::string buf = mol_to_blob(*mol);
-    if (buf.empty()) {
-      sqlite3_result_error_code(ctx, SQLITE_ERROR);
+    int rc = SQLITE_OK;
+    Blob blob = mol_to_blob(*mol, &rc);
+    if (rc != SQLITE_OK) {
+      sqlite3_result_error_code(ctx, rc);
     }
     else {
-      sqlite3_result_blob(ctx, buf.c_str(), buf.size(), SQLITE_TRANSIENT);
+      sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
     }
   }
   else {
@@ -190,12 +192,13 @@ static void mol_from_molblock(sqlite3_context* ctx, int /*argc*/, sqlite3_value*
   }
 
   if (mol) {
-    std::string buf = mol_to_blob(*mol);
-    if (buf.empty()) {
-      sqlite3_result_error_code(ctx, SQLITE_ERROR);
+    int rc = SQLITE_OK;
+    Blob blob = mol_to_blob(*mol, &rc);
+    if (rc != SQLITE_OK) {
+      sqlite3_result_error_code(ctx, rc);
     }
     else {
-      sqlite3_result_blob(ctx, buf.c_str(), buf.size(), SQLITE_TRANSIENT);
+      sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
     }
   }
   else {
