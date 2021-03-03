@@ -10,6 +10,7 @@ add_library(chemicalite MODULE
         mol.cpp
         mol_formats.cpp
         mol_compare.cpp
+        bfp.cpp
         versions.cpp
         chemicalite.cpp
         #rdkit_adapter.cpp
