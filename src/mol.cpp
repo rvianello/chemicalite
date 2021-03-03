@@ -29,7 +29,7 @@ std::string mol_to_binary_mol(const RDKit::ROMol & mol, int * rc)
 Blob binary_mol_to_blob(const std::string & bmol, int *)
 {
   Blob blob(sizeof(uint32_t) + bmol.size());
-  uint8_t * p = static_cast<uint8_t *>(blob.data());
+  uint8_t * p = blob.data();
   p += write_uint32(p, MOL_MAGIC);
   memcpy(p, bmol.data(), bmol.size());
   return blob;
