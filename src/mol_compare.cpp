@@ -6,9 +6,9 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include <GraphMol/Substruct/SubstructMatch.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
 
+#include "utils.hpp"
 #include "mol_compare.hpp"
 #include "mol.hpp"
-#include "utils.hpp"
 
 static void free_romol_auxdata(void * aux)
 {

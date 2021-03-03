@@ -1,16 +1,12 @@
 #ifndef CHEMICALITE_MOLECULE_INCLUDED
 #define CHEMICALITE_MOLECULE_INCLUDED
 #include <string>
-#include <vector>
-#include <cstdint>
 
 namespace RDKit
 {
   class ROMol;
   class RWMol;
 } // namespace RDKit
-
-typedef std::vector<std::uint8_t> Blob;
 
 std::string mol_to_binary_mol(const RDKit::ROMol &, int *);
 Blob binary_mol_to_blob(const std::string &, int *);

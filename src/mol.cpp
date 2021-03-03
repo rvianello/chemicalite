@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
 
@@ -6,6 +8,8 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "utils.hpp"
 #include "mol.hpp"
 #include "logging.hpp"
+
+static constexpr const uint32_t MOL_MAGIC = 0x4D4F4C00;
 
 std::string mol_to_binary_mol(const RDKit::ROMol & mol, int * rc)
 {
@@ -24,8 +28,10 @@ std::string mol_to_binary_mol(const RDKit::ROMol & mol, int * rc)
 
 Blob binary_mol_to_blob(const std::string & bmol, int *)
 {
-  // return unmodified for now
-  Blob blob(bmol.data(), bmol.data() + bmol.size());
+  Blob blob(sizeof(uint32_t) + bmol.size());
+  uint8_t * p = static_cast<uint8_t *>(blob.data());
+  p += write_uint32(p, MOL_MAGIC);
+  memcpy(p, bmol.data(), bmol.size());
   return blob;
 }
 
@@ -38,10 +44,20 @@ Blob mol_to_blob(const RDKit::ROMol & mol, int * rc)
   return Blob();
 }
 
-std::string blob_to_binary_mol(const Blob &blob, int *)
+std::string blob_to_binary_mol(const Blob &blob, int *rc)
 {
-  // return unmodified for now
-  return std::string((const char *)blob.data(), blob.size());
+  if (blob.size() <= sizeof(uint32_t)) {
+    *rc = SQLITE_MISMATCH;
+    return "";
+  }
+  const uint8_t * p = blob.data();
+  uint32_t magic = read_uint32(p);
+  if (magic != MOL_MAGIC) {
+    *rc = SQLITE_MISMATCH;
+    return "";
+  }
+  p += sizeof(uint32_t);
+  return std::string(reinterpret_cast<const char *>(p), blob.size()-sizeof(uint32_t));
 }
 
 template <typename MolT>
