@@ -8,9 +8,10 @@ add_library(chemicalite MODULE
         #bitstring.c
         #rdtree.c
         mol.cpp
+        bfp.cpp
         mol_formats.cpp
         mol_compare.cpp
-        bfp.cpp
+        mol_to_bfp.cpp
         versions.cpp
         chemicalite.cpp
         #rdkit_adapter.cpp

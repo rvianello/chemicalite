@@ -4,6 +4,7 @@ SQLITE_EXTENSION_INIT1
 #include "settings.hpp"
 #include "mol_formats.hpp"
 #include "mol_compare.hpp"
+#include "mol_to_bfp.hpp"
 #include "versions.hpp"
 
 #if 0
@@ -151,6 +152,7 @@ extern "C" int sqlite3_chemicalite_init(sqlite3 *db, char ** /*pzErrMsg*/,
   if (rc == SQLITE_OK) rc = chemicalite_init_settings(db);
   if (rc == SQLITE_OK) rc = chemicalite_init_mol_formats(db);
   if (rc == SQLITE_OK) rc = chemicalite_init_mol_compare(db);
+  if (rc == SQLITE_OK) rc = chemicalite_init_mol_to_bfp(db);
 
 #if 0
   if (rc == SQLITE_OK) {
