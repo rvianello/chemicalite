@@ -20,7 +20,7 @@ void free_bfp_auxdata(void * pbfp)
   delete (std::string *) pbfp;
 }
 
-template <std::string * (*F)(const RDKit::ROMol &, int, int *), int DEFAULT_LENGTH>
+template <ExplicitBitVect * (*F)(const RDKit::ROMol &, int), int DEFAULT_LENGTH>
 static void mol_to_bfp(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 {
   int rc = SQLITE_OK;
@@ -40,7 +40,19 @@ static void mol_to_bfp(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 
     if (rc == SQLITE_OK && pmol) {
       int length = (argc > 1) ? sqlite3_value_int(argv[1]) : DEFAULT_LENGTH;
-      pbfp = F(*pmol, length, &rc);
+      try {
+        std::unique_ptr<ExplicitBitVect> bv(F(*pmol, length));
+        if (bv) {
+          pbfp = new std::string(BitVectToBinaryText(*bv));
+        }
+        else {
+          rc = SQLITE_ERROR;
+        }
+      } 
+      catch (...) {
+        // unknown exception
+        rc = SQLITE_ERROR;
+      }
     }
 
     if (rc == SQLITE_OK) {
@@ -68,30 +80,28 @@ static void mol_to_bfp(sqlite3_context* ctx, int argc, sqlite3_value** argv)
   }
 }
 
-std::string * mol_layered_bfp(const RDKit::ROMol & mol, int length, int *rc)
+ExplicitBitVect * mol_layered_bfp(const RDKit::ROMol & mol, int length)
 {
-  *rc = SQLITE_OK;
-  std::string *pbfp = nullptr;
-
-  try {
-    std::unique_ptr<ExplicitBitVect> bv( 
-      RDKit::LayeredFingerprintMol(mol, 0xFFFFFFFF, 1, 7, length));
-    if (bv) {
-      pbfp = new std::string(BitVectToBinaryText(*bv));
-    }
-    else {
-      *rc = SQLITE_ERROR;
-    }
-  } 
-  catch (...) {
-    // unknown exception
-    *rc = SQLITE_ERROR;
-  }
-        
-  return pbfp;
+  return RDKit::LayeredFingerprintMol(mol, 0xFFFFFFFF, 1, 7, length);
 }
 
-static constexpr const int DEFAULT_SSS_BFP_LENGTH = 2048;
+ExplicitBitVect * mol_rdkit_bfp(const RDKit::ROMol & mol, int length)
+{
+  return RDKit::RDKFingerprintMol(mol, 1, 6, length, 2);
+}
+
+ExplicitBitVect * mol_atom_pairs_bfp(const RDKit::ROMol & mol, int length)
+{
+  return RDKit::AtomPairs::getHashedAtomPairFingerprintAsBitVect(mol, length);
+}
+
+ExplicitBitVect * mol_topological_torsion_bfp(const RDKit::ROMol & mol, int length)
+{
+  return RDKit::AtomPairs::getHashedTopologicalTorsionFingerprintAsBitVect(mol, length);
+}
+
+
+//static constexpr const int DEFAULT_SSS_BFP_LENGTH = 2048;
 static constexpr const int DEFAULT_LAYERED_BFP_LENGTH = 1024;
 static constexpr const int DEFAULT_MORGAN_BFP_LENGTH = 512;
 static constexpr const int DEFAULT_HASHED_TORSION_BFP_LENGTH = 1024;
@@ -103,6 +113,15 @@ int chemicalite_init_mol_to_bfp(sqlite3 *db)
 
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_layered_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_layered_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
+
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_rdkit_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_rdkit_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
+
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_atom_pairs_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_HASHED_PAIR_BFP_LENGTH>>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_atom_pairs_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_HASHED_PAIR_BFP_LENGTH>>, 0, 0);
+
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_topological_torsion_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_HASHED_TORSION_BFP_LENGTH>>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_topological_torsion_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_HASHED_TORSION_BFP_LENGTH>>, 0, 0);
 
   return rc;
 }
