@@ -100,8 +100,17 @@ ExplicitBitVect * mol_topological_torsion_bfp(const RDKit::ROMol & mol, int leng
   return RDKit::AtomPairs::getHashedTopologicalTorsionFingerprintAsBitVect(mol, length);
 }
 
+ExplicitBitVect * mol_maccs_bfp(const RDKit::ROMol & mol, int /* unused length */)
+{
+  return RDKit::MACCSFingerprints::getFingerprintAsBitVect(mol);
+}
 
-//static constexpr const int DEFAULT_SSS_BFP_LENGTH = 2048;
+ExplicitBitVect * mol_pattern_bfp(const RDKit::ROMol & mol, int length)
+{
+  return RDKit::PatternFingerprintMol(mol, length);
+}
+
+static constexpr const int DEFAULT_SSS_BFP_LENGTH = 2048;
 static constexpr const int DEFAULT_LAYERED_BFP_LENGTH = 1024;
 static constexpr const int DEFAULT_MORGAN_BFP_LENGTH = 512;
 static constexpr const int DEFAULT_HASHED_TORSION_BFP_LENGTH = 1024;
@@ -114,14 +123,19 @@ int chemicalite_init_mol_to_bfp(sqlite3 *db)
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_layered_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_layered_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
 
-  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_rdkit_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
-  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_rdkit_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_rdkit_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_rdkit_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_rdkit_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_rdkit_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
 
-  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_atom_pairs_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_HASHED_PAIR_BFP_LENGTH>>, 0, 0);
-  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_atom_pairs_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_HASHED_PAIR_BFP_LENGTH>>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_atom_pairs_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_atom_pairs_bfp, DEFAULT_HASHED_PAIR_BFP_LENGTH>>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_atom_pairs_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_atom_pairs_bfp, DEFAULT_HASHED_PAIR_BFP_LENGTH>>, 0, 0);
 
-  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_topological_torsion_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_HASHED_TORSION_BFP_LENGTH>>, 0, 0);
-  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_topological_torsion_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_HASHED_TORSION_BFP_LENGTH>>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_topological_torsion_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_topological_torsion_bfp, DEFAULT_HASHED_TORSION_BFP_LENGTH>>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_topological_torsion_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_topological_torsion_bfp, DEFAULT_HASHED_TORSION_BFP_LENGTH>>, 0, 0);
+
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_maccs_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_maccs_bfp, -1>>, 0, 0);
+
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_pattern_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_pattern_bfp, DEFAULT_SSS_BFP_LENGTH>>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_pattern_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_pattern_bfp, DEFAULT_SSS_BFP_LENGTH>>, 0, 0);
 
   return rc;
 }
