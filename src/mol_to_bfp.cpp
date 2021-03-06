@@ -80,32 +80,32 @@ static void mol_to_bfp(sqlite3_context* ctx, int argc, sqlite3_value** argv)
   }
 }
 
-ExplicitBitVect * mol_layered_bfp(const RDKit::ROMol & mol, int length)
+static ExplicitBitVect * mol_layered_bfp(const RDKit::ROMol & mol, int length)
 {
   return RDKit::LayeredFingerprintMol(mol, 0xFFFFFFFF, 1, 7, length);
 }
 
-ExplicitBitVect * mol_rdkit_bfp(const RDKit::ROMol & mol, int length)
+static ExplicitBitVect * mol_rdkit_bfp(const RDKit::ROMol & mol, int length)
 {
   return RDKit::RDKFingerprintMol(mol, 1, 6, length, 2);
 }
 
-ExplicitBitVect * mol_atom_pairs_bfp(const RDKit::ROMol & mol, int length)
+static ExplicitBitVect * mol_atom_pairs_bfp(const RDKit::ROMol & mol, int length)
 {
   return RDKit::AtomPairs::getHashedAtomPairFingerprintAsBitVect(mol, length);
 }
 
-ExplicitBitVect * mol_topological_torsion_bfp(const RDKit::ROMol & mol, int length)
+static ExplicitBitVect * mol_topological_torsion_bfp(const RDKit::ROMol & mol, int length)
 {
   return RDKit::AtomPairs::getHashedTopologicalTorsionFingerprintAsBitVect(mol, length);
 }
 
-ExplicitBitVect * mol_maccs_bfp(const RDKit::ROMol & mol, int /* unused length */)
+static ExplicitBitVect * mol_maccs_bfp(const RDKit::ROMol & mol, int /* unused length */)
 {
   return RDKit::MACCSFingerprints::getFingerprintAsBitVect(mol);
 }
 
-ExplicitBitVect * mol_pattern_bfp(const RDKit::ROMol & mol, int length)
+static ExplicitBitVect * mol_pattern_bfp(const RDKit::ROMol & mol, int length)
 {
   return RDKit::PatternFingerprintMol(mol, length);
 }
@@ -175,14 +175,14 @@ static void mol_to_morgan_bfp(sqlite3_context* ctx, int argc, sqlite3_value** ar
   }
 }
 
-ExplicitBitVect * mol_morgan_bfp(const RDKit::ROMol & mol, int radius, int length)
+static ExplicitBitVect * mol_morgan_bfp(const RDKit::ROMol & mol, int radius, int length)
 {
   std::vector<uint32_t> invars(mol.getNumAtoms());
   RDKit::MorganFingerprints::getConnectivityInvariants(mol, invars, true);
   return RDKit::MorganFingerprints::getFingerprintAsBitVect(mol, radius, length, &invars);
 }
 
-ExplicitBitVect * mol_feat_morgan_bfp(const RDKit::ROMol & mol, int radius, int length)
+static ExplicitBitVect * mol_feat_morgan_bfp(const RDKit::ROMol & mol, int radius, int length)
 {
   std::vector<uint32_t> invars(mol.getNumAtoms());
   RDKit::MorganFingerprints::getFeatureInvariants(mol, invars);
