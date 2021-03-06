@@ -4,7 +4,6 @@ add_library(chemicalite MODULE
         settings.cpp
         logging.cpp
         #molecule.c
-        #bfp_ops.c
         #bitstring.c
         #rdtree.c
         mol.cpp
@@ -12,6 +11,8 @@ add_library(chemicalite MODULE
         mol_formats.cpp
         mol_compare.cpp
         mol_to_bfp.cpp
+        bfp_ops.cpp
+        bfp_compare.cpp
         versions.cpp
         chemicalite.cpp
         #rdkit_adapter.cpp

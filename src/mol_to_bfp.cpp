@@ -15,11 +15,6 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "bfp.hpp"
 //#include "mol_to_bfp.hpp"
 
-void free_bfp_auxdata(void * pbfp)
-{
-  delete (std::string *) pbfp;
-}
-
 template <ExplicitBitVect * (*F)(const RDKit::ROMol &, int), int DEFAULT_LENGTH>
 static void mol_to_bfp(sqlite3_context* ctx, int argc, sqlite3_value** argv)
 {

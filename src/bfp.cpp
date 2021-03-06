@@ -51,3 +51,8 @@ std::string arg_to_bfp(sqlite3_value *arg, int *rc)
   Blob blob(data, data+size);
   return blob_to_bfp(blob, rc);
 }
+
+void free_bfp_auxdata(void * pbfp)
+{
+  delete (std::string *) pbfp;
+}

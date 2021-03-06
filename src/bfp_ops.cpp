@@ -1,5 +1,5 @@
-#include "chemicalite.h"
-#include "bfp_ops.h"
+//#include "chemicalite.h"
+#include "bfp_ops.hpp"
 
 // the Tanimoto and Dice similarity code is adapted
 // from Gred Landrum's RDKit PostgreSQL cartridge code that in turn is
@@ -26,7 +26,7 @@ static int byte_popcounts[] = {
   3,4,4,5,4,5,5,6,4,5,5,6,5,6,6,7,4,5,5,6,5,6,6,7,5,6,6,7,6,7,7,8  
 };
 
-int bfp_op_weight(int length, u8 *bfp)
+int bfp_op_weight(int length, const uint8_t *bfp)
 {
   int total_popcount = 0; 
 
@@ -47,8 +47,8 @@ int bfp_op_weight(int length, u8 *bfp)
     total_popcount += POPCNT(*ibfp++);
   }
   
-  u8 * bfp_end = bfp + length;
-  bfp = (u8 *) ibfp;
+  const uint8_t * bfp_end = bfp + length;
+  bfp = (const uint8_t *) ibfp;
   
   while (bfp < bfp_end) {
     total_popcount += byte_popcounts[*bfp++];
@@ -57,7 +57,7 @@ int bfp_op_weight(int length, u8 *bfp)
   return total_popcount;
 }
 
-int bfp_op_subset_weight(int length, u8 *bfp, u8 byte_mask)
+int bfp_op_subset_weight(int length, const uint8_t *bfp, const uint8_t byte_mask)
 {
   int total_popcount = 0; 
   unsigned int i;
@@ -85,8 +85,8 @@ int bfp_op_subset_weight(int length, u8 *bfp, u8 byte_mask)
     total_popcount += POPCNT(mask & *ibfp++);
   }
   
-  u8 * bfp_end = bfp + length;
-  bfp = (u8 *) ibfp;
+  const uint8_t * bfp_end = bfp + length;
+  bfp = (const uint8_t *) ibfp;
   
   while (bfp < bfp_end) {
     total_popcount += byte_popcounts[byte_mask & *bfp++];
@@ -95,7 +95,7 @@ int bfp_op_subset_weight(int length, u8 *bfp, u8 byte_mask)
   return total_popcount;
 }
 
-void bfp_op_union(int length, u8 *bfp1, u8 *bfp2)
+void bfp_op_union(int length, uint8_t *bfp1, const uint8_t *bfp2)
 {
   int ilength = length / sizeof(POPCNT_TYPE);
 
@@ -115,16 +115,16 @@ void bfp_op_union(int length, u8 *bfp1, u8 *bfp2)
     *ibfp1++ |= *ibfp2++;
   }
   
-  u8 * bfp1_end = bfp1 + length;
-  bfp1 = (u8 *) ibfp1;
-  bfp2 = (u8 *) ibfp2;
+  uint8_t * bfp1_end = bfp1 + length;
+  bfp1 = (uint8_t *) ibfp1;
+  bfp2 = (const uint8_t *) ibfp2;
   
   while (bfp1 < bfp1_end) {
     *bfp1++ |= *bfp2++;
   }
 }
 
-int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2)
+int bfp_op_growth(int length, const uint8_t *bfp1, const uint8_t *bfp2)
 {
   int growth = 0; 
   
@@ -147,20 +147,20 @@ int bfp_op_growth(int length, u8 *bfp1, u8 *bfp2)
     ib1 = *ibfp1++; growth += POPCNT(ib1 ^ (ib1 | *ibfp2++));
   }
   
-  u8 * bfp1_end = bfp1 + length;
-  bfp1 = (u8 *) ibfp1;
-  bfp2 = (u8 *) ibfp2;
+  const uint8_t * bfp1_end = bfp1 + length;
+  bfp1 = (const uint8_t *) ibfp1;
+  bfp2 = (const uint8_t *) ibfp2;
   
   while (bfp1 < bfp1_end) {
-    u8 b1 = *bfp1++; 
-    u8 b2 = *bfp2++;
+    const uint8_t b1 = *bfp1++; 
+    const uint8_t b2 = *bfp2++;
     growth += byte_popcounts[b1 ^ (b1 | b2)];
   }
 
   return growth;
 }
 
-int bfp_op_iweight(int length, u8 *bfp1, u8 *bfp2)
+int bfp_op_iweight(int length, const uint8_t *bfp1, const uint8_t *bfp2)
 {
   int intersect_popcount = 0;
 
@@ -182,9 +182,9 @@ int bfp_op_iweight(int length, u8 *bfp1, u8 *bfp2)
     intersect_popcount += POPCNT(*ibfp1++ & *ibfp2++);
   }
   
-  u8 * bfp1_end = bfp1 + length;
-  bfp1 = (u8 *) ibfp1;
-  bfp2 = (u8 *) ibfp2;
+  const uint8_t * bfp1_end = bfp1 + length;
+  bfp1 = (const uint8_t *) ibfp1;
+  bfp2 = (const uint8_t *) ibfp2;
   
   while (bfp1 < bfp1_end) {
     intersect_popcount += byte_popcounts[*bfp1++ & *bfp2++];
@@ -193,7 +193,7 @@ int bfp_op_iweight(int length, u8 *bfp1, u8 *bfp2)
   return intersect_popcount;
 }
 
-int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2)
+int bfp_op_contains(int length, const uint8_t *bfp1, const uint8_t *bfp2)
 {
   int contains = 1;
 
@@ -209,20 +209,20 @@ int bfp_op_contains(int length, u8 *bfp1, u8 *bfp2)
     contains = i1 == (i1 | i2);
   }
   
-  u8 * bfp1_end = bfp1 + length;
-  bfp1 = (u8 *) ibfp1;
-  bfp2 = (u8 *) ibfp2;
+  const uint8_t * bfp1_end = bfp1 + length;
+  bfp1 = (const uint8_t *) ibfp1;
+  bfp2 = (const uint8_t *) ibfp2;
   
   while (contains && bfp1 < bfp1_end) {
-    u8 b1 = *bfp1++; 
-    u8 b2 = *bfp2++;
+    const uint8_t b1 = *bfp1++; 
+    const uint8_t b2 = *bfp2++;
     contains = b1 == (b1 | b2);
   }
 
   return contains;
 }
 
-int bfp_op_intersects(int length, u8 *bfp1, u8 *bfp2)
+int bfp_op_intersects(int length, const uint8_t *bfp1, const uint8_t *bfp2)
 {
   int intersects = 0;
 
@@ -238,20 +238,20 @@ int bfp_op_intersects(int length, u8 *bfp1, u8 *bfp2)
     intersects = i1 & i2;
   }
   
-  u8 * bfp1_end = bfp1 + length;
-  bfp1 = (u8 *) ibfp1;
-  bfp2 = (u8 *) ibfp2;
+  const uint8_t * bfp1_end = bfp1 + length;
+  bfp1 = (const uint8_t *) ibfp1;
+  bfp2 = (const uint8_t *) ibfp2;
   
   while (!intersects && bfp1 < bfp1_end) {
-    u8 b1 = *bfp1++; 
-    u8 b2 = *bfp2++;
+    const uint8_t b1 = *bfp1++; 
+    const uint8_t b2 = *bfp2++;
     intersects = b1 & b2;
   }
 
   return intersects;
 }
 
-double bfp_op_tanimoto(int length, u8 *afp, u8 *bfp)
+double bfp_op_tanimoto(int length, const uint8_t *afp, const uint8_t *bfp)
 {
   double sim;
 
@@ -283,13 +283,13 @@ double bfp_op_tanimoto(int length, u8 *afp, u8 *bfp)
     union_popcount += POPCNT(ia | ib); intersect_popcount += POPCNT(ia & ib);
   }
   
-  u8 * afp_end = afp + length;
-  afp = (u8 *) iafp;
-  bfp = (u8 *) ibfp;
+  const uint8_t * afp_end = afp + length;
+  afp = (const uint8_t *) iafp;
+  bfp = (const uint8_t *) ibfp;
   
   while (afp < afp_end) {
-    u8 ba = *afp++;
-    u8 bb = *bfp++;
+    const uint8_t ba = *afp++;
+    const uint8_t bb = *bfp++;
     union_popcount += byte_popcounts[ ba | bb ];
     intersect_popcount += byte_popcounts[ ba & bb ];
   }
@@ -304,7 +304,7 @@ double bfp_op_tanimoto(int length, u8 *afp, u8 *bfp)
   return sim;
 }
 
-double bfp_op_dice(int length, u8 *afp, u8 *bfp)
+double bfp_op_dice(int length, const uint8_t *afp, const uint8_t *bfp)
 {
   double sim = 0.0;
   
@@ -341,13 +341,13 @@ double bfp_op_dice(int length, u8 *afp, u8 *bfp)
     intersect_popcount += POPCNT(ia & ib);
   }
   
-  u8 * afp_end = afp + length;
-  afp = (u8 *) iafp;
-  bfp = (u8 *) ibfp;
+  const uint8_t * afp_end = afp + length;
+  afp = (const uint8_t *) iafp;
+  bfp = (const uint8_t *) ibfp;
   
   while (afp < afp_end) {
-    u8 ba = *afp++;
-    u8 bb = *bfp++;
+    const uint8_t ba = *afp++;
+    const uint8_t bb = *bfp++;
     total_popcount += byte_popcounts[ba] + byte_popcounts[bb];
     intersect_popcount += byte_popcounts[ba & bb];
   }
