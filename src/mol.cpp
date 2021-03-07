@@ -151,3 +151,9 @@ RDKit::RWMol * arg_to_rwmol(sqlite3_value *arg, int *rc)
 {
   return arg_to_mol<RDKit::RWMol>(arg, rc);
 }
+
+void free_romol_auxdata(void * aux)
+{
+  delete (RDKit::ROMol *) aux;
+}
+

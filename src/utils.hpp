@@ -2,6 +2,7 @@
 #define CHEMICALITE_UTILITIES_INCLUDED
 #include <cstdint>
 #include <vector>
+#include <string>
 
 typedef std::vector<std::uint8_t> Blob;
 
@@ -77,6 +78,13 @@ inline int write_uint64(uint8_t *p, uint64_t i){
   p[6] = (i>> 8)&0xFF;
   p[7] = (i>> 0)&0xFF;
   return 8;
+}
+
+inline void sqlite3_result(sqlite3_context* ctx, int value) { sqlite3_result_int(ctx, value); }
+inline void sqlite3_result(sqlite3_context* ctx, double value) { sqlite3_result_double(ctx, value); }
+inline void sqlite3_result(sqlite3_context* ctx, const std::string & value)
+{
+  sqlite3_result_text(ctx, value.data(), value.size(), SQLITE_TRANSIENT);
 }
 
 #endif

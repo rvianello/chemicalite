@@ -10,11 +10,6 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "mol_compare.hpp"
 #include "mol.hpp"
 
-static void free_romol_auxdata(void * aux)
-{
-  delete (RDKit::ROMol *) aux;
-}
-
 int mol_is_substruct(const RDKit::ROMol & m1, const RDKit::ROMol & m2)
 {
   RDKit::MatchVectType matchVect;

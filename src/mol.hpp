@@ -22,4 +22,6 @@ std::string arg_to_binary_mol(sqlite3_value *, int *);
 RDKit::ROMol * arg_to_romol(sqlite3_value *, int *);
 RDKit::RWMol * arg_to_rwmol(sqlite3_value *, int *);
 
+void free_romol_auxdata(void *);
+
 #endif
