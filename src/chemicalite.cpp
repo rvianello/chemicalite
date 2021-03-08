@@ -172,9 +172,5 @@ extern "C" int sqlite3_chemicalite_init(sqlite3 *db, char ** /*pzErrMsg*/,
   /* } */
 #endif
 
-#if 0
-  CREATE_SQLITE_BINARY_FUNCTION(create_molecule_rdtree);
-#endif
-
   return rc;
 }
