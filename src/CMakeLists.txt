@@ -14,6 +14,7 @@ add_library(chemicalite MODULE
         mol_to_bfp.cpp
         bfp_ops.cpp
         bfp_compare.cpp
+        bfp_descriptors.cpp
         versions.cpp
         chemicalite.cpp
         #rdkit_adapter.cpp
