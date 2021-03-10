@@ -96,6 +96,12 @@ TEST_CASE("mol descriptors", "[mol]")
     test_descriptor_query(db, "SELECT mol_num_hetatms(mol_from_smiles('Oc1ccccn1'))", 2);
   }
 
+  SECTION("mol_num_rings")
+  {
+    test_descriptor_query(db, "SELECT mol_num_rings(mol_from_smiles('Oc1ccccn1'))", 1);
+    test_descriptor_query(db, "SELECT mol_num_rings(mol_from_smiles('OCCCCN'))", 0);
+  }
+
   SECTION("mol_num_atms")
   {
     test_descriptor_query(db, "SELECT mol_num_atms(mol_from_smiles('C=CC'))", 9);
