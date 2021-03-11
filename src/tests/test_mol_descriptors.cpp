@@ -41,6 +41,26 @@ static void test_descriptor_query(sqlite3 * db, const std::string & query, int e
   sqlite3_finalize(pStmt);
 }
 
+static void test_descriptor_query(sqlite3 * db, const std::string & query, const std::string expected)
+{
+  int rc;
+  sqlite3_stmt *pStmt;
+
+  rc = sqlite3_prepare_v2(db, query.c_str(), -1, &pStmt, 0);
+  REQUIRE(rc == SQLITE_OK);
+
+  rc = sqlite3_step(pStmt);
+  REQUIRE(rc == SQLITE_ROW);
+
+  int value_type = sqlite3_column_type(pStmt, 0);
+  REQUIRE(value_type == SQLITE_TEXT);
+
+  std::string value { reinterpret_cast<const char *>(sqlite3_column_text(pStmt, 0)) };
+  REQUIRE(value == expected);
+
+  sqlite3_finalize(pStmt);
+}
+
 TEST_CASE("mol descriptors", "[mol]")
 {
   sqlite3 * db = nullptr;
@@ -102,6 +122,33 @@ TEST_CASE("mol descriptors", "[mol]")
     test_descriptor_query(db, "SELECT mol_num_rings(mol_from_smiles('OCCCCN'))", 0);
   }
 
+  SECTION("mol_num_aromatic_rings")
+  {
+    test_descriptor_query(db, "SELECT mol_num_aromatic_rings(mol_from_smiles('Oc1ccccn1'))", 1);
+    test_descriptor_query(db, "SELECT mol_num_aromatic_rings(mol_from_smiles('OC1CCCCN1'))", 0);
+  }
+
+  SECTION("mol_num_aliphatic_rings")
+  {
+    test_descriptor_query(db, "SELECT mol_num_aliphatic_rings(mol_from_smiles('Oc1ccccn1'))", 0);
+    test_descriptor_query(db, "SELECT mol_num_aliphatic_rings(mol_from_smiles('OC1CCCCN1'))", 1);
+  }
+
+  SECTION("mol_num_saturated_rings")
+  {
+    test_descriptor_query(db, "SELECT mol_num_saturated_rings(mol_from_smiles('Oc1ccccn1'))", 0);
+    test_descriptor_query(db, "SELECT mol_num_saturated_rings(mol_from_smiles('OC1CC=CCN1'))", 0);
+    test_descriptor_query(db, "SELECT mol_num_saturated_rings(mol_from_smiles('OC1CCCCN1'))", 1);
+  }
+
+  // TODO add tests for the missing descriptors
+  
+  SECTION("mol_logp")
+  {
+    test_descriptor_query(db, "SELECT mol_logp(mol_from_smiles('C=CC(=O)O'))", 0.257);
+    test_descriptor_query(db, "SELECT mol_logp(mol_from_smiles('c1ccccn1'))", 1.0816);
+  }
+
   SECTION("mol_num_atms")
   {
     test_descriptor_query(db, "SELECT mol_num_atms(mol_from_smiles('C=CC'))", 9);
@@ -112,6 +159,12 @@ TEST_CASE("mol descriptors", "[mol]")
   {
     test_descriptor_query(db, "SELECT mol_num_hvyatms(mol_from_smiles('C=CC'))", 3);
     test_descriptor_query(db, "SELECT mol_num_hvyatms(mol_from_smiles('c1ccccn1'))", 6);
+  }
+
+  SECTION("mol_formula")
+  {
+    test_descriptor_query(db, "SELECT mol_formula(mol_from_smiles('NC1CC=CCN1'))", "C5H10N2");
+    test_descriptor_query(db, "SELECT mol_formula(mol_from_smiles('OC1CCCCN1'))", "C5H11NO");
   }
 
   // Close the db
