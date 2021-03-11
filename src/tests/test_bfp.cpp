@@ -85,5 +85,37 @@ TEST_CASE("bfp constructors + ops + descriptors", "[bfp]")
         ")", 0.3428571429);
   }
 
+  SECTION("test pattern bfp")
+  {
+    test_select_value(
+        db, 
+        "SELECT bfp_tanimoto("
+        "mol_pattern_bfp(mol_from_smiles('Nc1ccccc1COC')), "
+        "mol_pattern_bfp(mol_from_smiles('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'))"
+        ")", 0.2727272727);
+    test_select_value(
+        db, 
+        "SELECT bfp_dice("
+        "mol_pattern_bfp(mol_from_smiles('Nc1ccccc1COC')), "
+        "mol_pattern_bfp(mol_from_smiles('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'))"
+        ")", 0.4285714286);
+  }
+
+  SECTION("test morgan bfp")
+  {
+    test_select_value(
+        db, 
+        "SELECT bfp_tanimoto("
+        "mol_morgan_bfp(mol_from_smiles('Nc1ccccc1COC'), 2), "
+        "mol_morgan_bfp(mol_from_smiles('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), 2)"
+        ")", 0.0975609756);
+    test_select_value(
+        db, 
+        "SELECT bfp_dice("
+        "mol_morgan_bfp(mol_from_smiles('Nc1ccccc1COC'), 2), "
+        "mol_morgan_bfp(mol_from_smiles('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), 2)"
+        ")", 0.1777777778);
+  }
+
   test_db_close(db);
 }
