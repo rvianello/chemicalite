@@ -13,7 +13,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "utils.hpp"
 #include "mol.hpp"
 #include "bfp.hpp"
-//#include "mol_to_bfp.hpp"
+#include "mol_to_bfp.hpp"
 
 template <ExplicitBitVect * (*F)(const RDKit::ROMol &, int), int DEFAULT_LENGTH>
 static void mol_to_bfp(sqlite3_context* ctx, int argc, sqlite3_value** argv)
@@ -190,6 +190,37 @@ static constexpr const int DEFAULT_MORGAN_BFP_LENGTH = 512;
 static constexpr const int DEFAULT_HASHED_TORSION_BFP_LENGTH = 1024;
 static constexpr const int DEFAULT_HASHED_PAIR_BFP_LENGTH = 2048;
 
+/*
+** build a simple bitstring (mostly for testing)
+** [this is not actually a mol -> bfp constructor]
+*/
+static void bfp_dummy(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
+{
+  if (sqlite3_value_type(argv[0]) != SQLITE_INTEGER || sqlite3_value_type(argv[1]) != SQLITE_INTEGER) {
+    sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
+    return;
+  }
+
+  size_t len = sqlite3_value_int(argv[0]);
+  len /= 8; /* input length is now expected as # of bits, for consistency w/ bfp constructors */
+  if (len <= 0) { len = 1; }
+
+  char value = static_cast<char>(sqlite3_value_int(argv[1]));
+
+  std::string bfp(len, value);
+
+  int rc = SQLITE_OK;
+  Blob blob = bfp_to_blob(bfp, &rc);
+
+  if (rc == SQLITE_OK) {
+    sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
+  }	
+  else {
+    sqlite3_result_error_code(ctx, rc);
+  }
+
+}
+
 int chemicalite_init_mol_to_bfp(sqlite3 *db)
 {
   int rc = SQLITE_OK;
@@ -216,6 +247,8 @@ int chemicalite_init_mol_to_bfp(sqlite3 *db)
 
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_feat_morgan_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_morgan_bfp<mol_feat_morgan_bfp, DEFAULT_MORGAN_BFP_LENGTH>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_feat_morgan_bfp", 3, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_morgan_bfp<mol_feat_morgan_bfp, DEFAULT_MORGAN_BFP_LENGTH>>, 0, 0);
+
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "bfp_dummy", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<bfp_dummy>, 0, 0);
 
   return rc;
 }

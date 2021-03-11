@@ -7,6 +7,7 @@ set(TEST_CHEMICALITE_SRC_FILES
     test_version_info.cpp
     test_mol_formats.cpp
     test_mol_descriptors.cpp
+    test_bfp.cpp
 )
 
 add_executable(test_chemicalite ${TEST_CHEMICALITE_SRC_FILES})
