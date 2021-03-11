@@ -117,5 +117,21 @@ TEST_CASE("bfp constructors + ops + descriptors", "[bfp]")
         ")", 0.1777777778);
   }
 
+  SECTION("test feat morgan bfp")
+  {
+    test_select_value(
+        db, 
+        "SELECT bfp_tanimoto("
+        "mol_feat_morgan_bfp(mol_from_smiles('Nc1ccccc1COC'), 2), "
+        "mol_feat_morgan_bfp(mol_from_smiles('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), 2)"
+        ")", 0.1176470588);
+    test_select_value(
+        db, 
+        "SELECT bfp_dice("
+        "mol_feat_morgan_bfp(mol_from_smiles('Nc1ccccc1COC'), 2), "
+        "mol_feat_morgan_bfp(mol_from_smiles('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), 2)"
+        ")", 0.2105263158);
+  }
+
   test_db_close(db);
 }
