@@ -1,7 +1,6 @@
 #include <memory>
 
-#include <sqlite3.h>
-#include <catch2/catch.hpp>
+#include "test_common.hpp"
 
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/FileParsers/FileParsers.h>
@@ -59,19 +58,9 @@ M  END
 TEST_CASE("mol formats interconversion", "[mol]")
 {
   sqlite3 * db = nullptr;
+  test_db_open(&db);
+
   int rc = SQLITE_OK;
-
-  // Create a connection to an in-memory database
-  rc = sqlite3_open(":memory:", &db);
-  REQUIRE(rc == SQLITE_OK);
-
-  // Enable loading extensions
-  rc = sqlite3_enable_load_extension(db, 1);
-  REQUIRE(rc == SQLITE_OK);
-
-  // Load ChemicaLite
-  rc = sqlite3_load_extension(db, "chemicalite", 0, 0);
-  REQUIRE(rc == SQLITE_OK);
 
   SECTION("smiles to smiles")
   {
@@ -252,7 +241,5 @@ TEST_CASE("mol formats interconversion", "[mol]")
     sqlite3_finalize(pStmt);
   }
 
-  // Close the db
-  rc = sqlite3_close(db);
-  REQUIRE(rc == SQLITE_OK);
+  test_db_close(db);
 }

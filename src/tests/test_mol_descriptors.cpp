@@ -4,19 +4,7 @@
 TEST_CASE("mol descriptors", "[mol]")
 {
   sqlite3 * db = nullptr;
-  int rc = SQLITE_OK;
-
-  // Create a connection to an in-memory database
-  rc = sqlite3_open(":memory:", &db);
-  REQUIRE(rc == SQLITE_OK);
-
-  // Enable loading extensions
-  rc = sqlite3_enable_load_extension(db, 1);
-  REQUIRE(rc == SQLITE_OK);
-
-  // Load ChemicaLite
-  rc = sqlite3_load_extension(db, "chemicalite", 0, 0);
-  REQUIRE(rc == SQLITE_OK);
+  test_db_open(&db);
 
   SECTION("mol_amw")
   {
@@ -107,7 +95,5 @@ TEST_CASE("mol descriptors", "[mol]")
     test_select_value(db, "SELECT mol_formula(mol_from_smiles('OC1CCCCN1'))", "C5H11NO");
   }
 
-  // Close the db
-  rc = sqlite3_close(db);
-  REQUIRE(rc == SQLITE_OK);
+  test_db_close(db);
 }

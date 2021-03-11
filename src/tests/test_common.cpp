@@ -1,5 +1,28 @@
 #include "test_common.hpp"
 
+void test_db_open(sqlite3 **db)
+{
+  int rc = SQLITE_OK;
+
+  // Create a connection to an in-memory database
+  rc = sqlite3_open(":memory:", db);
+  REQUIRE(rc == SQLITE_OK);
+
+  // Enable loading extensions
+  rc = sqlite3_enable_load_extension(*db, 1);
+  REQUIRE(rc == SQLITE_OK);
+
+  // Load ChemicaLite
+  rc = sqlite3_load_extension(*db, "chemicalite", 0, 0);
+  REQUIRE(rc == SQLITE_OK);
+}
+
+void test_db_close(sqlite3 *db)
+{
+  int rc = sqlite3_close(db);
+  REQUIRE(rc == SQLITE_OK);
+}
+
 void test_select_value(sqlite3 * db, const std::string & query, double expected)
 {
   int rc;
