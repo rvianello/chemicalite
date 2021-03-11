@@ -1,8 +1,66 @@
-#include <cstdio>
-#include <cstring>
-
 #include "test_common.hpp"
 
+void test_select_value(sqlite3 * db, const std::string & query, double expected)
+{
+  int rc;
+  sqlite3_stmt *pStmt;
+
+  rc = sqlite3_prepare_v2(db, query.c_str(), -1, &pStmt, 0);
+  REQUIRE(rc == SQLITE_OK);
+
+  rc = sqlite3_step(pStmt);
+  REQUIRE(rc == SQLITE_ROW);
+
+  int value_type = sqlite3_column_type(pStmt, 0);
+  REQUIRE(value_type == SQLITE_FLOAT);
+
+  double value = sqlite3_column_double(pStmt, 0);
+  REQUIRE(value == Approx(expected));
+
+  sqlite3_finalize(pStmt);
+}
+
+void test_select_value(sqlite3 * db, const std::string & query, int expected)
+{
+  int rc;
+  sqlite3_stmt *pStmt;
+
+  rc = sqlite3_prepare_v2(db, query.c_str(), -1, &pStmt, 0);
+  REQUIRE(rc == SQLITE_OK);
+
+  rc = sqlite3_step(pStmt);
+  REQUIRE(rc == SQLITE_ROW);
+
+  int value_type = sqlite3_column_type(pStmt, 0);
+  REQUIRE(value_type == SQLITE_INTEGER);
+
+  int value = sqlite3_column_int(pStmt, 0);
+  REQUIRE(value == expected);
+
+  sqlite3_finalize(pStmt);
+}
+
+void test_select_value(sqlite3 * db, const std::string & query, const std::string expected)
+{
+  int rc;
+  sqlite3_stmt *pStmt;
+
+  rc = sqlite3_prepare_v2(db, query.c_str(), -1, &pStmt, 0);
+  REQUIRE(rc == SQLITE_OK);
+
+  rc = sqlite3_step(pStmt);
+  REQUIRE(rc == SQLITE_ROW);
+
+  int value_type = sqlite3_column_type(pStmt, 0);
+  REQUIRE(value_type == SQLITE_TEXT);
+
+  std::string value { reinterpret_cast<const char *>(sqlite3_column_text(pStmt, 0)) };
+  REQUIRE(value == expected);
+
+  sqlite3_finalize(pStmt);
+}
+
+#if 0
 int database_setup(const char * dbname, sqlite3 **pDb, char **pErrMsg)
 {
   *pErrMsg = 0;
@@ -146,3 +204,4 @@ int select_text(sqlite3 *db, const char * sql, const char **pTxt)
   sqlite3_finalize(pStmt);
   return rc;
 }
+#endif
