@@ -133,5 +133,57 @@ TEST_CASE("bfp constructors + ops + descriptors", "[bfp]")
         ")", 0.2105263158);
   }
 
+  SECTION("test bfp weight")
+  {
+    test_select_value(
+        db,
+        "SELECT bfp_weight("
+        "bfp_dummy(128, 3)"
+        ")", 2*128/8);
+    test_select_value(
+        db,
+        "SELECT bfp_weight("
+        "mol_pattern_bfp(mol_from_smiles('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'))"
+        ")", 355);
+    test_select_value(
+        db,
+        "SELECT bfp_weight("
+        "mol_maccs_bfp(mol_from_smiles('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'))"
+        ")", 46);
+  }
+
+  SECTION("test bfp length")
+  {
+    test_select_value(
+        db,
+        "SELECT bfp_length("
+        "bfp_dummy(128, 3)"
+        ")", 128);
+    test_select_value(
+        db,
+        "SELECT bfp_length("
+        "mol_pattern_bfp(mol_from_smiles('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'))"
+        ")", 2048);
+    test_select_value(
+        db,
+        "SELECT bfp_length("
+        "mol_pattern_bfp(mol_from_smiles('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'), 1024)"
+        ")", 1024);
+  }
+
+  SECTION("test tanimoto similarity")
+  {
+    test_select_value(db, "SELECT bfp_tanimoto(bfp_dummy(128, 3), bfp_dummy(128, 0))", 0.0);
+    test_select_value(db, "SELECT bfp_tanimoto(bfp_dummy(128, 3), bfp_dummy(128, 3))", 1.0);
+    test_select_value(db, "SELECT bfp_tanimoto(bfp_dummy(128, 3), bfp_dummy(128, 1))", 0.5);
+  }
+
+  SECTION("test dice similarity")
+  {
+    test_select_value(db, "SELECT bfp_dice(bfp_dummy(128, 3), bfp_dummy(128, 0))", 0.0);
+    test_select_value(db, "SELECT bfp_dice(bfp_dummy(128, 3), bfp_dummy(128, 3))", 1.0);
+    test_select_value(db, "SELECT bfp_dice(bfp_dummy(128, 3), bfp_dummy(128, 1))", 0.6666666667);
+  }
+
   test_db_close(db);
 }
