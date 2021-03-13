@@ -241,5 +241,31 @@ TEST_CASE("mol formats interconversion", "[mol]")
     sqlite3_finalize(pStmt);
   }
 
+  SECTION("smarts roundtrip")
+  {
+    sqlite3_stmt *pStmt;
+    rc = sqlite3_prepare_v2(db, "SELECT mol_to_smarts(mol_from_smarts(:smarts))", -1, &pStmt, 0);
+    REQUIRE(rc == SQLITE_OK);
+
+    for (const std::string & smarts: {"CC[C,N]C"}) {
+      rc = sqlite3_bind_text(pStmt, 1, smarts.c_str(), smarts.size(), SQLITE_TRANSIENT);
+      REQUIRE(rc == SQLITE_OK);
+
+      rc = sqlite3_step(pStmt);
+      REQUIRE(rc == SQLITE_ROW);
+
+      int value_type = sqlite3_column_type(pStmt, 0);
+      REQUIRE(value_type == SQLITE_TEXT);
+
+      std::string smarts_output = (const char *) sqlite3_column_text(pStmt, 0);
+      REQUIRE(smarts == smarts_output);
+
+      rc = sqlite3_reset(pStmt);
+      REQUIRE(rc == SQLITE_OK);
+    }
+
+    sqlite3_finalize(pStmt);
+  }
+
   test_db_close(db);
 }
