@@ -25,6 +25,12 @@ TEST_CASE("mol compare", "[mol]")
         "mol_from_smiles('c1ccccc1'), "
         "mol_from_smiles('c1ccccc1C')"
         ")", -1);
+    test_select_value(
+        db,
+        "SELECT mol_cmp("
+        "mol_from_smiles('c1ccccc1'), "
+        "mol_from_smiles('C1=CC=CC=C1')"
+        ")", 0);
   }
 
   SECTION("test mol_is_substruct")
