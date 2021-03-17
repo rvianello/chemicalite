@@ -1,5 +1,6 @@
 #ifndef CHEMICALITE_RDTREE_VTAB_INCLUDED
 #define CHEMICALITE_RDTREE_VTAB_INCLUDED
+#include <string>
 
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
@@ -11,26 +12,27 @@ class RDtreeVtab : public sqlite3_vtab {
 public:
   static int init(
     sqlite3 *db, int argc, const char *const*argv, 
-	sqlite3_vtab **ppVtab, char **pzErr, int isCreate);
-
+	sqlite3_vtab **pvtab, char **err, int is_create);
+  int destroy();
   void incref();
   void decref();
 
 private:
-  int sql_init(int isCreate);
+  int get_node_size(int is_create);
+  int sql_init(int is_create);
 
   sqlite3 *db;                 /* Host database connection */
   unsigned int flags;          /* Configuration flags */
-  int iBfpSize;                /* Size (bytes) of the binary fingerprint */
-  int nBytesPerItem;           /* Bytes consumed per item */
-  int iNodeSize;               /* Size (bytes) of each node in the node table */
-  int iNodeCapacity;           /* Size (items) of each node */
-  int iDepth;                  /* Current depth of the rd-tree structure */
-  char *zDb;                   /* Name of database containing rd-tree table */
-  char *zName;                 /* Name of rd-tree table */ 
-  static constexpr const int HASHSIZE = 128;
-  RDtreeNode *aHash[HASHSIZE]; /* Hash table of in-memory nodes. */ 
-  int nBusy;                   /* Current number of users of this structure */
+  int bfp_size;                /* Size (bytes) of the binary fingerprint */
+  int bytes_per_item;          /* Bytes consumed per item */
+  int node_size;               /* Size (bytes) of each node in the node table */
+  int node_capacity;           /* Size (items) of each node */
+  int depth;                   /* Current depth of the rd-tree structure */
+  std::string db_name;         /* Name of database containing rd-tree table */
+  std::string table_name;      /* Name of rd-tree table */ 
+  //static constexpr const int HASHSIZE = 128;
+  //RDtreeNode *aHash[HASHSIZE]; /* Hash table of in-memory nodes. */ 
+  int n_ref;                   /* Current number of users of this structure */
 
   /* List of nodes removed during a CondenseTree operation. List is
   ** linked together via the pointer normally used for hash chains -

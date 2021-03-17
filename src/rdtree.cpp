@@ -10,48 +10,20 @@ extern const sqlite3_api_routines *sqlite3_api;
 /* 
 ** RDtree virtual table module xDisconnect method.
 */
-static int rdtreeDisconnect(sqlite3_vtab *pVtab)
+static int rdtreeDisconnect(sqlite3_vtab *vtab)
 {
-  RDtreeVtab *pRDtree = (RDtreeVtab *)pVtab;
-  pRDtree->decref();
+  RDtreeVtab *rdtree = (RDtreeVtab *)vtab;
+  rdtree->decref();
   return SQLITE_OK;
 }
 
 /* 
 ** RDtree virtual table module xDestroy method.
 */
-static int rdtreeDestroy(sqlite3_vtab *pVtab)
+static int rdtreeDestroy(sqlite3_vtab *vtab)
 {
-  int rc = SQLITE_OK;
- 
-  RDtreeVtab *pRDtree = (RDtreeVtab *)pVtab;
-
-#if 0
-  char *zCreate = sqlite3_mprintf("DROP TABLE '%q'.'%q_node';"
-				  "DROP TABLE '%q'.'%q_rowid';"
-				  "DROP TABLE '%q'.'%q_parent';"
-				  "DROP TABLE '%q'.'%q_bitfreq';"
-				  "DROP TABLE '%q'.'%q_weightfreq';",
-				  pRDtree->zDb, pRDtree->zName, 
-				  pRDtree->zDb, pRDtree->zName,
-				  pRDtree->zDb, pRDtree->zName,
-				  pRDtree->zDb, pRDtree->zName,
-				  pRDtree->zDb, pRDtree->zName);
-
-  if (!zCreate) {
-    rc = SQLITE_NOMEM;
-  }
-  else{
-    rc = sqlite3_exec(pRDtree->db, zCreate, 0, 0, 0);
-    sqlite3_free(zCreate);
-  }
-#endif
-
-  if (rc == SQLITE_OK) {
-    pRDtree->decref();
-  }
-
-  return rc;
+  RDtreeVtab *rdtree = (RDtreeVtab *)vtab;
+  return rdtree->destroy();
 }
 
 /* 
@@ -59,10 +31,10 @@ static int rdtreeDestroy(sqlite3_vtab *pVtab)
 */
 static int rdtreeCreate(sqlite3 *db, void */*pAux*/,
 			int argc, const char *const*argv,
-			sqlite3_vtab **ppVtab,
+			sqlite3_vtab **pvtab,
 			char **pzErr)
 {
-  return RDtreeVtab::init(db, argc, argv, ppVtab, pzErr, 1);
+  return RDtreeVtab::init(db, argc, argv, pvtab, pzErr, 1);
 }
 
 /* 
@@ -70,10 +42,10 @@ static int rdtreeCreate(sqlite3 *db, void */*pAux*/,
 */
 static int rdtreeConnect(sqlite3 *db, void */*pAux*/,
 			 int argc, const char *const*argv,
-			 sqlite3_vtab **ppVtab,
+			 sqlite3_vtab **pvtab,
 			 char **pzErr)
 {
-  return RDtreeVtab::init(db, argc, argv, ppVtab, pzErr, 0);
+  return RDtreeVtab::init(db, argc, argv, pvtab, pzErr, 0);
 }
 
 static sqlite3_module rdtreeModule = {
