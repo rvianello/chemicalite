@@ -9,6 +9,7 @@ SQLITE_EXTENSION_INIT1
 #include "mol_to_bfp.hpp"
 #include "bfp_compare.hpp"
 #include "bfp_descriptors.hpp"
+#include "rdtree.hpp"
 #include "versions.hpp"
 
 #if 0
@@ -161,6 +162,7 @@ extern "C" int sqlite3_chemicalite_init(sqlite3 *db, char ** /*pzErrMsg*/,
   if (rc == SQLITE_OK) rc = chemicalite_init_mol_to_bfp(db);
   if (rc == SQLITE_OK) rc = chemicalite_init_bfp_compare(db);
   if (rc == SQLITE_OK) rc = chemicalite_init_bfp_descriptors(db);
+  if (rc == SQLITE_OK) rc = chemicalite_init_rdtree(db);
 
 #if 0
   if (rc == SQLITE_OK) {

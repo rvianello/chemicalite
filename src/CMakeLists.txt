@@ -16,6 +16,8 @@ add_library(chemicalite MODULE
         bfp_ops.cpp
         bfp_compare.cpp
         bfp_descriptors.cpp
+        rdtree.cpp
+        rdtree_vtab.cpp
         versions.cpp
         chemicalite.cpp
         #rdkit_adapter.cpp
