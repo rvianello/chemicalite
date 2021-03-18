@@ -10,6 +10,20 @@ static const unsigned int RDTREE_FLAGS_UNASSIGNED = 0;
 static const unsigned int RDTREE_OPT_FOR_SUBSET_QUERIES = 1;
 static const unsigned int RDTREE_OPT_FOR_SIMILARITY_QUERIES = 2;
 
+int RDtreeVtab::create(
+  sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
+  sqlite3_vtab **pvtab, char **err)
+{
+  return init(db, argc, argv, pvtab, err, 1);
+}
+
+int RDtreeVtab::connect(
+  sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
+  sqlite3_vtab **pvtab, char **err)
+{
+  return init(db, argc, argv, pvtab, err, 0);
+}
+
 /* 
 ** This function is the implementation of both the xConnect and xCreate
 ** methods of the rd-tree virtual table.
@@ -395,6 +409,16 @@ int RDtreeVtab::destroy()
   }
 
   return rc;
+}
+
+/* 
+** This function is the implementation of the xDisconnect
+** method of the rd-tree virtual table.
+*/
+int RDtreeVtab::disconnect()
+{
+  decref();
+  return SQLITE_OK;
 }
 
 void RDtreeVtab::incref()

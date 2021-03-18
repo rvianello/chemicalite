@@ -10,14 +10,21 @@ class RDtreeNode;
 class RDtreeVtab : public sqlite3_vtab {
 
 public:
+  static int create(
+    sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
+	sqlite3_vtab **pvtab, char **err);
+  static int connect(
+    sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
+	sqlite3_vtab **pvtab, char **err);
+  int disconnect();
+  int destroy();
+
+private:
   static int init(
     sqlite3 *db, int argc, const char *const*argv, 
 	sqlite3_vtab **pvtab, char **err, int is_create);
-  int destroy();
   void incref();
   void decref();
-
-private:
   int get_node_size(int is_create);
   int sql_init(int is_create);
 

@@ -13,8 +13,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 static int rdtreeDisconnect(sqlite3_vtab *vtab)
 {
   RDtreeVtab *rdtree = (RDtreeVtab *)vtab;
-  rdtree->decref();
-  return SQLITE_OK;
+  return rdtree->disconnect();
 }
 
 /* 
@@ -29,23 +28,23 @@ static int rdtreeDestroy(sqlite3_vtab *vtab)
 /* 
 ** RDtree virtual table module xCreate method.
 */
-static int rdtreeCreate(sqlite3 *db, void */*pAux*/,
+static int rdtreeCreate(sqlite3 *db, void *paux,
 			int argc, const char *const*argv,
 			sqlite3_vtab **pvtab,
 			char **pzErr)
 {
-  return RDtreeVtab::init(db, argc, argv, pvtab, pzErr, 1);
+  return RDtreeVtab::create(db, paux, argc, argv, pvtab, pzErr);
 }
 
 /* 
 ** RDtree virtual table module xConnect method.
 */
-static int rdtreeConnect(sqlite3 *db, void */*pAux*/,
+static int rdtreeConnect(sqlite3 *db, void *paux,
 			 int argc, const char *const*argv,
 			 sqlite3_vtab **pvtab,
 			 char **pzErr)
 {
-  return RDtreeVtab::init(db, argc, argv, pvtab, pzErr, 0);
+  return RDtreeVtab::connect(db, paux, argc, argv, pvtab, pzErr);
 }
 
 static sqlite3_module rdtreeModule = {
