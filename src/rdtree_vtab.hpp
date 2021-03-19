@@ -1,6 +1,7 @@
 #ifndef CHEMICALITE_RDTREE_VTAB_INCLUDED
 #define CHEMICALITE_RDTREE_VTAB_INCLUDED
 #include <string>
+#include <unordered_map>
 
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
@@ -18,6 +19,7 @@ public:
 	sqlite3_vtab **pvtab, char **err);
   int disconnect();
   int destroy();
+  int update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid);
 
 private:
   static int init(
@@ -27,6 +29,26 @@ private:
   void decref();
   int get_node_size(int is_create);
   int sql_init(int is_create);
+  int delete_rowid(sqlite3_int64 rowid);
+
+  RDtreeNode * node_new(RDtreeNode *parent);
+  void node_zero(RDtreeNode *node);
+
+  int node_acquire(
+    sqlite3_int64 node_id, RDtreeNode *parent, RDtreeNode **acquired);
+  void node_incref(RDtreeNode *);
+  int node_decref(RDtreeNode *);
+  int node_write(RDtreeNode *node);
+  int node_release(RDtreeNode *node);
+
+  void node_hash_insert(RDtreeNode * node);
+  RDtreeNode * node_hash_lookup(sqlite3_int64 node_id);
+  void node_hash_remove(RDtreeNode * node);
+
+  int increment_bitfreq(uint8_t *bfp);
+  int decrement_bitfreq(uint8_t *bfp);
+  int increment_weightfreq(int weight);
+  int decrement_weightfreq(int weight);
 
   sqlite3 *db;                 /* Host database connection */
   unsigned int flags;          /* Configuration flags */
@@ -37,8 +59,7 @@ private:
   int depth;                   /* Current depth of the rd-tree structure */
   std::string db_name;         /* Name of database containing rd-tree table */
   std::string table_name;      /* Name of rd-tree table */ 
-  //static constexpr const int HASHSIZE = 128;
-  //RDtreeNode *aHash[HASHSIZE]; /* Hash table of in-memory nodes. */ 
+  std::unordered_map<sqlite3_int64, RDtreeNode *> node_hash; /* Hash table of in-memory nodes. */ 
   int n_ref;                   /* Current number of users of this structure */
 
   /* List of nodes removed during a CondenseTree operation. List is

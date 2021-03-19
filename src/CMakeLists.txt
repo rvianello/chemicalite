@@ -18,6 +18,8 @@ add_library(chemicalite MODULE
         bfp_descriptors.cpp
         rdtree.cpp
         rdtree_vtab.cpp
+        #rdtree_node.cpp
+        #rdtree_item.cpp
         versions.cpp
         chemicalite.cpp
         #rdkit_adapter.cpp
