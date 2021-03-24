@@ -730,43 +730,128 @@ int RDtreeVtab::node_release(RDtreeNode *node)
   return rc;
 }
 
-#if 0
+/* 
+** Use node_acquire() to obtain the leaf node containing the record with 
+** rowid iRowid. If successful, set *ppLeaf to point to the node and
+** return SQLITE_OK. If there is no such record in the table, set
+** *ppLeaf to 0 and return SQLITE_OK. If an error occurs, set *ppLeaf
+** to zero and return an SQLite error code.
+*/
+int RDtreeVtab::find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf)
+{
+  int rc = SQLITE_OK;
+  *leaf = nullptr;
+  sqlite3_bind_int64(pReadRowid, 1, rowid);
+  if (sqlite3_step(pReadRowid) == SQLITE_ROW) {
+    sqlite3_int64 node_id = sqlite3_column_int64(pReadRowid, 0);
+    rc = node_acquire(node_id, 0, leaf);
+  }
+  int rc2 = sqlite3_reset(pReadRowid);
+  if (rc == SQLITE_OK) {
+    rc = rc2;
+  }
+  return rc;
+}
+
+/*
+** Return the 64-bit integer value associated with item item of
+** node pNode. If pNode is a leaf node, this is a rowid. If it is
+** an internal node, then the 64-bit integer is a child page number.
+*/
+sqlite3_int64 RDtreeVtab::node_get_rowid(RDtreeNode *node, int item)
+{
+  assert(item < node->size());
+  return read_uint64(&node->data.data()[4 + bytes_per_item*item]);
+}
+
+
+/*
+** One of the items in node node is guaranteed to have a 64-bit 
+** integer value equal to rowid. Return the index of this item.
+*/
+int RDtreeVtab::node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *index)
+{
+  int node_size = node->size();
+  for (int ii = 0; ii < node_size; ++ii) {
+    if (node_get_rowid(node, ii) == rowid) {
+      *index = ii;
+      return SQLITE_OK;
+    }
+  }
+  return SQLITE_CORRUPT_VTAB;
+}
+
+/*
+** Return pointer to the binary fingerprint associated with the given item of
+** the given node. If node is a leaf node, this is a virtual table element.
+** If it is an internal node, then the binary fingerprint defines the 
+** bounds of a child node
+*/
+uint8_t *RDtreeVtab::node_get_bfp(RDtreeNode *node, int item)
+{
+  assert(item < node->size());
+  return &node->data.data()[4 + bytes_per_item*item + 8 /* rowid */ + 4 /* min/max weight */];
+}
+
+/* Return the min weight computed on the fingerprints associated to this
+** item. If pNode is a leaf node then this is the actual population count
+** for the item's fingerprint. On internal nodes the min weight contributes
+** to defining the cell bounds
+*/
+int RDtreeVtab::node_get_min_weight(RDtreeNode *node, int item)
+{
+  assert(item < node->size());
+  return read_uint16(&node->data.data()[4 + bytes_per_item*item + 8]);
+}
+
+/* Return the max weight computed on the fingerprints associated to this
+** item. If pNode is a leaf node then this is the actual population count
+** for the item's fingerprint. On internal nodes the max weight contributes
+** to defining the cell bounds
+*/
+int RDtreeVtab::node_get_max_weight(RDtreeNode *node, int item)
+{
+  assert(item < node->size());
+  return read_uint16(&node->data.data()[4 + bytes_per_item*item + 8 /* rowid */ + 2 /* min weight */]);
+}
+
+
 /*
 ** Remove the entry with rowid=rowid from the rd-tree structure.
 */
 int RDtreeVtab::delete_rowid(sqlite3_int64 rowid) 
 {
   int rc, rc2;                    /* Return code */
-  RDtreeNode *pLeaf = 0;          /* Leaf node containing record rowid */
-  int iItem;                      /* Index of rowid item in pLeaf */
-  RDtreeNode *pRoot;              /* Root node of rtree structure */
+  RDtreeNode *leaf = 0;          /* Leaf node containing record rowid */
+  int item;                      /* Index of rowid item in leaf */
+  RDtreeNode *root;              /* Root node of rtree structure */
 
 
   /* Obtain a reference to the root node to initialise RDtree.iDepth */
-  rc = node_acquire(1, 0, &pRoot);
+  rc = node_acquire(1, 0, &root);
 
   /* Obtain a reference to the leaf node that contains the entry 
   ** about to be deleted. 
   */
   if (rc == SQLITE_OK) {
-    rc = findLeafNode(pRDtree, rowid, &pLeaf);
+    rc = find_leaf_node(rowid, &leaf);
   }
 
   /* Delete the cell in question from the leaf node. */
   if (rc == SQLITE_OK) {
-    rc = nodeRowidIndex(pRDtree, pLeaf, rowid, &iItem);
+    rc = node_rowid_index(leaf, rowid, &item);
     if (rc == SQLITE_OK) {
-      u8 *pBfp = nodeGetBfp(pRDtree, pLeaf, iItem);
-      rc = decrement_bitfreq(pBfp);
+      uint8_t *bfp = node_get_bfp(leaf, item);
+      rc = decrement_bitfreq(bfp);
     }
     if (rc == SQLITE_OK) {
-      int weight = nodeGetMaxWeight(pRDtree, pLeaf, iItem);
+      int weight = node_get_max_weight(leaf, item);
       rc = decrement_weightfreq(weight);
     }
     if (rc == SQLITE_OK) {
-      rc = deleteItem(pRDtree, pLeaf, iItem, 0);
+      rc = delete_item(leaf, item, 0);
     }
-    rc2 = nodeRelease(pRDtree, pLeaf);
+    rc2 = node_decref(leaf);
     if (rc == SQLITE_OK) {
       rc = rc2;
     }
@@ -774,9 +859,9 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
 
   /* Delete the corresponding entry in the <rdtree>_rowid table. */
   if (rc == SQLITE_OK) {
-    sqlite3_bind_int64(pRDtree->pDeleteRowid, 1, rowid);
-    sqlite3_step(pRDtree->pDeleteRowid);
-    rc = sqlite3_reset(pRDtree->pDeleteRowid);
+    sqlite3_bind_int64(pDeleteRowid, 1, rowid);
+    sqlite3_step(pDeleteRowid);
+    rc = sqlite3_reset(pDeleteRowid);
   }
 
   /* Check if the root node now has exactly one child. If so, remove
@@ -787,35 +872,35 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
   ** the root node (the operation that Gutman's paper says to perform 
   ** in this scenario).
   */
-  if (rc == SQLITE_OK && pRDtree->iDepth > 0 && NITEM(pRoot) == 1) {
-    RDtreeNode *pChild;
-    i64 iChild = nodeGetRowid(pRDtree, pRoot, 0);
-    rc = nodeAcquire(pRDtree, iChild, pRoot, &pChild);
+  if (rc == SQLITE_OK && depth > 0 && root->size() == 1) {
+    RDtreeNode *child;
+    sqlite3_int64 child_rowid = node_get_rowid(root, 0);
+    rc = node_acquire(child_rowid, root, &child);
     if( rc==SQLITE_OK ){
-      rc = removeNode(pRDtree, pChild, pRDtree->iDepth - 1);
+      rc = remove_node(child, depth - 1);
     }
-    rc2 = nodeRelease(pRDtree, pChild);
+    rc2 = node_decref(child);
     if (rc == SQLITE_OK) {
       rc = rc2;
     }
     if (rc == SQLITE_OK) {
-      pRDtree->iDepth--;
-      writeInt16(pRoot->zData, pRDtree->iDepth);
-      pRoot->isDirty = 1;
+      --depth;
+      write_uint16(root->data.data(), depth);
+      root->is_dirty = 1;
     }
   }
 
   /* Re-insert the contents of any underfull nodes removed from the tree. */
-  for (pLeaf = pRDtree->pDeleted; pLeaf; pLeaf = pRDtree->pDeleted) {
+  for (leaf = pDeleted; leaf; leaf = pDeleted) {
     if (rc == SQLITE_OK) {
-      rc = reinsertNodeContent(pRDtree, pLeaf);
+      rc = reinsert_node_content(leaf);
     }
-    pRDtree->pDeleted = pLeaf->pNext;
-    sqlite3_free(pLeaf);
+    pDeleted = leaf->next;
+    delete leaf;
   }
 
   /* Release the reference to the root node. */
-  rc2 = nodeRelease(pRDtree, pRoot);
+  rc2 = node_decref(root);
   if (rc == SQLITE_OK) {
     rc = rc2;
   }
@@ -823,6 +908,7 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
   return rc;
 }
 
+#if 0
 /*
 ** The xUpdate method for rdtree module virtual tables.
 */

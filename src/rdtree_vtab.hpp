@@ -30,12 +30,21 @@ private:
   int get_node_size(int is_create);
   int sql_init(int is_create);
   int delete_rowid(sqlite3_int64 rowid);
+  int delete_item(RDtreeNode *node, int item, int height);
+  int remove_node(RDtreeNode *node, int height);
+  int reinsert_node_content(RDtreeNode *node);
 
   RDtreeNode * node_new(RDtreeNode *parent);
   void node_zero(RDtreeNode *node);
 
   int node_acquire(
     sqlite3_int64 node_id, RDtreeNode *parent, RDtreeNode **acquired);
+  int find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf);
+  int node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *index);
+  sqlite3_int64 node_get_rowid(RDtreeNode *node, int item);
+  uint8_t *node_get_bfp(RDtreeNode *node, int item);
+  int node_get_min_weight(RDtreeNode *node, int item);
+  int node_get_max_weight(RDtreeNode *node, int item);
   void node_incref(RDtreeNode *);
   int node_decref(RDtreeNode *);
   int node_write(RDtreeNode *node);
