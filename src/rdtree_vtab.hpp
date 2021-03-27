@@ -31,28 +31,42 @@ private:
   int sql_init(int is_create);
   int delete_rowid(sqlite3_int64 rowid);
   int delete_item(RDtreeNode *node, int item, int height);
+  int insert_item(RDtreeNode *node, RDtreeItem *item, int height);
   int remove_node(RDtreeNode *node, int height);
   int reinsert_node_content(RDtreeNode *node);
+  int choose_leaf_subset(RDtreeItem *item, int height, RDtreeNode **leaf);
+  int choose_leaf_similarity(RDtreeItem *item, int height, RDtreeNode **leaf);
+  int choose_leaf_generic(RDtreeItem *item, int height, RDtreeNode **leaf);
+  int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
 
   RDtreeNode * node_new(RDtreeNode *parent);
   void node_zero(RDtreeNode *node);
 
   int node_acquire(
-    sqlite3_int64 node_id, RDtreeNode *parent, RDtreeNode **acquired);
+    sqlite3_int64 nodeid, RDtreeNode *parent, RDtreeNode **acquired);
   int find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf);
   int node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *index);
   sqlite3_int64 node_get_rowid(RDtreeNode *node, int item);
   uint8_t *node_get_bfp(RDtreeNode *node, int item);
   int node_get_min_weight(RDtreeNode *node, int item);
   int node_get_max_weight(RDtreeNode *node, int item);
+  void node_get_item(RDtreeNode *node, int idx, RDtreeItem *item);
+  int node_insert_item(RDtreeNode *node, RDtreeItem *item);
+  void node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx);
   void node_incref(RDtreeNode *);
   int node_decref(RDtreeNode *);
   int node_write(RDtreeNode *node);
   int node_release(RDtreeNode *node);
 
   void node_hash_insert(RDtreeNode * node);
-  RDtreeNode * node_hash_lookup(sqlite3_int64 node_id);
+  RDtreeNode * node_hash_lookup(sqlite3_int64 nodeid);
   void node_hash_remove(RDtreeNode * node);
+
+  double item_weight_distance(RDtreeItem *a, RDtreeItem *b);
+  int item_weight(RDtreeItem *item);
+  int item_contains(RDtreeItem *a, RDtreeItem *b);
+  int item_growth(RDtreeItem *base, RDtreeItem *added);
+  void item_extend_bounds(RDtreeItem *base, RDtreeItem *added);
 
   int increment_bitfreq(uint8_t *bfp);
   int decrement_bitfreq(uint8_t *bfp);

@@ -13,7 +13,7 @@ struct RDtreeNode {
 
 
   RDtreeNode *parent; /* Parent node in the tree */
-  sqlite3_int64 node_id;
+  sqlite3_int64 nodeid;
   int n_ref;
   int is_dirty;
   Blob data;

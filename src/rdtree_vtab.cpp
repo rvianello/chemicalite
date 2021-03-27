@@ -5,6 +5,7 @@
 #include "rdtree_vtab.hpp"
 #include "rdtree_node.hpp"
 #include "rdtree_item.hpp"
+#include "bfp_ops.hpp"
 
 static const int RDTREE_MAX_BITSTRING_SIZE = 256;
 static const int RDTREE_MAXITEMS = 51;
@@ -542,10 +543,10 @@ void RDtreeVtab::node_zero(RDtreeNode *node)
 ** Search the node hash table for node iNode. If found, return a pointer
 ** to it. Otherwise, return 0.
 */
-RDtreeNode * RDtreeVtab::node_hash_lookup(sqlite3_int64 node_id)
+RDtreeNode * RDtreeVtab::node_hash_lookup(sqlite3_int64 nodeid)
 {
   RDtreeNode *p = nullptr;
-  auto nit = node_hash.find(node_id);
+  auto nit = node_hash.find(nodeid);
   if (nit != node_hash.end()) {
       p = nit->second;
   }
@@ -557,8 +558,8 @@ RDtreeNode * RDtreeVtab::node_hash_lookup(sqlite3_int64 node_id)
 */
 void RDtreeVtab::node_hash_insert(RDtreeNode *node)
 {
-  assert(node_hash.find(node->node_id) == node_hash.end());
-  node_hash[node->node_id] = node;
+  assert(node_hash.find(node->nodeid) == node_hash.end());
+  node_hash[node->nodeid] = node;
 }
 
 /*
@@ -566,8 +567,8 @@ void RDtreeVtab::node_hash_insert(RDtreeNode *node)
 */
 void RDtreeVtab::node_hash_remove(RDtreeNode *node)
 {
-  if (node->node_id != 0) {
-    node_hash.erase(node->node_id);
+  if (node->nodeid != 0) {
+    node_hash.erase(node->nodeid);
   }
 }
 
@@ -575,7 +576,7 @@ void RDtreeVtab::node_hash_remove(RDtreeNode *node)
 ** Obtain a reference to an rd-tree node.
 */
 int RDtreeVtab::node_acquire(
-    sqlite3_int64 node_id, RDtreeNode *parent, RDtreeNode **acquired)
+    sqlite3_int64 nodeid, RDtreeNode *parent, RDtreeNode **acquired)
 {
   int rc;
   int rc2 = SQLITE_OK;
@@ -583,7 +584,7 @@ int RDtreeVtab::node_acquire(
   /* Check if the requested node is already in the hash table. If so,
   ** increase its reference count and return it.
   */
-  RDtreeNode * node = node_hash_lookup(node_id);
+  RDtreeNode * node = node_hash_lookup(nodeid);
   if (node) {
     assert( !parent || !node->parent || node->parent == parent );
     if (parent && !node->parent) {
@@ -595,7 +596,7 @@ int RDtreeVtab::node_acquire(
     return SQLITE_OK;
   }
 
-  sqlite3_bind_int64(pReadNode, 1, node_id);
+  sqlite3_bind_int64(pReadNode, 1, nodeid);
   rc = sqlite3_step(pReadNode);
 
   if (rc == SQLITE_ROW) {
@@ -604,7 +605,7 @@ int RDtreeVtab::node_acquire(
       node = new RDtreeNode; // FIXME
       node->parent = parent;
       node->n_ref = 1;
-      node->node_id = node_id;
+      node->nodeid = nodeid;
       node->is_dirty = 0;
       node->next = nullptr;
       node->data.resize(node_size);
@@ -624,7 +625,7 @@ int RDtreeVtab::node_acquire(
   ** are the leaves, and so on. If the depth as specified on the root node
   ** is greater than RDTREE_MAX_DEPTH, the rd-tree structure must be corrupt.
   */
-  if (node && node_id == 1) {
+  if (node && nodeid == 1) {
     depth = read_uint16(node->data.data());
     if (depth > RDTREE_MAX_DEPTH) {
       rc = SQLITE_CORRUPT_VTAB;
@@ -665,8 +666,8 @@ int RDtreeVtab::node_write(RDtreeNode *node)
 {
   int rc = SQLITE_OK;
   if (node->is_dirty) {
-    if (node->node_id) {
-      sqlite3_bind_int64(pWriteNode, 1, node->node_id);
+    if (node->nodeid) {
+      sqlite3_bind_int64(pWriteNode, 1, node->nodeid);
     }
     else {
       sqlite3_bind_null(pWriteNode, 1);
@@ -675,8 +676,8 @@ int RDtreeVtab::node_write(RDtreeNode *node)
     sqlite3_step(pWriteNode);
     node->is_dirty = 0;
     rc = sqlite3_reset(pWriteNode);
-    if (node->node_id == 0 && rc == SQLITE_OK) {
-      node->node_id = sqlite3_last_insert_rowid(db);
+    if (node->nodeid == 0 && rc == SQLITE_OK) {
+      node->nodeid = sqlite3_last_insert_rowid(db);
       node_hash_insert(node);
     }
   }
@@ -716,7 +717,7 @@ int RDtreeVtab::node_decref(RDtreeNode *node)
 int RDtreeVtab::node_release(RDtreeNode *node)
 {
   int rc = SQLITE_OK;
-  if (node->node_id == 1) {
+  if (node->nodeid == 1) {
     depth = -1;
   }
   if (node->parent) {
@@ -743,8 +744,8 @@ int RDtreeVtab::find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf)
   *leaf = nullptr;
   sqlite3_bind_int64(pReadRowid, 1, rowid);
   if (sqlite3_step(pReadRowid) == SQLITE_ROW) {
-    sqlite3_int64 node_id = sqlite3_column_int64(pReadRowid, 0);
-    rc = node_acquire(node_id, 0, leaf);
+    sqlite3_int64 nodeid = sqlite3_column_int64(pReadRowid, 0);
+    rc = node_acquire(nodeid, 0, leaf);
   }
   int rc2 = sqlite3_reset(pReadRowid);
   if (rc == SQLITE_OK) {
@@ -813,6 +814,331 @@ int RDtreeVtab::node_get_max_weight(RDtreeNode *node, int item)
 {
   assert(item < node->size());
   return read_uint16(&node->data.data()[4 + bytes_per_item*item + 8 /* rowid */ + 2 /* min weight */]);
+}
+
+/*
+** Deserialize item iItem of node pNode. Populate the structure pointed
+** to by pItem with the results.
+*/
+void RDtreeVtab::node_get_item(RDtreeNode *node, int idx, RDtreeItem *item)
+{
+  item->rowid = node_get_rowid(node, idx);
+  item->min_weight = read_uint16(&node->data.data()[4 + bytes_per_item*idx + 8 /* rowid */]);
+  item->max_weight = read_uint16(&node->data.data()[4 + bytes_per_item*idx + 8 /* rowid */ + 2 /* min weight */]);
+  uint8_t *bfp = node_get_bfp(node, idx);
+  item->bfp.assign(bfp, bfp+bfp_size);
+}
+
+/*
+**
+*/
+double RDtreeVtab::item_weight_distance(RDtreeItem *a, RDtreeItem *b)
+{
+  int d1 = abs(a->min_weight - b->min_weight);
+  int d2 = abs(a->max_weight - b->max_weight);
+  return (double) (d1 + d2);
+  /* return (double) (d1 > d2) ? d1 : d2; */
+}
+
+int RDtreeVtab::item_weight(RDtreeItem *item)
+{
+  return bfp_op_weight(bfp_size, item->bfp.data());
+}
+
+/*
+** Return true if item p2 is a subset of item p1. False otherwise.
+*/
+int RDtreeVtab::item_contains(RDtreeItem *a, RDtreeItem *b)
+{
+  return (
+    a->min_weight <= b->min_weight &&
+	  a->max_weight >= b->max_weight &&
+	  bfp_op_contains(a->bfp.data(), b->bfp.data()) );
+}
+
+/*
+** Return the amount item pBase would grow by if it were unioned with pAdded.
+*/
+int RDtreeVtab::item_growth(RDtreeItem *base, RDtreeItem *added)
+{
+  return bfp_op_growth(bfp_size, base->bfp.data(), added->bfp.data());
+}
+
+/*
+** Extend the bounds of p1 to contain p2
+*/
+void RDtreeVtab::item_extend_bounds(RDtreeItem *base, RDtreeItem *added)
+{
+  bfp_op_union(bfp_size, base->bfp.data(), added->bfp.data());
+  if (base->min_weight > added->min_weight) { base->min_weight = added->min_weight; }
+  if (base->max_weight < added->max_weight) { base->max_weight = added->max_weight; }
+}
+
+/*
+** This function implements the chooseLeaf algorithm from Gutman[84].
+** ChooseSubTree in r*tree terminology.
+*/
+int RDtreeVtab::choose_leaf_subset(
+			    RDtreeItem *item, /* Item to insert into rdtree */
+			    int height, /* Height of sub-tree at item */
+			    RDtreeNode **leaf /* OUT: Selected leaf page */
+			    )
+{
+  int rc;
+  RDtreeNode *node;
+  rc = node_acquire(1, 0, &node);
+
+  for (int ii = 0; rc == SQLITE_OK && ii < (depth - height); ii++) {
+    sqlite3_int64 best = 0;
+
+    int min_growth = 0;
+    int min_weight = 0;
+
+    int node_size = node->size();
+    RDtreeNode *child;
+
+    //RDtreeItem *aItem = 0;
+
+    /* Select the child node which will be enlarged the least if item
+    ** is inserted into it. Resolve ties by choosing the entry with
+    ** the smallest weight.
+    */
+    for (int idx = 0; idx < node_size; idx++) {
+      RDtreeItem curr_item;
+      int growth;
+      int weight;
+      node_get_item(node, idx, &curr_item);
+      growth = item_growth(&curr_item, item);
+      weight = item_weight(&curr_item);
+
+      if (idx == 0 || growth < min_growth || (growth == min_growth && weight < min_weight) ) {
+        min_growth = growth;
+        min_weight = weight;
+        best = curr_item.rowid;
+      }
+    }
+
+    //sqlite3_free(aItem);
+    rc = node_acquire(best, node, &child);
+    node_decref(node);
+    node = child;
+  }
+
+  *leaf = node;
+  return rc;
+}
+
+int RDtreeVtab::choose_leaf_similarity(
+		RDtreeItem *item,
+		int height,
+		RDtreeNode **leaf
+		)
+{
+  int rc;
+  RDtreeNode *node;
+  rc = node_acquire(1, 0, &node);
+
+  for (int ii = 0; rc == SQLITE_OK && ii < (depth - height); ii++) {
+    sqlite3_int64 best = 0;
+
+    int min_growth = 0;
+    double min_distance = 0.;
+    
+    int node_size = node->size();
+    RDtreeNode *child;
+
+    /* Select the child node which will be enlarged the least if pItem
+    ** is inserted into it.
+    */
+    for (int idx = 0; idx < node_size; idx++) {
+      RDtreeItem curr_item;
+      double distance;
+      int growth;
+      node_get_item(node, idx, &curr_item);
+      distance = item_weight_distance(&curr_item, item);
+      growth = item_growth(&curr_item, item);
+
+      if (idx == 0 || distance < min_distance || (distance == min_distance && growth < min_growth) ) {
+        min_distance = distance;
+        min_growth = growth;
+        best = curr_item.rowid;
+      }
+    }
+
+    rc = node_acquire(best, node, &child);
+    node_decref(node);
+    node = child;
+  }
+
+  *leaf = node;
+  return rc;
+}
+
+int RDtreeVtab::choose_leaf_generic(
+	RDtreeItem *item, /* Item to insert into rdtree */
+	int height, /* Height of sub-tree at pItem */
+	RDtreeNode **leaf /* OUT: Selected leaf page */
+	)
+{
+  int rc;
+  RDtreeNode *node;
+  rc = node_acquire(1, 0, &node);
+
+  for (int ii = 0; rc == SQLITE_OK && ii < (depth - height); ii++) {
+    sqlite3_int64 best = 0;
+
+    int min_growth = 0;
+    double min_distance = 0.;
+    int min_weight = 0;
+    
+    int node_size = node->size();
+    RDtreeNode *child;
+
+    /* Select the child node which will be enlarged the least if pItem
+    ** is inserted into it.
+    */
+    for (int idx = 0; idx < node_size; idx++) {
+      RDtreeItem curr_item;      
+      node_get_item(node, idx, &curr_item);
+      
+      int growth = item_growth(&curr_item, item);
+      double distance = item_weight_distance(&curr_item, item);
+      int weight = item_weight(&curr_item);
+      
+      if (idx == 0 || growth < min_growth ||
+	        (growth == min_growth && distance < min_distance) ||
+	        (growth == min_growth && distance == min_distance && weight < min_weight)) {
+        min_growth = growth;
+        min_distance = distance;
+        min_weight = weight;
+        best = curr_item.rowid;
+      }
+    }
+
+    rc = node_acquire(best, node, &child);
+    node_decref(node);
+    node = child;
+  }
+
+  *leaf = node;
+  return rc;
+}
+
+int RDtreeVtab::choose_leaf(
+		RDtreeItem *item, /* Item to insert into rdtree */
+		int height, /* Height of sub-tree rooted at pItem */
+		RDtreeNode **leaf /* OUT: Selected leaf page */
+		)
+{
+  int rc = SQLITE_ERROR;
+  if (flags & RDTREE_OPT_FOR_SUBSET_QUERIES) {
+    rc = choose_leaf_subset(item, height, leaf);
+  }
+  else if (flags & RDTREE_OPT_FOR_SIMILARITY_QUERIES) {
+    rc = choose_leaf_similarity(item, height, leaf);
+  }
+  else {
+    rc = choose_leaf_generic(item, height, leaf);
+  }
+  return rc;
+}
+
+/*
+** Overwrite item iItem of node pNode with the contents of pItem.
+*/
+void RDtreeVtab::node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx)
+{
+  uint8_t *p = &node->data.data()[4 + bytes_per_item*idx];
+  p += write_uint64(p, item->rowid);
+  p += write_uint16(p, item->min_weight);
+  p += write_uint16(p, item->max_weight);
+  memcpy(p, item->bfp.data(), bfp_size);
+  node->is_dirty = 1;
+}
+
+/*
+** Insert the contents of item pItem into node pNode. If the insert
+** is successful, return SQLITE_OK.
+**
+** If there is not enough free space in pNode, return SQLITE_FULL.
+*/
+int RDtreeVtab::node_insert_item(RDtreeNode *node, RDtreeItem *item)
+{
+  int node_size = node->size();  /* Current number of items in pNode */
+
+  assert(node_size <= node_capacity);
+
+  if (node_size < node_capacity) {
+    node_overwrite_item(node, item, node_size);
+    write_uint16(&node->data.data()[2], node_size+1);
+    node->is_dirty = 1;
+  } 
+
+  return (node_size == node_capacity) ? SQLITE_FULL : SQLITE_OK;
+}
+
+/*
+** Insert item pItem into node pNode. Node pNode is the head of a 
+** subtree iHeight high (leaf nodes have iHeight==0).
+*/
+int RDtreeVtab::insert_item(RDtreeNode *node, RDtreeItem *item, int height)
+{
+  int rc = SQLITE_OK;
+
+  if (height > 0) {
+    RDtreeNode *child = node_hash_lookup(item->rowid);
+    if (child) {
+      node_decref(child->parent);
+      node_incref(node);
+      child->parent = node;
+    }
+  }
+
+  if (node_insert_item(node, item)) {
+    /* node was full */
+    rc = splitNode(pRDtree, node, item, height);
+  }
+  else {
+    /* insertion succeded */
+    rc = adjustTree(pRDtree, node, item);
+    if (rc == SQLITE_OK) {
+      if (height == 0) {
+        rc = rowidWrite(pRDtree, item->rowid, node->nodeid);
+      }
+      else {
+        rc = parentWrite(pRDtree, item->rowid, node->nodeid);
+      }
+    }
+  }
+
+  return rc;
+}
+
+int RDtreeVtab::reinsert_node_content(RDtreeNode *node)
+{
+  int ii;
+  int rc = SQLITE_OK;
+  int nItem = node->size();
+
+  for (ii = 0; rc == SQLITE_OK && ii < nItem; ii++) {
+    RDtreeItem item;
+    node_get_item(node, ii, &item);
+
+    /* Find a node to store this cell in. node->nodeid currently contains
+    ** the height of the sub-tree headed by the cell.
+    */
+    RDtreeNode *insert;
+    rc = choose_leaf(&item, (int)node->nodeid, &insert);
+    if (rc == SQLITE_OK) {
+      int rc2;
+      rc = rdtreeInsertItem(pRDtree, insert, &item, (int)node->nodeid);
+      rc2 = node_decref(insert);
+      if (rc==SQLITE_OK) {
+        rc = rc2;
+      }
+    }
+  }
+  return rc;
 }
 
 
