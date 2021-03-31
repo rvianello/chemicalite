@@ -7,6 +7,7 @@
 extern const sqlite3_api_routines *sqlite3_api;
 
 class RDtreeNode;
+class RDtreeItem;
 
 class RDtreeVtab : public sqlite3_vtab {
 
@@ -34,10 +35,15 @@ private:
   int insert_item(RDtreeNode *node, RDtreeItem *item, int height);
   int remove_node(RDtreeNode *node, int height);
   int reinsert_node_content(RDtreeNode *node);
+  int split_node(RDtreeNode *node, RDtreeItem *item, int height);
   int choose_leaf_subset(RDtreeItem *item, int height, RDtreeNode **leaf);
   int choose_leaf_similarity(RDtreeItem *item, int height, RDtreeNode **leaf);
   int choose_leaf_generic(RDtreeItem *item, int height, RDtreeNode **leaf);
   int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
+  int update_mapping(sqlite3_int64 rowid, RDtreeNode *node, int height);
+  int rowid_write(sqlite3_int64 rowid, sqlite3_int64 nodeid);
+  int parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid);
+  int adjust_tree(RDtreeNode *node, RDtreeItem *item);
 
   RDtreeNode * node_new(RDtreeNode *parent);
   void node_zero(RDtreeNode *node);
@@ -46,6 +52,7 @@ private:
     sqlite3_int64 nodeid, RDtreeNode *parent, RDtreeNode **acquired);
   int find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf);
   int node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *index);
+  int node_parent_index(RDtreeNode *node, int *index);
   sqlite3_int64 node_get_rowid(RDtreeNode *node, int item);
   uint8_t *node_get_bfp(RDtreeNode *node, int item);
   int node_get_min_weight(RDtreeNode *node, int item);

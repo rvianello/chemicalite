@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <vector>
 
 #include "rdtree_vtab.hpp"
 #include "rdtree_node.hpp"
@@ -513,6 +514,28 @@ int RDtreeVtab::decrement_weightfreq(int weight)
 }
 
 /*
+** Write mapping (iRowid->iNode) to the <rdtree>_rowid table.
+*/
+int RDtreeVtab::rowid_write(sqlite3_int64 rowid, sqlite3_int64 nodeid)
+{
+  sqlite3_bind_int64(pWriteRowid, 1, rowid);
+  sqlite3_bind_int64(pWriteRowid, 2, nodeid);
+  sqlite3_step(pWriteRowid);
+  return sqlite3_reset(pWriteRowid);
+}
+
+/*
+** Write mapping (iNode->iPar) to the <rdtree>_parent table.
+*/
+int RDtreeVtab::parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid)
+{
+  sqlite3_bind_int64(pWriteParent, 1, nodeid);
+  sqlite3_bind_int64(pWriteParent, 2, parentid);
+  sqlite3_step(pWriteParent);
+  return sqlite3_reset(pWriteParent);
+}
+
+/*
 ** Allocate and return new rd-tree node. Initially, (RDtreeNode.iNode==0),
 ** indicating that node has not yet been assigned a node number. It is
 ** assigned a node number when nodeWrite() is called to write the
@@ -528,15 +551,6 @@ RDtreeNode * RDtreeVtab::node_new(RDtreeNode *parent)
   node->next = nullptr;
   node_incref(parent);
   return node;
-}
-
-/*
-** Clear the content of node p (set all bytes to 0x00).
-*/
-void RDtreeVtab::node_zero(RDtreeNode *node)
-{
-  memset(&node->data.data()[2], 0, node_size-2);
-  node->is_dirty = 1;
 }
 
 /*
@@ -853,7 +867,7 @@ int RDtreeVtab::item_contains(RDtreeItem *a, RDtreeItem *b)
   return (
     a->min_weight <= b->min_weight &&
 	  a->max_weight >= b->max_weight &&
-	  bfp_op_contains(a->bfp.data(), b->bfp.data()) );
+	  bfp_op_contains(bfp_size, a->bfp.data(), b->bfp.data()) );
 }
 
 /*
@@ -1044,6 +1058,34 @@ int RDtreeVtab::choose_leaf(
 }
 
 /*
+** An item with the same content as pItem has just been inserted into
+** the node pNode. This function updates the bounds in
+** all ancestor elements.
+*/
+int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
+{
+  RDtreeNode *p = node;
+  while (p->parent) {
+    RDtreeNode *parent = p->parent;
+    RDtreeItem item;
+    int idx;
+
+    if (node_parent_index(p, &idx)) {
+      return SQLITE_CORRUPT_VTAB;
+    }
+
+    node_get_item(parent, idx, &item);
+    if (!item_contains(&item, new_item)) {
+      item_extend_bounds(&item, new_item);
+      node_overwrite_item(parent, &item, idx);
+    }
+ 
+    p = parent;
+  }
+  return SQLITE_OK;
+}
+
+/*
 ** Overwrite item iItem of node pNode with the contents of pItem.
 */
 void RDtreeVtab::node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx)
@@ -1078,6 +1120,170 @@ int RDtreeVtab::node_insert_item(RDtreeNode *node, RDtreeItem *item)
 }
 
 /*
+** Clear the content of node p (set all bytes to 0x00).
+*/
+void RDtreeVtab::node_zero(RDtreeNode *p)
+{
+  assert(p);
+  memset(&p->data.data()[2], 0, node_size-2);
+  p->is_dirty = 1;
+}
+
+int RDtreeVtab::update_mapping(sqlite3_int64 rowid, RDtreeNode *node, int height)
+{
+  if (height > 0) {
+    RDtreeNode *child = node_hash_lookup(rowid);
+    if (child) {
+      node_decref(child->parent);
+      node_incref(node);
+      child->parent = node;
+    }
+  }
+
+  if (height == 0) {
+    return rowid_write(rowid, node->nodeid);
+  }
+  else {
+    return parent_write(rowid, node->nodeid);
+  }
+}
+
+/*
+** Return the index of the parent's item containing a pointer to node pNode.
+** If pNode is the root node, return -1.
+*/
+int RDtreeVtab::node_parent_index(RDtreeNode *node, int *index)
+{
+  RDtreeNode *parent = node->parent;
+  if (parent) {
+    return node_rowid_index(parent, node->nodeid, index);
+  }
+  *index = -1;
+  return SQLITE_OK;
+}
+
+int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
+{
+  int new_item_is_right = 0;
+
+  int rc = SQLITE_OK;
+  int node_size = node->size();
+
+  RDtreeNode *left = 0;
+  RDtreeNode *right = 0;
+
+  RDtreeItem leftbounds;
+  RDtreeItem rightbounds;
+
+  /* Allocate an array and populate it with a copy of pItem and 
+  ** all items from node left. Then zero the original node.
+  */
+  std::vector<RDtreeItem> items(node_size + 1); // TODO: try/catch
+  for (int i = 0; i < node_size; i++) {
+    node_get_item(node, i, &items[i]);
+  }
+  node_zero(node);
+  items[node_size] = *item;
+  node_size += 1;
+
+  if (node->nodeid == 1) { /* splitting the root node */
+    right = node_new(node);
+    left = node_new(node);
+    depth++;
+    node->is_dirty = 1;
+    write_uint16(node->data.data(), depth);
+  }
+  else {
+    left = node;
+    node_incref(left);
+    right = node_new(left->parent);
+  }
+
+  if (!left || !right) {
+    rc = SQLITE_NOMEM;
+    goto splitnode_out;
+  }
+
+  memset(left->data.data(), 0, node_size);
+  memset(right->data.data(), 0, node_size);
+
+  rc = assignItems(pRDtree, items, node_size, left, right, 
+		   &leftbounds, &rightbounds);
+
+  if (rc != SQLITE_OK) {
+    goto splitnode_out;
+  }
+
+  /* Ensure both child nodes have node numbers assigned to them by calling
+  ** nodeWrite(). Node right always needs a node number, as it was created
+  ** by nodeNew() above. But node left sometimes already has a node number.
+  ** In this case avoid the call to nodeWrite().
+  */
+  if ((SQLITE_OK != (rc = node_write(right))) || 
+      (0 == left->nodeid && SQLITE_OK != (rc = node_write(left)))) {
+    goto splitnode_out;
+  }
+
+  rightbounds.rowid = right->nodeid;
+  leftbounds.rowid = left->nodeid;
+
+  if (node->nodeid == 1) {
+    rc = insert_item(left->parent, &leftbounds, height+1);
+    if (rc != SQLITE_OK) {
+      goto splitnode_out;
+    }
+  }
+  else {
+    RDtreeNode *parent = left->parent;
+    int parent_idx;
+    rc = node_parent_index(left, &parent_idx);
+    if (rc == SQLITE_OK) {
+      node_overwrite_item(parent, &leftbounds, parent_idx);
+      rc = adjust_tree(parent, &leftbounds);
+    }
+    if (rc != SQLITE_OK) {
+      goto splitnode_out;
+    }
+  }
+
+  if ((rc = 
+       insert_item(right->parent, &rightbounds, height+1))) {
+    goto splitnode_out;
+  }
+
+  int right_size = right->size();
+  for (int i = 0; i < right_size; i++) {
+    sqlite3_int64 rowid = node_get_rowid(right, i);
+    rc = update_mapping(rowid, right, height);
+    if (rowid == item->rowid) {
+      new_item_is_right = 1;
+    }
+    if (rc != SQLITE_OK) {
+      goto splitnode_out;
+    }
+  }
+
+  if (node->nodeid == 1) {
+    int left_size = left->size();
+    for (int i = 0; i < left_size; i++) {
+      sqlite3_int64 rowid = node_get_rowid(left, i);
+      rc = update_mapping(rowid, left, height);
+      if (rc != SQLITE_OK) {
+        goto splitnode_out;
+      }
+    }
+  }
+  else if (new_item_is_right == 0) {
+    rc = update_mapping(item->rowid, left, height);
+  }
+
+splitnode_out:
+  node_decref(right);
+  node_decref(left);
+  return rc;
+}
+
+/*
 ** Insert item pItem into node pNode. Node pNode is the head of a 
 ** subtree iHeight high (leaf nodes have iHeight==0).
 */
@@ -1096,17 +1302,17 @@ int RDtreeVtab::insert_item(RDtreeNode *node, RDtreeItem *item, int height)
 
   if (node_insert_item(node, item)) {
     /* node was full */
-    rc = splitNode(pRDtree, node, item, height);
+    rc = split_node(node, item, height);
   }
   else {
     /* insertion succeded */
-    rc = adjustTree(pRDtree, node, item);
+    rc = adjust_tree(node, item);
     if (rc == SQLITE_OK) {
       if (height == 0) {
-        rc = rowidWrite(pRDtree, item->rowid, node->nodeid);
+        rc = rowid_write(item->rowid, node->nodeid);
       }
       else {
-        rc = parentWrite(pRDtree, item->rowid, node->nodeid);
+        rc = parent_write(item->rowid, node->nodeid);
       }
     }
   }
@@ -1131,7 +1337,7 @@ int RDtreeVtab::reinsert_node_content(RDtreeNode *node)
     rc = choose_leaf(&item, (int)node->nodeid, &insert);
     if (rc == SQLITE_OK) {
       int rc2;
-      rc = rdtreeInsertItem(pRDtree, insert, &item, (int)node->nodeid);
+      rc = insert_item(insert, &item, (int)node->nodeid);
       rc2 = node_decref(insert);
       if (rc==SQLITE_OK) {
         rc = rc2;
