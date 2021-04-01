@@ -1903,7 +1903,6 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
   return rc;
 }
 
-#if 0
 /*
 ** The xUpdate method for rdtree module virtual tables.
 */
@@ -1938,8 +1937,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
 
       rowid = sqlite3_value_int64(argv[2]);
 
-      if ((sqlite3_value_type(argv[0]) == SQLITE_NULL) ||
-	  (sqlite3_value_int64(argv[0]) != rowid)) {
+      if ((sqlite3_value_type(argv[0]) == SQLITE_NULL) || (sqlite3_value_int64(argv[0]) != rowid)) {
         sqlite3_bind_int64(pReadRowid, 1, rowid);
         int steprc = sqlite3_step(pReadRowid);
         rc = sqlite3_reset(pReadRowid);
@@ -1960,15 +1958,15 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
     if (sqlite3_value_type(argv[3]) != SQLITE_BLOB) {
       rc = SQLITE_MISMATCH;
     }
-    else if (sqlite3_value_bytes(argv[3]) != pRDtree->iBfpSize) {
+    else if (sqlite3_value_bytes(argv[3]) != bfp_size) {
       rc = SQLITE_MISMATCH;
     }
     else {
       if (bHaveRowid) {
-	item.iRowid = rowid;
+        item.rowid = rowid;
       }
-      memcpy(item.aBfp, sqlite3_value_blob(argv[3]), pRDtree->iBfpSize);
-      item.iMinWeight = item.iMaxWeight = bfp_op_weight(pRDtree->iBfpSize, item.aBfp);
+      memcpy(item.bfp.data(), sqlite3_value_blob(argv[3]), bfp_size);
+      item.min_weight = item.max_weight = bfp_op_weight(bfp_size, item.bfp.data());
     }
 
     if (rc != SQLITE_OK) {
@@ -1994,28 +1992,28 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
 
     /* Figure out the rowid of the new row. */
     if (bHaveRowid == 0) {
-      rc = newRowid(pRDtree, &item.iRowid);
+      rc = new_rowid(&item.rowid);
     }
-    *pRowid = item.iRowid;
+    *pRowid = item.rowid;
 
     if (rc == SQLITE_OK) {
-      rc = chooseLeaf(pRDtree, &item, 0, &pLeaf);
+      rc = choose_leaf(&item, 0, &pLeaf);
     }
 
     if (rc == SQLITE_OK) {
       int rc2;
-      rc = rdtreeInsertItem(pRDtree, pLeaf, &item, 0);
-      rc2 = nodeRelease(pRDtree, pLeaf);
+      rc = insert_item(pLeaf, &item, 0);
+      rc2 = node_decref(pLeaf);
       if (rc == SQLITE_OK) {
         rc = rc2;
       }
     }
 
     if (rc == SQLITE_OK) {
-      rc = increment_bitfreq(pRDtree, item.aBfp);
+      rc = increment_bitfreq(item.bfp.data());
     }
     if (rc == SQLITE_OK) {
-      rc = increment_weightfreq(pRDtree, item.iMaxWeight);
+      rc = increment_weightfreq(item.max_weight);
     }
   }
 
@@ -2023,7 +2021,20 @@ update_end:
   decref();
   return rc;
 }
-#endif
+
+/*
+** Select a currently unused rowid for a new rd-tree record.
+*/
+int RDtreeVtab::new_rowid(sqlite3_int64 *rowid)
+{
+  int rc;
+  sqlite3_bind_null(pWriteRowid, 1);
+  sqlite3_bind_null(pWriteRowid, 2);
+  sqlite3_step(pWriteRowid);
+  rc = sqlite3_reset(pWriteRowid);
+  *rowid = sqlite3_last_insert_rowid(db);
+  return rc;
+}
 
 void RDtreeVtab::incref()
 {

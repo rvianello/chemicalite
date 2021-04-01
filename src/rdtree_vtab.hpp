@@ -20,7 +20,7 @@ public:
 	sqlite3_vtab **pvtab, char **err);
   int disconnect();
   int destroy();
-  int update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid);
+  int update(int argc, sqlite3_value **argv, sqlite_int64 *rowid);
 
 private:
   static int init(
@@ -73,6 +73,7 @@ private:
   int adjust_tree(RDtreeNode *node, RDtreeItem *item);
   int fix_node_bounds(RDtreeNode *node);
   int fix_leaf_parent(RDtreeNode *leaf);
+  int new_rowid(sqlite3_int64 *rowid);
 
   RDtreeNode * node_new(RDtreeNode *parent);
   void node_zero(RDtreeNode *node);

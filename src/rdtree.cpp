@@ -8,24 +8,6 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "rdtree_vtab.hpp"
 
 /* 
-** RDtree virtual table module xDisconnect method.
-*/
-static int rdtreeDisconnect(sqlite3_vtab *vtab)
-{
-  RDtreeVtab *rdtree = (RDtreeVtab *)vtab;
-  return rdtree->disconnect();
-}
-
-/* 
-** RDtree virtual table module xDestroy method.
-*/
-static int rdtreeDestroy(sqlite3_vtab *vtab)
-{
-  RDtreeVtab *rdtree = (RDtreeVtab *)vtab;
-  return rdtree->destroy();
-}
-
-/* 
 ** RDtree virtual table module xCreate method.
 */
 static int rdtreeCreate(sqlite3 *db, void *paux,
@@ -47,6 +29,35 @@ static int rdtreeConnect(sqlite3 *db, void *paux,
   return RDtreeVtab::connect(db, paux, argc, argv, pvtab, pzErr);
 }
 
+/* 
+** RDtree virtual table module xDisconnect method.
+*/
+static int rdtreeDisconnect(sqlite3_vtab *vtab)
+{
+  RDtreeVtab *rdtree = (RDtreeVtab *)vtab;
+  return rdtree->disconnect();
+}
+
+/* 
+** RDtree virtual table module xDestroy method.
+*/
+static int rdtreeDestroy(sqlite3_vtab *vtab)
+{
+  RDtreeVtab *rdtree = (RDtreeVtab *)vtab;
+  return rdtree->destroy();
+}
+
+/* 
+** RDtree virtual table module xUpdate method.
+*/
+static int rdtreeUpdate(
+  sqlite3_vtab *vtab, int argc, sqlite3_value **argv, sqlite_int64 *rowid)
+{
+  RDtreeVtab *rdtree = (RDtreeVtab *)vtab;
+  return rdtree->update(argc, argv, rowid);
+}
+
+
 static sqlite3_module rdtreeModule = {
   0,                           /* iVersion */
   rdtreeCreate,                /* xCreate - create a table */
@@ -61,7 +72,7 @@ static sqlite3_module rdtreeModule = {
   0, //rdtreeEof,                   /* xEof */
   0, //rdtreeColumn,                /* xColumn - read data */
   0, //rdtreeRowid,                 /* xRowid - read data */
-  0, //rdtreeUpdate,                /* xUpdate - write data */
+  rdtreeUpdate,                /* xUpdate - write data */
   0,                           /* xBegin - begin transaction */
   0,                           /* xSync - sync transaction */
   0,                           /* xCommit - commit transaction */
