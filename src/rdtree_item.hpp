@@ -6,7 +6,8 @@ extern const sqlite3_api_routines *sqlite3_api;
 /* 
 ** Structure to store a deserialized rd-tree record.
 */
-struct RDtreeItem {
+class RDtreeItem {
+public:
   sqlite3_int64 rowid;
   int min_weight;
   int max_weight;

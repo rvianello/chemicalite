@@ -8,7 +8,8 @@ extern const sqlite3_api_routines *sqlite3_api;
 /* 
 ** An rd-tree structure node.
 */
-struct RDtreeNode {
+class RDtreeNode {
+public:
   int size() {return read_uint16(&data.data()[2]);}
 
 
