@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstring>
+#include <cmath>
 #include <vector>
 
 #include "rdtree_vtab.hpp"
@@ -1099,6 +1100,19 @@ void RDtreeVtab::node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx
 }
 
 /*
+** Remove the item with index iItem from node pNode.
+*/
+void RDtreeVtab::node_delete_item(RDtreeNode *node, int iItem)
+{
+  uint8_t *dst = &node->data.data()[4 + bytes_per_item*iItem];
+  uint8_t *src = &dst[bytes_per_item];
+  int bytes = (node->size() - iItem - 1) * bytes_per_item;
+  memmove(dst, src, bytes);
+  write_uint16(&node->data.data()[2], node->size()-1);
+  node->is_dirty = 1;
+}
+
+/*
 ** Insert the contents of item pItem into node pNode. If the insert
 ** is successful, return SQLITE_OK.
 **
@@ -1127,6 +1141,275 @@ void RDtreeVtab::node_zero(RDtreeNode *p)
   assert(p);
   memset(&p->data.data()[2], 0, node_size-2);
   p->is_dirty = 1;
+}
+
+/*
+** Pick the next item to be inserted into one of the two subsets. Select the
+** one associated to a strongest "preference" for one of the two.
+*/
+void RDtreeVtab::pick_next_generic(
+			    RDtreeItem *aItem, int nItem, int *aiUsed,
+			    RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+			    RDtreeItem */*pLeftBounds*/, RDtreeItem */*pRightBounds*/,
+			    RDtreeItem **ppNext, int *pPreferRight)
+{
+  int iSelect = -1;
+  int preferRight = 0;
+  double dMaxPreference = -1.;
+  int ii;
+
+  for(ii = 0; ii < nItem; ii++){
+    if( aiUsed[ii]==0 ){
+      double left 
+        = 1. - bfp_op_tanimoto(bfp_size, 
+			       aItem[ii].bfp.data(), pLeftSeed->bfp.data());
+      double right 
+        = 1. - bfp_op_tanimoto(bfp_size, 
+			       aItem[ii].bfp.data(), pRightSeed->bfp.data());
+      double diff = left - right;
+      double preference = 0.;
+      if ((left + right) > 0.) {
+        preference = fabs(diff)/(left + right);
+      }
+      if (iSelect < 0 || preference > dMaxPreference) {
+        dMaxPreference = preference;
+        iSelect = ii;
+        preferRight = diff > 0.;
+      }
+    }
+  }
+  aiUsed[iSelect] = 1;
+  *ppNext = &aItem[iSelect];
+  *pPreferRight = preferRight;
+}
+
+void RDtreeVtab::pick_next_subset(
+			   RDtreeItem *aItem, int nItem, int *aiUsed,
+			   RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+			   RDtreeItem */*pLeftBounds*/, RDtreeItem */*pRightBounds*/,
+			   RDtreeItem **ppNext, int *pPreferRight)
+{
+  int iSelect = -1;
+  int preferRight = 0;
+  double dMaxPreference = -1.;
+  int ii;
+
+  for(ii = 0; ii < nItem; ii++){
+    if( aiUsed[ii]==0 ){
+      double left 
+        = 1. - bfp_op_tanimoto(bfp_size, 
+			       aItem[ii].bfp.data(), pLeftSeed->bfp.data());
+      double right 
+        = 1. - bfp_op_tanimoto(bfp_size, 
+			       aItem[ii].bfp.data(), pRightSeed->bfp.data());
+      double diff = left - right;
+      double preference = 0.;
+      if ((left + right) > 0.) {
+        preference = fabs(diff)/(left + right);
+      }
+      if (iSelect < 0 || preference > dMaxPreference) {
+        dMaxPreference = preference;
+        iSelect = ii;
+        preferRight = diff > 0.;
+      }
+    }
+  }
+  aiUsed[iSelect] = 1;
+  *ppNext = &aItem[iSelect];
+  *pPreferRight = preferRight;
+}
+
+void RDtreeVtab::pick_next_similarity(
+			       RDtreeItem *aItem, int nItem, int *aiUsed,
+			       RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+			       RDtreeItem */*pLeftBounds*/,
+			       RDtreeItem */*pRightBounds*/,
+			       RDtreeItem **ppNext, int *pPreferRight)
+{
+  int iSelect = -1;
+  int preferRight = 0;
+  double dMaxPreference = -1.;
+  int ii;
+
+  for(ii = 0; ii < nItem; ii++){
+    if( aiUsed[ii]==0 ){
+      double left = item_weight_distance(&aItem[ii], pLeftSeed);
+      double right = item_weight_distance(&aItem[ii], pRightSeed);
+      double diff = left - right;
+      double sum = left + right;
+      double preference = fabs(diff);
+      if (sum) {
+        preference /= (sum);
+      }
+      if (iSelect < 0 || preference > dMaxPreference) {
+        dMaxPreference = preference;
+        iSelect = ii;
+        preferRight = diff > 0.;
+      }
+    }
+  }
+  aiUsed[iSelect] = 1;
+  *ppNext = &aItem[iSelect];
+  *pPreferRight = preferRight;
+}
+
+void RDtreeVtab::pick_next(
+		     RDtreeItem *aItem, int nItem, int *aiUsed,
+		     RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+		     RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
+		     RDtreeItem **ppNext, int *pPreferRight)
+{
+  if (flags & RDTREE_OPT_FOR_SUBSET_QUERIES) {
+    pick_next_subset(aItem, nItem, aiUsed,
+		   pLeftSeed, pRightSeed, pLeftBounds, pRightBounds,
+		   ppNext, pPreferRight);
+  }
+  else if (flags & RDTREE_OPT_FOR_SIMILARITY_QUERIES) {
+    pick_next_similarity(aItem, nItem, aiUsed,
+		       pLeftSeed, pRightSeed, pLeftBounds, pRightBounds,
+		       ppNext, pPreferRight);
+  }
+  else {
+    pick_next_generic(aItem, nItem, aiUsed,
+		    pLeftSeed, pRightSeed, pLeftBounds, pRightBounds,
+		    ppNext, pPreferRight);
+  }
+}
+
+/*
+** Pick the two most dissimilar fingerprints.
+*/
+void RDtreeVtab::pick_seeds_generic(RDtreeItem *aItem, int nItem, int *piLeftSeed, int *piRightSeed)
+{
+  int ii;
+  int jj;
+
+  int iLeftSeed = 0;
+  int iRightSeed = 1;
+  double dMaxDistance = 0.;
+
+  for (ii = 0; ii < nItem; ii++) {
+    for (jj = ii + 1; jj < nItem; jj++) {
+      double tanimoto 
+        = bfp_op_tanimoto(bfp_size, aItem[ii].bfp.data(), aItem[jj].bfp.data());
+      double distance = 1. - tanimoto;
+
+      if (distance > dMaxDistance) {
+        iLeftSeed = ii;
+        iRightSeed = jj;
+        dMaxDistance = distance;
+      }
+    }
+  }
+
+  *piLeftSeed = iLeftSeed;
+  *piRightSeed = iRightSeed;
+}
+
+void RDtreeVtab::pick_seeds_subset(RDtreeItem *aItem, int nItem, int *piLeftSeed, int *piRightSeed)
+{
+  int ii;
+  int jj;
+
+  int iLeftSeed = 0;
+  int iRightSeed = 1;
+  double dMaxDistance = 0.;
+
+  for (ii = 0; ii < nItem; ii++) {
+    for (jj = ii + 1; jj < nItem; jj++) {
+      double tanimoto 
+        = bfp_op_tanimoto(bfp_size, aItem[ii].bfp.data(), aItem[jj].bfp.data());
+      double distance = 1. - tanimoto;
+
+      if (distance > dMaxDistance) {
+        iLeftSeed = ii;
+        iRightSeed = jj;
+        dMaxDistance = distance;
+      }
+    }
+  }
+
+  *piLeftSeed = iLeftSeed;
+  *piRightSeed = iRightSeed;
+}
+
+void RDtreeVtab::pick_seeds_similarity(RDtreeItem *aItem, int nItem, int *piLeftSeed, int *piRightSeed)
+{
+  int ii;
+  int jj;
+
+  int iLeftSeed = 0;
+  int iRightSeed = 1;
+  double dDistance;
+  double dMaxDistance = 0.;
+
+  for (ii = 0; ii < nItem; ii++) {
+    for (jj = ii + 1; jj < nItem; jj++) {
+
+      dDistance = item_weight_distance(&aItem[ii], &aItem[jj]);
+      
+      if (dDistance > dMaxDistance) {
+        iLeftSeed = ii;
+        iRightSeed = jj;
+        dMaxDistance = dDistance;
+      }
+    }
+  }
+
+  *piLeftSeed = iLeftSeed;
+  *piRightSeed = iRightSeed;
+}
+
+void RDtreeVtab::pick_seeds(RDtreeItem *aItem, int nItem, int *piLeftSeed, int *piRightSeed)
+{
+  if (flags & RDTREE_OPT_FOR_SUBSET_QUERIES) {
+    pick_seeds_subset(aItem, nItem, piLeftSeed, piRightSeed);
+  }
+  else if (flags & RDTREE_OPT_FOR_SIMILARITY_QUERIES) {
+    pick_seeds_similarity(aItem, nItem, piLeftSeed, piRightSeed);
+  }
+  else {
+    pick_seeds_generic(aItem, nItem, piLeftSeed, piRightSeed);
+  }
+}
+
+int RDtreeVtab::assign_items(RDtreeItem *aItem, int nItem,
+		      RDtreeNode *pLeft, RDtreeNode *pRight,
+		      RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds)
+{
+  int iLeftSeed = 0;
+  int iRightSeed = 1;
+  int i;
+
+  std::vector<int> aiUsed(nItem, 0);
+
+  pick_seeds(aItem, nItem, &iLeftSeed, &iRightSeed);
+
+  *pLeftBounds = aItem[iLeftSeed];
+  *pRightBounds = aItem[iRightSeed];
+  node_insert_item(pLeft, &aItem[iLeftSeed]);
+  node_insert_item(pRight, &aItem[iRightSeed]);
+  aiUsed[iLeftSeed] = 1;
+  aiUsed[iRightSeed] = 1;
+
+  for(i = nItem - 2; i > 0; i--) {
+    int iPreferRight;
+    RDtreeItem *pNext;
+    pick_next(aItem, nItem, aiUsed.data(), 
+	     &aItem[iLeftSeed], &aItem[iRightSeed], pLeftBounds, pRightBounds,
+	     &pNext, &iPreferRight);
+
+    if ((node_minsize() - pRight->size() == i) || (iPreferRight > 0 && (node_minsize() - pLeft->size() != i))) {
+      node_insert_item(pRight, pNext);
+      item_extend_bounds(pRightBounds, pNext);
+    }
+    else {
+      node_insert_item(pLeft, pNext);
+      item_extend_bounds(pLeftBounds, pNext);
+    }
+  }
+
+  return SQLITE_OK;
 }
 
 int RDtreeVtab::update_mapping(sqlite3_int64 rowid, RDtreeNode *node, int height)
@@ -1201,17 +1484,20 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
 
   if (!left || !right) {
     rc = SQLITE_NOMEM;
-    goto splitnode_out;
+    node_decref(right);
+    node_decref(left);
+    return rc;
   }
 
   memset(left->data.data(), 0, node_size);
   memset(right->data.data(), 0, node_size);
 
-  rc = assignItems(pRDtree, items, node_size, left, right, 
-		   &leftbounds, &rightbounds);
+  rc = assign_items(items.data(), node_size, left, right, &leftbounds, &rightbounds);
 
   if (rc != SQLITE_OK) {
-    goto splitnode_out;
+    node_decref(right);
+    node_decref(left);
+    return rc;
   }
 
   /* Ensure both child nodes have node numbers assigned to them by calling
@@ -1221,7 +1507,9 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   */
   if ((SQLITE_OK != (rc = node_write(right))) || 
       (0 == left->nodeid && SQLITE_OK != (rc = node_write(left)))) {
-    goto splitnode_out;
+    node_decref(right);
+    node_decref(left);
+    return rc;
   }
 
   rightbounds.rowid = right->nodeid;
@@ -1230,7 +1518,9 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   if (node->nodeid == 1) {
     rc = insert_item(left->parent, &leftbounds, height+1);
     if (rc != SQLITE_OK) {
-      goto splitnode_out;
+      node_decref(right);
+      node_decref(left);
+      return rc;
     }
   }
   else {
@@ -1242,13 +1532,17 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
       rc = adjust_tree(parent, &leftbounds);
     }
     if (rc != SQLITE_OK) {
-      goto splitnode_out;
+      node_decref(right);
+      node_decref(left);
+      return rc;
     }
   }
 
   if ((rc = 
        insert_item(right->parent, &rightbounds, height+1))) {
-    goto splitnode_out;
+    node_decref(right);
+    node_decref(left);
+    return rc;
   }
 
   int right_size = right->size();
@@ -1259,7 +1553,9 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
       new_item_is_right = 1;
     }
     if (rc != SQLITE_OK) {
-      goto splitnode_out;
+      node_decref(right);
+      node_decref(left);
+      return rc;
     }
   }
 
@@ -1269,7 +1565,9 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
       sqlite3_int64 rowid = node_get_rowid(left, i);
       rc = update_mapping(rowid, left, height);
       if (rc != SQLITE_OK) {
-        goto splitnode_out;
+        node_decref(right);
+        node_decref(left);
+        return rc;
       }
     }
   }
@@ -1277,9 +1575,174 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
     rc = update_mapping(item->rowid, left, height);
   }
 
-splitnode_out:
   node_decref(right);
   node_decref(left);
+  return rc;
+}
+
+/*
+** If node pLeaf is not the root of the rd-tree and its parent pointer is 
+** still NULL, load all ancestor nodes of pLeaf into memory and populate
+** the pLeaf->parent chain all the way up to the root node.
+**
+** This operation is required when a row is deleted (or updated - an update
+** is implemented as a delete followed by an insert). SQLite provides the
+** rowid of the row to delete, which can be used to find the leaf on which
+** the entry resides (argument pLeaf). Once the leaf is located, this 
+** function is called to determine its ancestry.
+*/
+int RDtreeVtab::fix_leaf_parent(RDtreeNode *leaf)
+{
+  int rc = SQLITE_OK;
+  RDtreeNode *child = leaf;
+  while (rc == SQLITE_OK && child->nodeid != 1 && child->parent == 0) {
+    int rc2 = SQLITE_OK;          /* sqlite3_reset() return code */
+    sqlite3_bind_int64(pReadParent, 1, child->nodeid);
+    rc = sqlite3_step(pReadParent);
+    if (rc == SQLITE_ROW) {
+      RDtreeNode *test;            /* Used to test for reference loops */
+      sqlite3_int64 nodeid;        /* Node number of parent node */
+
+      /* Before setting pChild->parent, test that we are not creating a
+      ** loop of references (as we would if, say, pChild==parent). We don't
+      ** want to do this as it leads to a memory leak when trying to delete
+      ** the reference counted node structures.
+      */
+      nodeid = sqlite3_column_int64(pReadParent, 0);
+      for (test = leaf; test && test->nodeid != nodeid; test = test->parent)
+	      ; /* loop from pLeaf up towards pChild looking for nodeid.. */
+
+      if (!test) { /* Ok */
+        rc2 = node_acquire(nodeid, 0, &child->parent);
+      }
+    }
+    rc = sqlite3_reset(pReadParent);
+    if (rc == SQLITE_OK) rc = rc2;
+    if (rc == SQLITE_OK && !child->parent) rc = SQLITE_CORRUPT_VTAB;
+    child = child->parent;
+  }
+  return rc;
+}
+
+/*
+** deleting an Item may result in the removal of an underfull node from the
+** that in turn requires the deletion of the corresponding Item from the
+** parent node, and may therefore trigger the further removal of additional
+** nodes.. removed nodes are collected into a linked list where they are 
+** staged for later reinsertion of their items into the tree.
+*/
+
+int RDtreeVtab::remove_node(RDtreeNode *node, int height)
+{
+  int rc;
+  int rc2;
+  RDtreeNode *parent = 0;
+  int item;
+
+  assert( node->n_ref == 1 );
+
+  /* Remove the entry in the parent item. */
+  rc = node_parent_index(node, &item);
+  if (rc == SQLITE_OK) {
+    parent = node->parent;
+    node->parent = 0;
+    rc = delete_item(parent, item, height+1);
+  }
+  rc2 = node_decref(parent);
+  if (rc == SQLITE_OK) {
+    rc = rc2;
+  }
+  if (rc != SQLITE_OK) {
+    return rc;
+  }
+
+  /* Remove the xxx_node entry. */
+  sqlite3_bind_int64(pDeleteNode, 1, node->nodeid);
+  sqlite3_step(pDeleteNode);
+  if (SQLITE_OK != (rc = sqlite3_reset(pDeleteNode))) {
+    return rc;
+  }
+
+  /* Remove the xxx_parent entry. */
+  sqlite3_bind_int64(pDeleteParent, 1, node->nodeid);
+  sqlite3_step(pDeleteParent);
+  if (SQLITE_OK != (rc = sqlite3_reset(pDeleteParent))) {
+    return rc;
+  }
+  
+  /* Remove the node from the in-memory hash table and link it into
+  ** the RDtree.pDeleted list. Its contents will be re-inserted later on.
+  */
+  node_hash_remove(node);
+  node->nodeid = height;
+  node->next = pDeleted;
+  node->n_ref++;
+  pDeleted = node;
+
+  return SQLITE_OK;
+}
+
+int RDtreeVtab::fix_node_bounds(RDtreeNode *node)
+{
+  int rc = SQLITE_OK; 
+  RDtreeNode *parent = node->parent;
+  if (parent) {
+    int ii; 
+    int nItem = node->size();
+    RDtreeItem bounds;  /* Bounding box for node */
+    node_get_item(node, 0, &bounds);
+    for (ii = 1; ii < nItem; ii++) {
+      RDtreeItem item;
+      node_get_item(node, ii, &item);
+      item_extend_bounds(&bounds, &item);
+    }
+    bounds.rowid = node->nodeid;
+    rc = node_parent_index(node, &ii);
+    if (rc == SQLITE_OK) {
+      node_overwrite_item(parent, &bounds, ii);
+      rc = fix_node_bounds(parent);
+    }
+  }
+  return rc;
+}
+
+/*
+** Delete the item at index iItem of node pNode. After removing the
+** item, adjust the rd-tree data structure if required.
+*/
+int RDtreeVtab::delete_item(RDtreeNode *node, int iItem, int height)
+{
+  int rc;
+
+  /*
+  ** If node is not the root and its parent is null, load all the ancestor
+  ** nodes into memory
+  */
+  if ((rc = fix_leaf_parent(node)) != SQLITE_OK) {
+    return rc;
+  }
+
+  /* Remove the item from the node. This call just moves bytes around
+  ** the in-memory node image, so it cannot fail.
+  */
+  node_delete_item(node, iItem);
+
+  /* If the node is not the tree root and now has less than the minimum
+  ** number of cells, remove it from the tree. Otherwise, update the
+  ** cell in the parent node so that it tightly contains the updated
+  ** node.
+  */
+  RDtreeNode *parent = node->parent;
+  assert(parent || node->nodeid == 1);
+  if (parent) {
+    if (node->size() < node_minsize()) {
+      rc = remove_node(node, height);
+    }
+    else {
+      rc = fix_node_bounds(node);
+    }
+  }
+
   return rc;
 }
 

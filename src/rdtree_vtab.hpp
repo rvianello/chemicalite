@@ -36,6 +36,33 @@ private:
   int remove_node(RDtreeNode *node, int height);
   int reinsert_node_content(RDtreeNode *node);
   int split_node(RDtreeNode *node, RDtreeItem *item, int height);
+  int assign_items(RDtreeItem *items, int num_items,
+		      RDtreeNode *left, RDtreeNode *right,
+		      RDtreeItem *leftbounds, RDtreeItem *rightbounds);
+  void pick_seeds(RDtreeItem *items, int num_items, int *leftseed, int *rightseed);
+  void pick_seeds_subset(RDtreeItem *items, int num_items, int *leftseed, int *rightseed);
+  void pick_seeds_similarity(RDtreeItem *items, int num_items, int *leftseed, int *rightseed);
+  void pick_seeds_generic(RDtreeItem *items, int num_items, int *leftseed, int *rightseed);
+  void pick_next(
+        RDtreeItem *aItem, int nItem, int *aiUsed,
+        RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+		    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
+		    RDtreeItem **ppNext, int *pPreferRight);
+  void pick_next_subset(
+        RDtreeItem *aItem, int nItem, int *aiUsed,
+        RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+		    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
+		    RDtreeItem **ppNext, int *pPreferRight);
+  void pick_next_similarity(
+        RDtreeItem *aItem, int nItem, int *aiUsed,
+        RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+		    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
+		    RDtreeItem **ppNext, int *pPreferRight);
+  void pick_next_generic(
+        RDtreeItem *aItem, int nItem, int *aiUsed,
+        RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
+		    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
+		    RDtreeItem **ppNext, int *pPreferRight);
   int choose_leaf_subset(RDtreeItem *item, int height, RDtreeNode **leaf);
   int choose_leaf_similarity(RDtreeItem *item, int height, RDtreeNode **leaf);
   int choose_leaf_generic(RDtreeItem *item, int height, RDtreeNode **leaf);
@@ -44,6 +71,8 @@ private:
   int rowid_write(sqlite3_int64 rowid, sqlite3_int64 nodeid);
   int parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid);
   int adjust_tree(RDtreeNode *node, RDtreeItem *item);
+  int fix_node_bounds(RDtreeNode *node);
+  int fix_leaf_parent(RDtreeNode *leaf);
 
   RDtreeNode * node_new(RDtreeNode *parent);
   void node_zero(RDtreeNode *node);
@@ -59,11 +88,13 @@ private:
   int node_get_max_weight(RDtreeNode *node, int item);
   void node_get_item(RDtreeNode *node, int idx, RDtreeItem *item);
   int node_insert_item(RDtreeNode *node, RDtreeItem *item);
+  void node_delete_item(RDtreeNode *node, int item);
   void node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx);
   void node_incref(RDtreeNode *);
   int node_decref(RDtreeNode *);
   int node_write(RDtreeNode *node);
   int node_release(RDtreeNode *node);
+  int node_minsize() {return node_capacity/3;}
 
   void node_hash_insert(RDtreeNode * node);
   RDtreeNode * node_hash_lookup(sqlite3_int64 nodeid);
