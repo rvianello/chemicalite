@@ -7,6 +7,8 @@
 #include "rdtree_vtab.hpp"
 #include "rdtree_node.hpp"
 #include "rdtree_item.hpp"
+#include "rdtree_cursor.hpp"
+
 #include "bfp_ops.hpp"
 
 static const int RDTREE_MAX_BITSTRING_SIZE = 256;
@@ -2020,6 +2022,19 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
 update_end:
   decref();
   return rc;
+}
+
+/* 
+** rdtree virtual table module xRowid method.
+*/
+int RDtreeVtab::rowid(sqlite3_vtab_cursor *pVtabCursor, sqlite_int64 *pRowid)
+{
+  RDtreeCursor *pCsr = (RDtreeCursor *)pVtabCursor;
+
+  assert(pCsr->node);
+  *pRowid = node_get_rowid(pCsr->node, pCsr->item);
+
+  return SQLITE_OK;
 }
 
 /*

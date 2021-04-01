@@ -48,6 +48,15 @@ static int rdtreeDestroy(sqlite3_vtab *vtab)
 }
 
 /* 
+** RDtree virtual table module xRowid method.
+*/
+static int rdtreeRowid(sqlite3_vtab_cursor *pVtabCursor, sqlite_int64 *pRowid)
+{
+  RDtreeVtab *rdtree = (RDtreeVtab *)pVtabCursor->pVtab;
+  return rdtree->rowid(pVtabCursor, pRowid);
+}
+
+/* 
 ** RDtree virtual table module xUpdate method.
 */
 static int rdtreeUpdate(

@@ -20,7 +20,8 @@ public:
 	sqlite3_vtab **pvtab, char **err);
   int disconnect();
   int destroy();
-  int update(int argc, sqlite3_value **argv, sqlite_int64 *rowid);
+  int rowid(sqlite3_vtab_cursor *pVtabCursor, sqlite_int64 *pRowid);
+  int update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid);
 
 private:
   static int init(
