@@ -48,12 +48,48 @@ static int rdtreeDestroy(sqlite3_vtab *vtab)
 }
 
 /* 
+** RDtree virtual table module xOpen method.
+*/
+static int rdtreeOpen(sqlite3_vtab *vtab, sqlite3_vtab_cursor **cursor)
+{
+  RDtreeVtab *rdtree = (RDtreeVtab *)vtab;
+  return rdtree->open(cursor);
+}
+
+/* 
+** RDtree virtual table module xClose method.
+*/
+static int rdtreeClose(sqlite3_vtab_cursor *cursor)
+{
+  RDtreeVtab *rdtree = (RDtreeVtab *)cursor->pVtab;
+  return rdtree->close(cursor);
+}
+
+/* 
+** RDtree virtual table module xEof method.
+*/
+static int rdtreeEof(sqlite3_vtab_cursor *cursor)
+{
+  RDtreeVtab *rdtree = (RDtreeVtab *)cursor->pVtab;
+  return rdtree->eof(cursor);
+}
+
+/* 
+** RDtree virtual table module xColumn method.
+*/
+static int rdtreeColumn(sqlite3_vtab_cursor *cursor, sqlite3_context *ctx, int col)
+{
+  RDtreeVtab *rdtree = (RDtreeVtab *)cursor->pVtab;
+  return rdtree->column(cursor, ctx, col);
+}
+
+/* 
 ** RDtree virtual table module xRowid method.
 */
-static int rdtreeRowid(sqlite3_vtab_cursor *pVtabCursor, sqlite_int64 *pRowid)
+static int rdtreeRowid(sqlite3_vtab_cursor *cursor, sqlite_int64 *pRowid)
 {
-  RDtreeVtab *rdtree = (RDtreeVtab *)pVtabCursor->pVtab;
-  return rdtree->rowid(pVtabCursor, pRowid);
+  RDtreeVtab *rdtree = (RDtreeVtab *)cursor->pVtab;
+  return rdtree->rowid(cursor, pRowid);
 }
 
 /* 
@@ -66,6 +102,15 @@ static int rdtreeUpdate(
   return rdtree->update(argc, argv, rowid);
 }
 
+/* 
+** RDtree virtual table module xRename method.
+*/
+static int rdtreeRename(sqlite3_vtab *vtab, const char *newname)
+{
+  RDtreeVtab *rdtree = (RDtreeVtab *)vtab;
+  return rdtree->rename(newname);
+}
+
 
 static sqlite3_module rdtreeModule = {
   0,                           /* iVersion */
@@ -74,12 +119,12 @@ static sqlite3_module rdtreeModule = {
   0, //rdtreeBestIndex,             /* xBestIndex - Determine search strategy */
   rdtreeDisconnect,            /* xDisconnect - Disconnect from a table */
   rdtreeDestroy,               /* xDestroy - Drop a table */
-  0, //rdtreeOpen,                  /* xOpen - open a cursor */
-  0, //rdtreeClose,                 /* xClose - close a cursor */
+  rdtreeOpen,                  /* xOpen - open a cursor */
+  rdtreeClose,                 /* xClose - close a cursor */
   0, //rdtreeFilter,                /* xFilter - configure scan constraints */
   0, //rdtreeNext,                  /* xNext - advance a cursor */
-  0, //rdtreeEof,                   /* xEof */
-  0, //rdtreeColumn,                /* xColumn - read data */
+  rdtreeEof,                   /* xEof */
+  rdtreeColumn,                /* xColumn - read data */
   rdtreeRowid,                 /* xRowid - read data */
   rdtreeUpdate,                /* xUpdate - write data */
   0,                           /* xBegin - begin transaction */
@@ -87,7 +132,7 @@ static sqlite3_module rdtreeModule = {
   0,                           /* xCommit - commit transaction */
   0,                           /* xRollback - rollback transaction */
   0,                           /* xFindFunction - function overloading */
-  0, //rdtreeRename,                /* xRename - rename the table */
+  rdtreeRename,                /* xRename - rename the table */
   0,                           /* xSavepoint */
   0,                           /* xRelease */
   0,                           /* xRollbackTo */

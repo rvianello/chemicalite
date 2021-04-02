@@ -2025,16 +2025,110 @@ update_end:
 }
 
 /* 
+** rdtree virtual table module xOpen method.
+*/
+int RDtreeVtab::open(sqlite3_vtab_cursor **cursor)
+{
+  int rc = SQLITE_OK;
+  RDtreeCursor *csr = new RDtreeCursor; // FIXME: try/catch set rc = SQLITE_NOMEM
+  csr->pVtab = this;
+  *cursor = csr;
+  return rc;
+}
+
+/*
+** Free the RDtreeCursor.aConstraint[] array and its contents.
+*/
+/*
+maybe used by RDtreeVtab::close() see below
+
+static void freeCursorConstraints(RDtreeCursor *csr)
+{
+  if (csr->aConstraint) {
+    sqlite3_free(csr->aConstraint);
+    csr->aConstraint = 0;
+  }
+}*/
+
+/* 
+** rdtree virtual table module xClose method.
+*/
+int RDtreeVtab::close(sqlite3_vtab_cursor *cursor)
+{
+  RDtreeCursor *csr = (RDtreeCursor *)cursor;
+  // maybe later freeCursorConstraints(csr);
+  int rc = node_decref(csr->node);
+  delete csr;
+  return rc;
+}
+
+/*
+** rdtree virtual table module xEof method.
+**
+** Return non-zero if the cursor does not currently point to a valid 
+** record (i.e if the scan has finished), or zero otherwise.
+*/
+int RDtreeVtab::eof(sqlite3_vtab_cursor *cursor)
+{
+  RDtreeCursor *csr = (RDtreeCursor *)cursor;
+  return (csr->node == 0);
+}
+
+/* 
 ** rdtree virtual table module xRowid method.
 */
-int RDtreeVtab::rowid(sqlite3_vtab_cursor *pVtabCursor, sqlite_int64 *pRowid)
+int RDtreeVtab::rowid(sqlite3_vtab_cursor *vtab_cursor, sqlite_int64 *pRowid)
 {
-  RDtreeCursor *pCsr = (RDtreeCursor *)pVtabCursor;
+  RDtreeCursor *csr = (RDtreeCursor *)vtab_cursor;
 
-  assert(pCsr->node);
-  *pRowid = node_get_rowid(pCsr->node, pCsr->item);
+  assert(csr->node);
+  *pRowid = node_get_rowid(csr->node, csr->item);
 
   return SQLITE_OK;
+}
+
+/* 
+** rdtree virtual table module xColumn method.
+*/
+int RDtreeVtab::column(sqlite3_vtab_cursor *vtab_cursor, sqlite3_context *ctx, int col)
+{
+  RDtreeCursor *csr = (RDtreeCursor *)vtab_cursor;
+
+  if (col == 0) {
+    sqlite3_int64 rowid = node_get_rowid(csr->node, csr->item);
+    sqlite3_result_int64(ctx, rowid);
+  }
+  else {
+    uint8_t *bfp = node_get_bfp(csr->node, csr->item);
+    sqlite3_result_blob(ctx, bfp, bfp_size, SQLITE_TRANSIENT);
+  }
+
+  return SQLITE_OK;
+}
+
+/*
+** rdtree virtual table module xRename method.
+*/
+int RDtreeVtab::rename(const char *newname)
+{
+  int rc = SQLITE_NOMEM;
+  char *sql = sqlite3_mprintf(
+    "ALTER TABLE %Q.'%q_node'   RENAME TO \"%w_node\";"
+    "ALTER TABLE %Q.'%q_parent' RENAME TO \"%w_parent\";"
+    "ALTER TABLE %Q.'%q_rowid'  RENAME TO \"%w_rowid\";"
+    "ALTER TABLE %Q.'%q_bitfreq'  RENAME TO \"%w_bitfreq\";"
+    "ALTER TABLE %Q.'%q_weightfreq'  RENAME TO \"%w_weightfreq\";"
+    , db_name.c_str(), table_name.c_str(), newname 
+    , db_name.c_str(), table_name.c_str(), newname 
+    , db_name.c_str(), table_name.c_str(), newname 
+    , db_name.c_str(), table_name.c_str(), newname 
+    , db_name.c_str(), table_name.c_str(), newname 
+  );
+  if (sql) {
+    rc = sqlite3_exec(db, sql, 0, 0, 0);
+    sqlite3_free(sql);
+  }
+  return rc;
 }
 
 /*

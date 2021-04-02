@@ -20,8 +20,13 @@ public:
 	sqlite3_vtab **pvtab, char **err);
   int disconnect();
   int destroy();
+  int open(sqlite3_vtab_cursor **cur);
+  int close(sqlite3_vtab_cursor *cur);
+  int eof(sqlite3_vtab_cursor *cur);
+  int column(sqlite3_vtab_cursor *cur, sqlite3_context *ctx, int col);
   int rowid(sqlite3_vtab_cursor *pVtabCursor, sqlite_int64 *pRowid);
   int update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid);
+  int rename(const char *newname);
 
 private:
   static int init(
@@ -37,7 +42,8 @@ private:
   int remove_node(RDtreeNode *node, int height);
   int reinsert_node_content(RDtreeNode *node);
   int split_node(RDtreeNode *node, RDtreeItem *item, int height);
-  int assign_items(RDtreeItem *items, int num_items,
+  int assign_items(
+          RDtreeItem *items, int num_items,
 		      RDtreeNode *left, RDtreeNode *right,
 		      RDtreeItem *leftbounds, RDtreeItem *rightbounds);
   void pick_seeds(RDtreeItem *items, int num_items, int *leftseed, int *rightseed);
