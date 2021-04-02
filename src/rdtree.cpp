@@ -80,7 +80,7 @@ static sqlite3_module rdtreeModule = {
   0, //rdtreeNext,                  /* xNext - advance a cursor */
   0, //rdtreeEof,                   /* xEof */
   0, //rdtreeColumn,                /* xColumn - read data */
-  0, //rdtreeRowid,                 /* xRowid - read data */
+  rdtreeRowid,                 /* xRowid - read data */
   rdtreeUpdate,                /* xUpdate - write data */
   0,                           /* xBegin - begin transaction */
   0,                           /* xSync - sync transaction */
