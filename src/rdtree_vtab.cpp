@@ -9,6 +9,7 @@
 #include "rdtree_item.hpp"
 #include "rdtree_cursor.hpp"
 
+#include "bfp.hpp"
 #include "bfp_ops.hpp"
 
 static const int RDTREE_MAX_BITSTRING_SIZE = 256;
@@ -1947,7 +1948,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
           if (sqlite3_vtab_on_conflict(db) == SQLITE_REPLACE) {
             rc = delete_rowid(rowid);
           }
-	  else {
+	        else {
             rc = SQLITE_CONSTRAINT;
             goto update_end;
           }
@@ -1957,17 +1958,18 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
       bHaveRowid = 1;
     }
 
-    if (sqlite3_value_type(argv[3]) != SQLITE_BLOB) {
-      rc = SQLITE_MISMATCH;
-    }
-    else if (sqlite3_value_bytes(argv[3]) != bfp_size) {
+    std::string bfp = arg_to_bfp(argv[3], &rc);
+    int input_bfp_size = bfp.size();
+    if (rc == SQLITE_OK && input_bfp_size != bfp_size) {
       rc = SQLITE_MISMATCH;
     }
     else {
       if (bHaveRowid) {
         item.rowid = rowid;
       }
-      memcpy(item.bfp.data(), sqlite3_value_blob(argv[3]), bfp_size);
+      // FIXME
+      item.bfp.resize(bfp_size);
+      memcpy(item.bfp.data(), bfp.data(), bfp_size);
       item.min_weight = item.max_weight = bfp_op_weight(bfp_size, item.bfp.data());
     }
 

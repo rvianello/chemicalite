@@ -11,6 +11,7 @@ set(TEST_CHEMICALITE_SRC_FILES
     test_mol_hash.cpp
     test_bfp.cpp
     test_rdtree_create.cpp
+    test_rdtree_insert.cpp
 )
 
 add_executable(test_chemicalite ${TEST_CHEMICALITE_SRC_FILES})
