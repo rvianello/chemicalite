@@ -18,6 +18,11 @@ TEST_CASE("rdtree insert", "[rdtree]")
         "INSERT INTO xyz(s) VALUES(bfp_dummy(1024, 42))",
         NULL, NULL, NULL);
     REQUIRE(rc == SQLITE_OK);
+
+
+    test_select_value(db, "SELECT COUNT(*) FROM xyz_rowid", 1);
+    test_select_value(db, "SELECT COUNT(*) FROM xyz_parent", 0);
+    test_select_value(db, "SELECT COUNT(*) FROM xyz_node", 1);
   }
 
   rc = sqlite3_exec(db, "DROP TABLE xyz", NULL, NULL, NULL);

@@ -707,8 +707,9 @@ int RDtreeVtab::node_write(RDtreeNode *node)
 */
 void RDtreeVtab::node_incref(RDtreeNode *node)
 {
-  assert(node);
-  ++node->n_ref;
+  if (node) {
+    node->n_ref++;
+  }
 }
 
 /*
