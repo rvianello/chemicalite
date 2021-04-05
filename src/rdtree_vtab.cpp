@@ -548,7 +548,7 @@ int RDtreeVtab::parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid)
 RDtreeNode * RDtreeVtab::node_new(RDtreeNode *parent)
 {
   RDtreeNode *node = new RDtreeNode; // FIXME
-  node->data.resize(bfp_size);
+  node->data.resize(node_size);
   node->n_ref = 1;
   node->parent = parent;
   node->is_dirty = 1;
@@ -690,7 +690,7 @@ int RDtreeVtab::node_write(RDtreeNode *node)
     else {
       sqlite3_bind_null(pWriteNode, 1);
     }
-    sqlite3_bind_blob(pWriteNode, 2, node->data.data(), node_size, SQLITE_STATIC);
+    sqlite3_bind_blob(pWriteNode, 2, node->data.data(), node_size, SQLITE_TRANSIENT);
     sqlite3_step(pWriteNode);
     node->is_dirty = 0;
     rc = sqlite3_reset(pWriteNode);
