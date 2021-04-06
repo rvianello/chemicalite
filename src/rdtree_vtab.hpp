@@ -18,6 +18,7 @@ public:
   static int connect(
     sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
 	sqlite3_vtab **pvtab, char **err);
+  int bestindex(sqlite3_index_info *idxinfo);
   int disconnect();
   int destroy();
   int open(sqlite3_vtab_cursor **cur);

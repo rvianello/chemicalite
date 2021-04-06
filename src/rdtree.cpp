@@ -30,6 +30,15 @@ static int rdtreeConnect(sqlite3 *db, void *paux,
 }
 
 /* 
+** RDtree virtual table module xBestIndex method.
+*/
+static int rdtreeBestIndex(sqlite3_vtab *vtab, sqlite3_index_info *idxinfo)
+{
+  RDtreeVtab *rdtree = (RDtreeVtab *)vtab;
+  return rdtree->bestindex(idxinfo);
+}
+
+/* 
 ** RDtree virtual table module xDisconnect method.
 */
 static int rdtreeDisconnect(sqlite3_vtab *vtab)
@@ -116,7 +125,7 @@ static sqlite3_module rdtreeModule = {
   0,                           /* iVersion */
   rdtreeCreate,                /* xCreate - create a table */
   rdtreeConnect,               /* xConnect - connect to an existing table */
-  0, //rdtreeBestIndex,             /* xBestIndex - Determine search strategy */
+  rdtreeBestIndex,             /* xBestIndex - Determine search strategy */
   rdtreeDisconnect,            /* xDisconnect - Disconnect from a table */
   rdtreeDestroy,               /* xDestroy - Drop a table */
   rdtreeOpen,                  /* xOpen - open a cursor */

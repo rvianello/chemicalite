@@ -400,6 +400,84 @@ int RDtreeVtab::sql_init(int is_create)
   return rc;
 }
 
+/*
+** RDtree virtual table module xBestIndex method. There are three
+** table scan strategies to choose from (in order from most to 
+** least desirable):
+**
+**   idxNum     idxStr        Strategy
+**   ------------------------------------------------
+**     1        Unused        Direct lookup by rowid.
+**     2        See below     RD-tree query or full-table scan.
+**   ------------------------------------------------
+*/
+int RDtreeVtab::bestindex(sqlite3_index_info *idxinfo)
+{
+  int rc = SQLITE_OK;
+  int ii;
+  bool match = false; /* True if there exists a MATCH constraint */
+  int iIdx = 0;  /* argv index/counter */
+
+  assert( idxinfo->idxStr==0 );
+
+  /* The comment below directly from SQLite's rtree extension */
+  /* Check if there exists a MATCH constraint - even an unusable one. If there
+  ** is, do not consider the lookup-by-rowid plan as using such a plan would
+  ** require the VDBE to evaluate the MATCH constraint, which is not currently
+  ** possible. */
+  for(ii=0; ii<idxinfo->nConstraint; ii++){
+    if( idxinfo->aConstraint[ii].op==SQLITE_INDEX_CONSTRAINT_MATCH ){
+      match = true;
+    }
+  }
+
+  for(ii = 0; ii < idxinfo->nConstraint; ii++) {
+
+    sqlite3_index_info::sqlite3_index_constraint *p = &idxinfo->aConstraint[ii];
+
+    if (!p->usable) {
+      continue;
+    }
+
+    if (!match && p->iColumn == 0 && p->op == SQLITE_INDEX_CONSTRAINT_EQ) {
+      /* We have an equality constraint on the rowid. Use strategy 1. */
+      int jj;
+      for (jj = 0; jj < ii; jj++){
+        idxinfo->aConstraintUsage[jj].argvIndex = 0;
+        idxinfo->aConstraintUsage[jj].omit = 0;
+      }
+      idxinfo->idxNum = 1;
+      idxinfo->aConstraintUsage[ii].argvIndex = 1;
+      idxinfo->aConstraintUsage[ii].omit = 1; /* don't double check */
+
+      /* This strategy involves a two rowid lookups on an B-Tree structures
+      ** and then a linear search of an RD-Tree node. This should be 
+      ** considered almost as quick as a direct rowid lookup (for which 
+      ** sqlite uses an internal cost of 0.0). It is expected to return
+      ** a single row.
+      */ 
+      idxinfo->estimatedCost = 30.0;
+      idxinfo->estimatedRows = 1;
+      idxinfo->idxFlags = SQLITE_INDEX_SCAN_UNIQUE;
+      return SQLITE_OK;
+    }
+
+    if (p->op == SQLITE_INDEX_CONSTRAINT_MATCH) {
+      idxinfo->aConstraintUsage[ii].argvIndex = ++iIdx;
+      idxinfo->aConstraintUsage[ii].omit = 1;
+    }
+  }
+
+  idxinfo->idxNum = 2;
+  idxinfo->estimatedCost = (2000000.0 / (double)(idxinfo->nConstraint + 1));
+  /* TODO add estimated rows
+  nRow = pRtree->nRowEst >> (iIdx/2);
+  idxinfo->estimatedCost = (double)6.0 * (double)nRow;
+  idxinfo->estimatedRows = nRow;
+  */
+  return rc;
+}
+
 /* 
 ** This function is the implementation of the xDestroy
 ** method of the rd-tree virtual table.
