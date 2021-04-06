@@ -26,7 +26,7 @@ TEST_CASE("rdtree insert", "[rdtree]")
 
   SECTION("insert multiple bfp values")
   {
-    const int NUM_BFPS = 32;
+    const int NUM_BFPS = 42;
 
     sqlite3_stmt *pStmt = 0;
     int rc = sqlite3_prepare(db, "INSERT INTO xyz(s) VALUES(bfp_dummy(1024, ?1))", -1, &pStmt, 0);
