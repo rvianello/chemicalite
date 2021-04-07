@@ -75,6 +75,15 @@ static int rdtreeClose(sqlite3_vtab_cursor *cursor)
 }
 
 /* 
+** RDtree virtual table module xNext method.
+*/
+static int rdtreeNext(sqlite3_vtab_cursor *cursor)
+{
+  RDtreeVtab *rdtree = (RDtreeVtab *)cursor->pVtab;
+  return rdtree->next(cursor);
+}
+
+/* 
 ** RDtree virtual table module xEof method.
 */
 static int rdtreeEof(sqlite3_vtab_cursor *cursor)
@@ -131,7 +140,7 @@ static sqlite3_module rdtreeModule = {
   rdtreeOpen,                  /* xOpen - open a cursor */
   rdtreeClose,                 /* xClose - close a cursor */
   0, //rdtreeFilter,                /* xFilter - configure scan constraints */
-  0, //rdtreeNext,                  /* xNext - advance a cursor */
+  rdtreeNext,                  /* xNext - advance a cursor */
   rdtreeEof,                   /* xEof */
   rdtreeColumn,                /* xColumn - read data */
   rdtreeRowid,                 /* xRowid - read data */

@@ -2143,6 +2143,119 @@ int RDtreeVtab::close(sqlite3_vtab_cursor *cursor)
   return rc;
 }
 
+int RDtreeVtab::test_item(RDtreeCursor *csr, int height, bool *is_eof)
+{
+  RDtreeItem item;
+  int rc = SQLITE_OK;
+
+  node_get_item(csr->node, csr->item, &item);
+
+  *is_eof = false;
+  for (int ii = 0; *is_eof == false && rc == SQLITE_OK && ii < csr->nConstraint; ii++) {
+    RDtreeConstraint *p = &csr->aConstraint[ii];
+    int (*xTestItem)(RDtreeVtab*, RDtreeConstraint*, RDtreeItem*, bool*)
+      = (height == 0) ? p->op->xTestLeaf : p->op->xTestInternal;
+    rc = xTestItem(this, p, &item, is_eof);
+  }
+
+  return rc;
+}
+
+/*
+** Cursor pCursor currently points at a node that heads a sub-tree of
+** height iHeight (if iHeight==0, then the node is a leaf). Descend
+** to point to the left-most cell of the sub-tree that matches the 
+** configured constraints.
+*/
+int RDtreeVtab::descend_to_item(RDtreeCursor *csr, int height, bool *is_eof)
+{
+  assert(height >= 0);
+
+  RDtreeNode *saved_node = csr->node;
+  int saved_item = csr->item;
+
+  int rc = test_item(csr, height, is_eof);
+
+  if (rc != SQLITE_OK || *is_eof || height==0) {
+    return rc;
+  }
+
+  RDtreeNode *child;
+  sqlite3_int64 rowid = node_get_rowid(csr->node, csr->item);
+  rc = node_acquire(rowid, csr->node, &child);
+  if (rc != SQLITE_OK) {
+    return rc;
+  }
+
+  node_decref(csr->node);
+  csr->node = child;
+  *is_eof = true; // useless? defensive?
+  int num_items = child->size();
+  for (int ii=0; *is_eof && ii < num_items; ii++) {
+    csr->item = ii;
+    rc = descend_to_item(csr, height-1, is_eof);
+    if (rc != SQLITE_OK) {
+      return rc;
+    }
+  }
+
+  if (*is_eof) {
+    assert(csr->node == child);
+    node_incref(saved_node);
+    node_decref(child);
+    csr->node = saved_node;
+    csr->item = saved_item;
+  }
+
+  return rc;
+}
+
+/* 
+** rdtree virtual table module xNext method.
+*/
+int RDtreeVtab::next(sqlite3_vtab_cursor *cursor)
+{
+  RDtreeCursor *csr = (RDtreeCursor *)cursor;
+  int rc = SQLITE_OK;
+
+  /* RDtreeCursor.node must not be NULL. If it is NULL, then this cursor is
+  ** already at EOF. It is against the rules to call the xNext() method of
+  ** a cursor that has already reached EOF.
+  */
+  assert(csr->node);
+
+  if (csr->strategy == 1) {
+    /* This "scan" is a direct lookup by rowid. There is no next entry. */
+    node_decref(csr->node);
+    csr->node = 0;
+  }
+  else {
+    /* Move to the next entry that matches the configured constraints. */
+    int height = 0;
+    while (csr->node) {
+      RDtreeNode *node = csr->node;
+      int num_items = node->size();
+      for (csr->item++; csr->item < num_items; csr->item++) {
+        bool is_eof;
+        rc = descend_to_item(csr, height, &is_eof);
+        if (rc != SQLITE_OK || !is_eof) {
+          return rc;
+        }
+      }
+      csr->node = node->parent;
+      rc = node_parent_index(node, &csr->item);
+      if (rc != SQLITE_OK) {
+        return rc;
+      }
+      node_incref(csr->node);
+      node_decref(node);
+      ++height;
+    }
+  }
+
+  return rc;
+}
+
 /*
 ** rdtree virtual table module xEof method.
 **

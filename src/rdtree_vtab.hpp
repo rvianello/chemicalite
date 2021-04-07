@@ -8,6 +8,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 
 class RDtreeNode;
 class RDtreeItem;
+class RDtreeCursor;
 
 class RDtreeVtab : public sqlite3_vtab {
 
@@ -23,9 +24,10 @@ public:
   int destroy();
   int open(sqlite3_vtab_cursor **cur);
   int close(sqlite3_vtab_cursor *cur);
+  int next(sqlite3_vtab_cursor *cur);
   int eof(sqlite3_vtab_cursor *cur);
   int column(sqlite3_vtab_cursor *cur, sqlite3_context *ctx, int col);
-  int rowid(sqlite3_vtab_cursor *pVtabCursor, sqlite_int64 *pRowid);
+  int rowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid);
   int update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid);
   int rename(const char *newname);
 
@@ -82,6 +84,8 @@ private:
   int fix_node_bounds(RDtreeNode *node);
   int fix_leaf_parent(RDtreeNode *leaf);
   int new_rowid(sqlite3_int64 *rowid);
+  int test_item(RDtreeCursor *csr, int height, bool *is_eof);
+  int descend_to_item(RDtreeCursor *csr, int height, bool *is_eof);
 
   RDtreeNode * node_new(RDtreeNode *parent);
   void node_zero(RDtreeNode *node);
