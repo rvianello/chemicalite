@@ -24,6 +24,9 @@ public:
   int destroy();
   int open(sqlite3_vtab_cursor **cur);
   int close(sqlite3_vtab_cursor *cur);
+  int filter(sqlite3_vtab_cursor *cur, 
+			int idxnum, const char *idxstr,
+			int argc, sqlite3_value **argv);
   int next(sqlite3_vtab_cursor *cur);
   int eof(sqlite3_vtab_cursor *cur);
   int column(sqlite3_vtab_cursor *cur, sqlite3_context *ctx, int col);

@@ -2256,6 +2256,95 @@ int RDtreeVtab::next(sqlite3_vtab_cursor *cursor)
   return rc;
 }
 
+/* 
+** RDtree virtual table module xFilter method.
+*/
+int RDtreeVtab::filter(
+      sqlite3_vtab_cursor *cursor, 
+			int idxnum, const char */*idxstr*/,
+			int argc, sqlite3_value **argv)
+{
+  RDtreeCursor *csr = (RDtreeCursor *)cursor;
+
+  int rc = SQLITE_OK;
+
+  incref();
+
+  // needed? or not needed? freeCursorConstraints(csr);
+  csr->strategy = idxnum;
+
+  if (csr->strategy == 1) {
+    /* Special case - lookup by rowid. */
+    RDtreeNode *leaf;        /* Leaf on which the required item resides */
+    sqlite3_int64 rowid = sqlite3_value_int64(argv[0]);
+    rc = find_leaf_node(rowid, &leaf);
+    csr->node = leaf; 
+    if (leaf) {
+      assert(rc == SQLITE_OK);
+      rc = node_rowid_index(leaf, rowid, &csr->item);
+    }
+  }
+  else {
+    /* Normal case - rd-tree scan. Set up the RDtreeCursor.aConstraint array 
+    ** with the configured constraints. 
+    */
+    if (argc > 0) {
+      #if 0 // FIXME
+      csr->aConstraint = sqlite3_malloc(sizeof(RDtreeConstraint) * argc);
+      csr->nConstraint = argc;
+      if (!csr->aConstraint) {
+        rc = SQLITE_NOMEM;
+      }
+      else {
+        memset(csr->aConstraint, 0, sizeof(RDtreeConstraint) * argc);
+        for (int ii = 0; ii < argc; ii++) {
+          RDtreeConstraint *p = &csr->aConstraint[ii];
+          /* A MATCH operator. The right-hand-side must be a blob that
+          ** can be cast into an RDtreeMatchArg object.
+          */
+          rc = deserializeMatchArg(argv[ii], p);
+          if (rc == SQLITE_OK && p->op->xInitializeConstraint) {
+              rc = p->op->xInitializeConstraint(pRDtree, p);
+          }
+          if (rc != SQLITE_OK) {
+            break;
+          }
+        }
+      }
+      #endif
+    }
+  
+    RDtreeNode *root = 0;
+
+    if (rc == SQLITE_OK) {
+      csr->node = 0;
+      rc = node_acquire(1, 0, &root);
+    }
+    if (rc == SQLITE_OK) {
+      bool is_eof = true;
+      int num_items = root->size();
+      csr->node = root;
+      for (csr->item = 0; 
+	      rc == SQLITE_OK && csr->item < num_items; csr->item++) {
+        assert(csr->node == root);
+        rc = descend_to_item(csr, depth, &is_eof);
+        if (!is_eof) {
+          break;
+        }
+      }
+      if (rc == SQLITE_OK && is_eof) {
+        assert( csr->node == root );
+        node_decref(root);
+        csr->node = 0;
+      }
+      assert(rc != SQLITE_OK || !csr->node || csr->item < csr->node->size());
+    }
+  }
+
+  decref();
+  return rc;
+}
+
 /*
 ** rdtree virtual table module xEof method.
 **
