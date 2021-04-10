@@ -143,6 +143,11 @@ TEST_CASE("bfp constructors + ops + descriptors", "[bfp]")
     test_select_value(
         db,
         "SELECT bfp_weight("
+        "bfp_dummy(1024, 16)"
+        ")", 1*1024/8);
+    test_select_value(
+        db,
+        "SELECT bfp_weight("
         "mol_pattern_bfp(mol_from_smiles('Cn1cnc2n(C)c(=O)n(C)c(=O)c12'))"
         ")", 355);
     test_select_value(

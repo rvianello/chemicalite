@@ -2151,12 +2151,29 @@ int RDtreeVtab::test_item(RDtreeCursor *csr, int height, bool *is_eof)
   node_get_item(csr->node, csr->item, &item);
 
   *is_eof = false;
+  for (auto p: csr->constraints) {
+    if (height == 0) {
+      rc = p->op->test_leaf(this, *p, &item, is_eof);
+    }
+    else {
+      rc = p->op->test_internal(this, *p, &item, is_eof);
+    }
+    if (!is_eof) {
+      break;
+    }
+  }
+#if 0
+  // replacing..
   for (int ii = 0; *is_eof == false && rc == SQLITE_OK && ii < csr->nConstraint; ii++) {
     RDtreeConstraint *p = &csr->aConstraint[ii];
-    int (*xTestItem)(RDtreeVtab*, RDtreeConstraint*, RDtreeItem*, bool*)
-      = (height == 0) ? p->op->xTestLeaf : p->op->xTestInternal;
-    rc = xTestItem(this, p, &item, is_eof);
+    if (height == 0) {
+      rc = p->op->test_leaf(this, p, &item, is_eof);
+    }
+    else {
+      rc = p->op->test_internal(this, p, &item, is_eof);
+    }
   }
+#endif
 
   return rc;
 }
@@ -2375,6 +2392,7 @@ int RDtreeVtab::rowid(sqlite3_vtab_cursor *vtab_cursor, sqlite_int64 *pRowid)
 */
 int RDtreeVtab::column(sqlite3_vtab_cursor *vtab_cursor, sqlite3_context *ctx, int col)
 {
+  int rc = SQLITE_OK;
   RDtreeCursor *csr = (RDtreeCursor *)vtab_cursor;
 
   if (col == 0) {
@@ -2382,8 +2400,12 @@ int RDtreeVtab::column(sqlite3_vtab_cursor *vtab_cursor, sqlite3_context *ctx, i
     sqlite3_result_int64(ctx, rowid);
   }
   else {
-    uint8_t *bfp = node_get_bfp(csr->node, csr->item);
-    sqlite3_result_blob(ctx, bfp, bfp_size, SQLITE_TRANSIENT);
+    uint8_t *data = node_get_bfp(csr->node, csr->item);
+    std::string bfp(data, data+bfp_size);
+    Blob blob = bfp_to_blob(bfp, &rc);
+    if (rc == SQLITE_OK) {
+      sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
+    }
   }
 
   return SQLITE_OK;
