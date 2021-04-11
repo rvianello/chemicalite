@@ -61,11 +61,14 @@ TEST_CASE("rdtree insert", "[rdtree]")
     const int NUM_BFPS = 42;
 
     sqlite3_stmt *pStmt = 0;
-    int rc = sqlite3_prepare(db, "INSERT INTO xyz(s) VALUES(bfp_dummy(1024, ?1))", -1, &pStmt, 0);
+    int rc = sqlite3_prepare(db, "INSERT INTO xyz(id, s) VALUES(?1, bfp_dummy(1024, ?2))", -1, &pStmt, 0);
     REQUIRE(rc == SQLITE_OK);
 
     for (int i=0; i < NUM_BFPS; ++i) {
-      rc = sqlite3_bind_int(pStmt, 1, i);
+      rc = sqlite3_bind_int(pStmt, 1, i+1);
+      REQUIRE(rc == SQLITE_OK);
+
+      rc = sqlite3_bind_int(pStmt, 2, i+1);
       REQUIRE(rc == SQLITE_OK);
 
       rc = sqlite3_step(pStmt);
