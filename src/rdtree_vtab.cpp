@@ -60,11 +60,6 @@ int RDtreeVtab::init(
   sqlite3 *db, int argc, const char *const*argv, 
   sqlite3_vtab **pvtab, char **err, int is_create)
 {
-  int rc = SQLITE_OK;
-  RDtreeVtab *rdtree;
-
-  int bfp_size; /* Length (in bytes) of stored binary fingerprint */
-
   /* perform arg checking */
   if (argc < 5) {
     *err = sqlite3_mprintf("wrong number of arguments. "
@@ -77,20 +72,22 @@ int RDtreeVtab::init(
     return SQLITE_ERROR;
   }
 
-  int sz;
-  if (sscanf(argv[4], "%*s bits( %d )", &sz) == 1) {
-      if (sz <= 0 || sz % 8) {
-        *err = sqlite3_mprintf("invalid number of bits for a stored fingerprint: '%d'", sz);
+  int bfp_size; /* Length (in bytes) of stored binary fingerprint */
+
+  int bfp_size_arg;
+  if (sscanf(argv[4], "%*s bits( %d )", &bfp_size_arg) == 1) {
+      if (bfp_size_arg <= 0 || bfp_size_arg % 8) {
+        *err = sqlite3_mprintf("invalid number of bits for a stored fingerprint: '%d'", bfp_size_arg);
         return SQLITE_ERROR;
       }
-      bfp_size = sz/8;
+      bfp_size = bfp_size_arg/8;
   }
-  else if (sscanf(argv[4], "%*s bytes( %d )", &sz) == 1) {
-      if (sz <= 0) {
-        *err = sqlite3_mprintf("invalid number of bytes for a stored fingerprint: '%d'", sz);
+  else if (sscanf(argv[4], "%*s bytes( %d )", &bfp_size_arg) == 1) {
+      if (bfp_size_arg <= 0) {
+        *err = sqlite3_mprintf("invalid number of bytes for a stored fingerprint: '%d'", bfp_size_arg);
         return SQLITE_ERROR;
       }
-      bfp_size = sz;
+      bfp_size = bfp_size_arg;
   }
   else {
     *err = sqlite3_mprintf("unable to parse the fingerprint size from: '%s'", argv[4]);
@@ -119,7 +116,7 @@ int RDtreeVtab::init(
   sqlite3_vtab_config(db, SQLITE_VTAB_CONSTRAINT_SUPPORT, 1);
 
   /* Allocate the sqlite3_vtab structure */
-  rdtree = new RDtreeVtab; // FIXME try/catch?
+  RDtreeVtab * rdtree = new RDtreeVtab; // FIXME try/catch?
   rdtree->db_name = argv[1];
   rdtree->table_name = argv[2];
   rdtree->db = db;
@@ -129,7 +126,7 @@ int RDtreeVtab::init(
   rdtree->n_ref = 1;
 
   /* Figure out the node size to use. */
-  rc = rdtree->get_node_size(is_create);
+  int rc = rdtree->get_node_size(is_create);
 
   /* Create/Connect to the underlying relational database schema. If
   ** that is successful, call sqlite3_declare_vtab() to configure
