@@ -411,24 +411,23 @@ int RDtreeVtab::sql_init(int is_create)
 int RDtreeVtab::bestindex(sqlite3_index_info *idxinfo)
 {
   int rc = SQLITE_OK;
-  int ii;
   bool match = false; /* True if there exists a MATCH constraint */
   int iIdx = 0;  /* argv index/counter */
 
-  assert( idxinfo->idxStr==0 );
+  assert(idxinfo->idxStr==0);
 
   /* The comment below directly from SQLite's rtree extension */
   /* Check if there exists a MATCH constraint - even an unusable one. If there
   ** is, do not consider the lookup-by-rowid plan as using such a plan would
   ** require the VDBE to evaluate the MATCH constraint, which is not currently
   ** possible. */
-  for(ii=0; ii<idxinfo->nConstraint; ii++){
-    if( idxinfo->aConstraint[ii].op==SQLITE_INDEX_CONSTRAINT_MATCH ){
+  for (int ii=0; ii<idxinfo->nConstraint; ii++) {
+    if (idxinfo->aConstraint[ii].op==SQLITE_INDEX_CONSTRAINT_MATCH) {
       match = true;
     }
   }
 
-  for(ii = 0; ii < idxinfo->nConstraint; ii++) {
+  for (int ii = 0; ii < idxinfo->nConstraint; ii++) {
 
     sqlite3_index_info::sqlite3_index_constraint *p = &idxinfo->aConstraint[ii];
 
@@ -438,8 +437,7 @@ int RDtreeVtab::bestindex(sqlite3_index_info *idxinfo)
 
     if (!match && p->iColumn == 0 && p->op == SQLITE_INDEX_CONSTRAINT_EQ) {
       /* We have an equality constraint on the rowid. Use strategy 1. */
-      int jj;
-      for (jj = 0; jj < ii; jj++){
+      for (int jj = 0; jj < ii; jj++){
         idxinfo->aConstraintUsage[jj].argvIndex = 0;
         idxinfo->aConstraintUsage[jj].omit = 0;
       }
@@ -623,7 +621,7 @@ int RDtreeVtab::parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid)
 RDtreeNode * RDtreeVtab::node_new(RDtreeNode *parent)
 {
   RDtreeNode *node = new RDtreeNode; // FIXME
-  node->data.resize(node_bytes);
+  node->data.resize(node_bytes, 0);
   node->n_ref = 1;
   node->parent = parent;
   node->is_dirty = 1;
@@ -641,7 +639,7 @@ RDtreeNode * RDtreeVtab::node_hash_lookup(sqlite3_int64 nodeid)
   RDtreeNode *p = nullptr;
   auto nit = node_hash.find(nodeid);
   if (nit != node_hash.end()) {
-      p = nit->second;
+    p = nit->second;
   }
   return p;
 }
@@ -672,14 +670,13 @@ int RDtreeVtab::node_acquire(
     sqlite3_int64 nodeid, RDtreeNode *parent, RDtreeNode **acquired)
 {
   int rc;
-  int rc2 = SQLITE_OK;
 
   /* Check if the requested node is already in the hash table. If so,
   ** increase its reference count and return it.
   */
   RDtreeNode * node = node_hash_lookup(nodeid);
   if (node) {
-    assert( !parent || !node->parent || node->parent == parent );
+    assert(!parent || !node->parent || node->parent == parent);
     if (parent && !node->parent) {
       node_incref(parent);
       node->parent = parent;
@@ -708,9 +705,6 @@ int RDtreeVtab::node_acquire(
   }
 
   rc = sqlite3_reset(pReadNode);
-  if (rc == SQLITE_OK) {
-    rc = rc2;
-  }
 
   /* If the root node was just loaded, set pRDtree->iDepth to the height
   ** of the rd-tree structure. A height of zero means all data is stored on
