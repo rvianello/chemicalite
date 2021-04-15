@@ -122,7 +122,7 @@ int RDtreeVtab::init(
   rdtree->db = db;
   rdtree->flags = flags;
   rdtree->bfp_bytes = bfp_bytes;
-  rdtree->bytes_per_item = 8 /* row id */ + 4 /* min/max weight */ + bfp_bytes; 
+  rdtree->item_bytes = 8 /* row id */ + 4 /* min/max weight */ + bfp_bytes; 
   rdtree->n_ref = 1;
 
   /* Figure out the node size to use. */
@@ -225,8 +225,8 @@ int RDtreeVtab::get_node_size(int is_create)
     rc = select_int(db, sql, &page_size);
     if (rc==SQLITE_OK) {
       node_size = page_size - 64;
-      if ((4 + bytes_per_item*RDTREE_MAXITEMS) < node_size) {
-        node_size = 4 + bytes_per_item*RDTREE_MAXITEMS;
+      if ((4 + item_bytes*RDTREE_MAXITEMS) < node_size) {
+        node_size = 4 + item_bytes*RDTREE_MAXITEMS;
       }
     }
   }
@@ -236,7 +236,7 @@ int RDtreeVtab::get_node_size(int is_create)
     rc = select_int(db, sql, &node_size);
   }
 
-  node_capacity = (node_size - 4)/bytes_per_item;
+  node_capacity = (node_size - 4)/item_bytes;
 
   sqlite3_free(sql);
   return rc;
@@ -856,7 +856,7 @@ int RDtreeVtab::find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf)
 sqlite3_int64 RDtreeVtab::node_get_rowid(RDtreeNode *node, int item)
 {
   assert(item < node->size());
-  return read_uint64(&node->data.data()[4 + bytes_per_item*item]);
+  return read_uint64(&node->data.data()[4 + item_bytes*item]);
 }
 
 
@@ -885,7 +885,7 @@ int RDtreeVtab::node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *ind
 uint8_t *RDtreeVtab::node_get_bfp(RDtreeNode *node, int item)
 {
   assert(item < node->size());
-  return &node->data.data()[4 + bytes_per_item*item + 8 /* rowid */ + 4 /* min/max weight */];
+  return &node->data.data()[4 + item_bytes*item + 8 /* rowid */ + 4 /* min/max weight */];
 }
 
 /* Return the min weight computed on the fingerprints associated to this
@@ -896,7 +896,7 @@ uint8_t *RDtreeVtab::node_get_bfp(RDtreeNode *node, int item)
 int RDtreeVtab::node_get_min_weight(RDtreeNode *node, int item)
 {
   assert(item < node->size());
-  return read_uint16(&node->data.data()[4 + bytes_per_item*item + 8]);
+  return read_uint16(&node->data.data()[4 + item_bytes*item + 8]);
 }
 
 /* Return the max weight computed on the fingerprints associated to this
@@ -907,7 +907,7 @@ int RDtreeVtab::node_get_min_weight(RDtreeNode *node, int item)
 int RDtreeVtab::node_get_max_weight(RDtreeNode *node, int item)
 {
   assert(item < node->size());
-  return read_uint16(&node->data.data()[4 + bytes_per_item*item + 8 /* rowid */ + 2 /* min weight */]);
+  return read_uint16(&node->data.data()[4 + item_bytes*item + 8 /* rowid */ + 2 /* min weight */]);
 }
 
 /*
@@ -917,8 +917,8 @@ int RDtreeVtab::node_get_max_weight(RDtreeNode *node, int item)
 void RDtreeVtab::node_get_item(RDtreeNode *node, int idx, RDtreeItem *item)
 {
   item->rowid = node_get_rowid(node, idx);
-  item->min_weight = read_uint16(&node->data.data()[4 + bytes_per_item*idx + 8 /* rowid */]);
-  item->max_weight = read_uint16(&node->data.data()[4 + bytes_per_item*idx + 8 /* rowid */ + 2 /* min weight */]);
+  item->min_weight = read_uint16(&node->data.data()[4 + item_bytes*idx + 8 /* rowid */]);
+  item->max_weight = read_uint16(&node->data.data()[4 + item_bytes*idx + 8 /* rowid */ + 2 /* min weight */]);
   uint8_t *bfp = node_get_bfp(node, idx);
   item->bfp.assign(bfp, bfp+bfp_bytes);
 }
@@ -1170,7 +1170,7 @@ int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
 */
 void RDtreeVtab::node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx)
 {
-  uint8_t *p = &node->data.data()[4 + bytes_per_item*idx];
+  uint8_t *p = &node->data.data()[4 + item_bytes*idx];
   p += write_uint64(p, item->rowid);
   p += write_uint16(p, item->min_weight);
   p += write_uint16(p, item->max_weight);
@@ -1183,9 +1183,9 @@ void RDtreeVtab::node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx
 */
 void RDtreeVtab::node_delete_item(RDtreeNode *node, int iItem)
 {
-  uint8_t *dst = &node->data.data()[4 + bytes_per_item*iItem];
-  uint8_t *src = &dst[bytes_per_item];
-  int bytes = (node->size() - iItem - 1) * bytes_per_item;
+  uint8_t *dst = &node->data.data()[4 + item_bytes*iItem];
+  uint8_t *src = &dst[item_bytes];
+  int bytes = (node->size() - iItem - 1) * item_bytes;
   memmove(dst, src, bytes);
   write_uint16(&node->data.data()[2], node->size()-1);
   node->is_dirty = 1;

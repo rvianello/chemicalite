@@ -130,7 +130,7 @@ private:
   sqlite3 *db;                 /* Host database connection */
   unsigned int flags;          /* Configuration flags */
   int bfp_bytes;                /* Size (bytes) of the binary fingerprint */
-  int bytes_per_item;          /* Bytes consumed per item */
+  int item_bytes;          /* Bytes consumed per item */
   int node_size;               /* Size (bytes) of each node in the node table */
   int node_capacity;           /* Size (items) of each node */
   int depth;                   /* Current depth of the rd-tree structure */
