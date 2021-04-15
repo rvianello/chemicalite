@@ -72,7 +72,7 @@ int RDtreeVtab::init(
     return SQLITE_ERROR;
   }
 
-  int bfp_size; /* Length (in bytes) of stored binary fingerprint */
+  int bfp_bytes; /* Length (in bytes) of stored binary fingerprint */
 
   int bfp_size_arg;
   if (sscanf(argv[4], "%*s bits( %d )", &bfp_size_arg) == 1) {
@@ -80,21 +80,21 @@ int RDtreeVtab::init(
         *err = sqlite3_mprintf("invalid number of bits for a stored fingerprint: '%d'", bfp_size_arg);
         return SQLITE_ERROR;
       }
-      bfp_size = bfp_size_arg/8;
+      bfp_bytes = bfp_size_arg/8;
   }
   else if (sscanf(argv[4], "%*s bytes( %d )", &bfp_size_arg) == 1) {
       if (bfp_size_arg <= 0) {
         *err = sqlite3_mprintf("invalid number of bytes for a stored fingerprint: '%d'", bfp_size_arg);
         return SQLITE_ERROR;
       }
-      bfp_size = bfp_size_arg;
+      bfp_bytes = bfp_size_arg;
   }
   else {
     *err = sqlite3_mprintf("unable to parse the fingerprint size from: '%s'", argv[4]);
     return SQLITE_ERROR;
   }
 
-  if (bfp_size > RDTREE_MAX_BITSTRING_SIZE) {
+  if (bfp_bytes > RDTREE_MAX_BITSTRING_SIZE) {
     *err = sqlite3_mprintf("the requested fingerpring size exceeds the supported max value: %d bytes", RDTREE_MAX_BITSTRING_SIZE);
     return SQLITE_ERROR;
   }
@@ -121,8 +121,8 @@ int RDtreeVtab::init(
   rdtree->table_name = argv[2];
   rdtree->db = db;
   rdtree->flags = flags;
-  rdtree->bfp_size = bfp_size;
-  rdtree->bytes_per_item = 8 /* row id */ + 4 /* min/max weight */ + bfp_size; 
+  rdtree->bfp_bytes = bfp_bytes;
+  rdtree->bytes_per_item = 8 /* row id */ + 4 /* min/max weight */ + bfp_bytes; 
   rdtree->n_ref = 1;
 
   /* Figure out the node size to use. */
@@ -284,7 +284,7 @@ int RDtreeVtab::sql_init(int is_create)
       return rc;
     }
 
-    for (int i=0; i < bfp_size*8; ++i) {
+    for (int i=0; i < bfp_bytes*8; ++i) {
       rc = sqlite3_bind_int(init_bitfreq_stmt, 1, i);
       if (rc != SQLITE_OK) {
         break;
@@ -318,7 +318,7 @@ int RDtreeVtab::sql_init(int is_create)
       return rc;
     }
 
-    for (int i=0; i <= bfp_size*8; ++i) {
+    for (int i=0; i <= bfp_bytes*8; ++i) {
       rc = sqlite3_bind_int(init_weightfreq_stmt, 1, i);
       if (rc != SQLITE_OK) {
         break;
@@ -527,7 +527,7 @@ int RDtreeVtab::increment_bitfreq(uint8_t *bfp)
   int rc = SQLITE_OK;
   
   int i, bitno = 0;
-  uint8_t * bfp_end = bfp + bfp_size;
+  uint8_t * bfp_end = bfp + bfp_bytes;
   
   while (bfp < bfp_end) {
     uint8_t byte = *bfp++;
@@ -551,7 +551,7 @@ int RDtreeVtab::decrement_bitfreq(uint8_t *bfp)
   int rc = SQLITE_OK;
   
   int i, bitno = 0;
-  uint8_t * bfp_end = bfp + bfp_size;
+  uint8_t * bfp_end = bfp + bfp_bytes;
   
   while (bfp < bfp_end) {
     uint8_t byte = *bfp++;
@@ -920,7 +920,7 @@ void RDtreeVtab::node_get_item(RDtreeNode *node, int idx, RDtreeItem *item)
   item->min_weight = read_uint16(&node->data.data()[4 + bytes_per_item*idx + 8 /* rowid */]);
   item->max_weight = read_uint16(&node->data.data()[4 + bytes_per_item*idx + 8 /* rowid */ + 2 /* min weight */]);
   uint8_t *bfp = node_get_bfp(node, idx);
-  item->bfp.assign(bfp, bfp+bfp_size);
+  item->bfp.assign(bfp, bfp+bfp_bytes);
 }
 
 /*
@@ -936,7 +936,7 @@ double RDtreeVtab::item_weight_distance(RDtreeItem *a, RDtreeItem *b)
 
 int RDtreeVtab::item_weight(RDtreeItem *item)
 {
-  return bfp_op_weight(bfp_size, item->bfp.data());
+  return bfp_op_weight(bfp_bytes, item->bfp.data());
 }
 
 /*
@@ -947,7 +947,7 @@ int RDtreeVtab::item_contains(RDtreeItem *a, RDtreeItem *b)
   return (
     a->min_weight <= b->min_weight &&
 	  a->max_weight >= b->max_weight &&
-	  bfp_op_contains(bfp_size, a->bfp.data(), b->bfp.data()) );
+	  bfp_op_contains(bfp_bytes, a->bfp.data(), b->bfp.data()) );
 }
 
 /*
@@ -955,7 +955,7 @@ int RDtreeVtab::item_contains(RDtreeItem *a, RDtreeItem *b)
 */
 int RDtreeVtab::item_growth(RDtreeItem *base, RDtreeItem *added)
 {
-  return bfp_op_growth(bfp_size, base->bfp.data(), added->bfp.data());
+  return bfp_op_growth(bfp_bytes, base->bfp.data(), added->bfp.data());
 }
 
 /*
@@ -963,7 +963,7 @@ int RDtreeVtab::item_growth(RDtreeItem *base, RDtreeItem *added)
 */
 void RDtreeVtab::item_extend_bounds(RDtreeItem *base, RDtreeItem *added)
 {
-  bfp_op_union(bfp_size, base->bfp.data(), added->bfp.data());
+  bfp_op_union(bfp_bytes, base->bfp.data(), added->bfp.data());
   if (base->min_weight > added->min_weight) { base->min_weight = added->min_weight; }
   if (base->max_weight < added->max_weight) { base->max_weight = added->max_weight; }
 }
@@ -1174,7 +1174,7 @@ void RDtreeVtab::node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx
   p += write_uint64(p, item->rowid);
   p += write_uint16(p, item->min_weight);
   p += write_uint16(p, item->max_weight);
-  memcpy(p, item->bfp.data(), bfp_size);
+  memcpy(p, item->bfp.data(), bfp_bytes);
   node->is_dirty = 1;
 }
 
@@ -1240,10 +1240,10 @@ void RDtreeVtab::pick_next_generic(
   for(ii = 0; ii < nItem; ii++){
     if( aiUsed[ii]==0 ){
       double left 
-        = 1. - bfp_op_tanimoto(bfp_size, 
+        = 1. - bfp_op_tanimoto(bfp_bytes, 
 			       aItem[ii].bfp.data(), pLeftSeed->bfp.data());
       double right 
-        = 1. - bfp_op_tanimoto(bfp_size, 
+        = 1. - bfp_op_tanimoto(bfp_bytes, 
 			       aItem[ii].bfp.data(), pRightSeed->bfp.data());
       double diff = left - right;
       double preference = 0.;
@@ -1276,10 +1276,10 @@ void RDtreeVtab::pick_next_subset(
   for(ii = 0; ii < nItem; ii++){
     if( aiUsed[ii]==0 ){
       double left 
-        = 1. - bfp_op_tanimoto(bfp_size, 
+        = 1. - bfp_op_tanimoto(bfp_bytes, 
 			       aItem[ii].bfp.data(), pLeftSeed->bfp.data());
       double right 
-        = 1. - bfp_op_tanimoto(bfp_size, 
+        = 1. - bfp_op_tanimoto(bfp_bytes, 
 			       aItem[ii].bfp.data(), pRightSeed->bfp.data());
       double diff = left - right;
       double preference = 0.;
@@ -1370,7 +1370,7 @@ void RDtreeVtab::pick_seeds_generic(RDtreeItem *aItem, int nItem, int *piLeftSee
   for (ii = 0; ii < nItem; ii++) {
     for (jj = ii + 1; jj < nItem; jj++) {
       double tanimoto 
-        = bfp_op_tanimoto(bfp_size, aItem[ii].bfp.data(), aItem[jj].bfp.data());
+        = bfp_op_tanimoto(bfp_bytes, aItem[ii].bfp.data(), aItem[jj].bfp.data());
       double distance = 1. - tanimoto;
 
       if (distance > dMaxDistance) {
@@ -1397,7 +1397,7 @@ void RDtreeVtab::pick_seeds_subset(RDtreeItem *aItem, int nItem, int *piLeftSeed
   for (ii = 0; ii < nItem; ii++) {
     for (jj = ii + 1; jj < nItem; jj++) {
       double tanimoto 
-        = bfp_op_tanimoto(bfp_size, aItem[ii].bfp.data(), aItem[jj].bfp.data());
+        = bfp_op_tanimoto(bfp_bytes, aItem[ii].bfp.data(), aItem[jj].bfp.data());
       double distance = 1. - tanimoto;
 
       if (distance > dMaxDistance) {
@@ -2035,8 +2035,8 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
     }
 
     std::string bfp = arg_to_bfp(argv[3], &rc);
-    int input_bfp_size = bfp.size();
-    if (rc == SQLITE_OK && input_bfp_size != bfp_size) {
+    int input_bfp_bytes = bfp.size();
+    if (rc == SQLITE_OK && input_bfp_bytes != bfp_bytes) {
       rc = SQLITE_MISMATCH;
     }
     else {
@@ -2044,9 +2044,9 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
         item.rowid = rowid;
       }
       // FIXME
-      item.bfp.resize(bfp_size);
-      memcpy(item.bfp.data(), bfp.data(), bfp_size);
-      item.min_weight = item.max_weight = bfp_op_weight(bfp_size, item.bfp.data());
+      item.bfp.resize(bfp_bytes);
+      memcpy(item.bfp.data(), bfp.data(), bfp_bytes);
+      item.min_weight = item.max_weight = bfp_op_weight(bfp_bytes, item.bfp.data());
     }
 
     if (rc != SQLITE_OK) {
@@ -2398,7 +2398,7 @@ int RDtreeVtab::column(sqlite3_vtab_cursor *vtab_cursor, sqlite3_context *ctx, i
   }
   else {
     uint8_t *data = node_get_bfp(csr->node, csr->item);
-    std::string bfp(data, data+bfp_size);
+    std::string bfp(data, data+bfp_bytes);
     Blob blob = bfp_to_blob(bfp, &rc);
     if (rc == SQLITE_OK) {
       sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
