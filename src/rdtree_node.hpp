@@ -10,8 +10,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 */
 class RDtreeNode {
 public:
-  int size() {return read_uint16(&data.data()[2]);}
-
+  int get_size() const;
 
   RDtreeNode *parent; /* Parent node in the tree */
   sqlite3_int64 nodeid;

@@ -724,7 +724,7 @@ int RDtreeVtab::node_acquire(
   ** SQLITE_CORRUPT_VTAB.
   */
   if (node && rc == SQLITE_OK) {
-    if (node->size() > node_capacity) {
+    if (node->get_size() > node_capacity) {
       rc = SQLITE_CORRUPT_VTAB;
     }
   }
@@ -849,7 +849,7 @@ int RDtreeVtab::find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf)
 */
 sqlite3_int64 RDtreeVtab::node_get_rowid(RDtreeNode *node, int item)
 {
-  assert(item < node->size());
+  assert(item < node->get_size());
   return read_uint64(&node->data.data()[4 + item_bytes*item]);
 }
 
@@ -860,7 +860,7 @@ sqlite3_int64 RDtreeVtab::node_get_rowid(RDtreeNode *node, int item)
 */
 int RDtreeVtab::node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *index)
 {
-  int node_size = node->size();
+  int node_size = node->get_size();
   for (int ii = 0; ii < node_size; ++ii) {
     if (node_get_rowid(node, ii) == rowid) {
       *index = ii;
@@ -878,7 +878,7 @@ int RDtreeVtab::node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *ind
 */
 uint8_t *RDtreeVtab::node_get_bfp(RDtreeNode *node, int item)
 {
-  assert(item < node->size());
+  assert(item < node->get_size());
   return &node->data.data()[4 + item_bytes*item + 8 /* rowid */ + 4 /* min/max weight */];
 }
 
@@ -889,7 +889,7 @@ uint8_t *RDtreeVtab::node_get_bfp(RDtreeNode *node, int item)
 */
 int RDtreeVtab::node_get_min_weight(RDtreeNode *node, int item)
 {
-  assert(item < node->size());
+  assert(item < node->get_size());
   return read_uint16(&node->data.data()[4 + item_bytes*item + 8]);
 }
 
@@ -900,7 +900,7 @@ int RDtreeVtab::node_get_min_weight(RDtreeNode *node, int item)
 */
 int RDtreeVtab::node_get_max_weight(RDtreeNode *node, int item)
 {
-  assert(item < node->size());
+  assert(item < node->get_size());
   return read_uint16(&node->data.data()[4 + item_bytes*item + 8 /* rowid */ + 2 /* min weight */]);
 }
 
@@ -982,7 +982,7 @@ int RDtreeVtab::choose_leaf_subset(
     int min_growth = 0;
     int min_weight = 0;
 
-    int node_size = node->size();
+    int node_size = node->get_size();
     RDtreeNode *child;
 
     //RDtreeItem *aItem = 0;
@@ -1032,7 +1032,7 @@ int RDtreeVtab::choose_leaf_similarity(
     int min_growth = 0;
     double min_distance = 0.;
     
-    int node_size = node->size();
+    int node_size = node->get_size();
     RDtreeNode *child;
 
     /* Select the child node which will be enlarged the least if pItem
@@ -1079,7 +1079,7 @@ int RDtreeVtab::choose_leaf_generic(
     double min_distance = 0.;
     int min_weight = 0;
     
-    int node_size = node->size();
+    int node_size = node->get_size();
     RDtreeNode *child;
 
     /* Select the child node which will be enlarged the least if pItem
@@ -1179,9 +1179,9 @@ void RDtreeVtab::node_delete_item(RDtreeNode *node, int iItem)
 {
   uint8_t *dst = &node->data.data()[4 + item_bytes*iItem];
   uint8_t *src = &dst[item_bytes];
-  int bytes = (node->size() - iItem - 1) * item_bytes;
+  int bytes = (node->get_size() - iItem - 1) * item_bytes;
   memmove(dst, src, bytes);
-  write_uint16(&node->data.data()[2], node->size()-1);
+  write_uint16(&node->data.data()[2], node->get_size()-1);
   node->is_dirty = 1;
 }
 
@@ -1193,7 +1193,7 @@ void RDtreeVtab::node_delete_item(RDtreeNode *node, int iItem)
 */
 int RDtreeVtab::node_insert_item(RDtreeNode *node, RDtreeItem *item)
 {
-  int node_size = node->size();  /* Current number of items in pNode */
+  int node_size = node->get_size();  /* Current number of items in pNode */
 
   assert(node_size <= node_capacity);
 
@@ -1472,7 +1472,7 @@ int RDtreeVtab::assign_items(RDtreeItem *aItem, int nItem,
 	     &aItem[iLeftSeed], &aItem[iRightSeed], pLeftBounds, pRightBounds,
 	     &pNext, &iPreferRight);
 
-    if ((node_minsize() - pRight->size() == i) || (iPreferRight > 0 && (node_minsize() - pLeft->size() != i))) {
+    if ((node_minsize() - pRight->get_size() == i) || (iPreferRight > 0 && (node_minsize() - pLeft->get_size() != i))) {
       node_insert_item(pRight, pNext);
       item_extend_bounds(pRightBounds, pNext);
     }
@@ -1523,7 +1523,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   int new_item_is_right = 0;
 
   int rc = SQLITE_OK;
-  int node_size = node->size();
+  int node_size = node->get_size();
 
   RDtreeNode *left = 0;
   RDtreeNode *right = 0;
@@ -1618,7 +1618,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
     return rc;
   }
 
-  int right_size = right->size();
+  int right_size = right->get_size();
   for (int i = 0; i < right_size; i++) {
     sqlite3_int64 rowid = node_get_rowid(right, i);
     rc = update_mapping(rowid, right, height);
@@ -1633,7 +1633,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   }
 
   if (node->nodeid == 1) {
-    int left_size = left->size();
+    int left_size = left->get_size();
     for (int i = 0; i < left_size; i++) {
       sqlite3_int64 rowid = node_get_rowid(left, i);
       rc = update_mapping(rowid, left, height);
@@ -1761,7 +1761,7 @@ int RDtreeVtab::fix_node_bounds(RDtreeNode *node)
   RDtreeNode *parent = node->parent;
   if (parent) {
     int ii; 
-    int nItem = node->size();
+    int nItem = node->get_size();
     RDtreeItem bounds;  /* Bounding box for node */
     node_get_item(node, 0, &bounds);
     for (ii = 1; ii < nItem; ii++) {
@@ -1808,7 +1808,7 @@ int RDtreeVtab::delete_item(RDtreeNode *node, int iItem, int height)
   RDtreeNode *parent = node->parent;
   assert(parent || node->nodeid == 1);
   if (parent) {
-    if (node->size() < node_minsize()) {
+    if (node->get_size() < node_minsize()) {
       rc = remove_node(node, height);
     }
     else {
@@ -1860,7 +1860,7 @@ int RDtreeVtab::reinsert_node_content(RDtreeNode *node)
 {
   int ii;
   int rc = SQLITE_OK;
-  int nItem = node->size();
+  int nItem = node->get_size();
 
   for (ii = 0; rc == SQLITE_OK && ii < nItem; ii++) {
     RDtreeItem item;
@@ -1940,7 +1940,7 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
   ** the root node (the operation that Gutman's paper says to perform 
   ** in this scenario).
   */
-  if (rc == SQLITE_OK && depth > 0 && root->size() == 1) {
+  if (rc == SQLITE_OK && depth > 0 && root->get_size() == 1) {
     RDtreeNode *child;
     sqlite3_int64 child_rowid = node_get_rowid(root, 0);
     rc = node_acquire(child_rowid, root, &child);
@@ -2198,7 +2198,7 @@ int RDtreeVtab::descend_to_item(RDtreeCursor *csr, int height, bool *is_eof)
   node_decref(csr->node);
   csr->node = child;
   *is_eof = true; // useless? defensive?
-  int num_items = child->size();
+  int num_items = child->get_size();
   for (int ii=0; *is_eof && ii < num_items; ii++) {
     csr->item = ii;
     rc = descend_to_item(csr, height-1, is_eof);
@@ -2242,7 +2242,7 @@ int RDtreeVtab::next(sqlite3_vtab_cursor *cursor)
     int height = 0;
     while (csr->node) {
       RDtreeNode *node = csr->node;
-      int num_items = node->size();
+      int num_items = node->get_size();
       for (csr->item++; csr->item < num_items; csr->item++) {
         bool is_eof;
         rc = descend_to_item(csr, height, &is_eof);
@@ -2330,7 +2330,7 @@ int RDtreeVtab::filter(
     }
     if (rc == SQLITE_OK) {
       bool is_eof = true;
-      int num_items = root->size();
+      int num_items = root->get_size();
       csr->node = root;
       for (csr->item = 0; 
 	      rc == SQLITE_OK && csr->item < num_items; csr->item++) {
@@ -2345,7 +2345,7 @@ int RDtreeVtab::filter(
         node_decref(root);
         csr->node = 0;
       }
-      assert(rc != SQLITE_OK || !csr->node || csr->item < csr->node->size());
+      assert(rc != SQLITE_OK || !csr->node || csr->item < csr->node->get_size());
     }
   }
 
