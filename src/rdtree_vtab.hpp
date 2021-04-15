@@ -40,7 +40,7 @@ private:
 	sqlite3_vtab **pvtab, char **err, int is_create);
   void incref();
   void decref();
-  int get_node_size(int is_create);
+  int get_node_bytes(int is_create);
   int sql_init(int is_create);
   int delete_rowid(sqlite3_int64 rowid);
   int delete_item(RDtreeNode *node, int item, int height);
@@ -129,9 +129,9 @@ private:
 
   sqlite3 *db;                 /* Host database connection */
   unsigned int flags;          /* Configuration flags */
-  int bfp_bytes;                /* Size (bytes) of the binary fingerprint */
-  int item_bytes;          /* Bytes consumed per item */
-  int node_size;               /* Size (bytes) of each node in the node table */
+  int bfp_bytes;               /* Size (bytes) of the binary fingerprint */
+  int item_bytes;              /* Bytes consumed per item */
+  int node_bytes;              /* Size (bytes) of each node in the node table */
   int node_capacity;           /* Size (items) of each node */
   int depth;                   /* Current depth of the rd-tree structure */
   std::string db_name;         /* Name of database containing rd-tree table */

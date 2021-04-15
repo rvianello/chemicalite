@@ -126,7 +126,7 @@ int RDtreeVtab::init(
   rdtree->n_ref = 1;
 
   /* Figure out the node size to use. */
-  int rc = rdtree->get_node_size(is_create);
+  int rc = rdtree->get_node_bytes(is_create);
 
   /* Create/Connect to the underlying relational database schema. If
   ** that is successful, call sqlite3_declare_vtab() to configure
@@ -203,7 +203,7 @@ static int select_int(sqlite3 * db, const char *query, int *value)
 /*
 ** This function is called from within the xConnect() or xCreate() method to
 ** determine the node-size used by the rdtree table being created or connected
-** to. If successful, pRDtree->node_size is populated and SQLITE_OK returned.
+** to. If successful, pRDtree->node_bytes is populated and SQLITE_OK returned.
 ** Otherwise, an SQLite error code is returned.
 **
 ** If this function is being called as part of an xConnect(), then the rdtree
@@ -215,7 +215,7 @@ static int select_int(sqlite3 * db, const char *query, int *value)
 ** database page-size is so large that more than RDTREE_MAXITEMS entries 
 ** would fit in a single node, use a smaller node-size.
 */
-int RDtreeVtab::get_node_size(int is_create)
+int RDtreeVtab::get_node_bytes(int is_create)
 {
   int rc;
   char *sql;
@@ -224,19 +224,19 @@ int RDtreeVtab::get_node_size(int is_create)
     sql = sqlite3_mprintf("PRAGMA %Q.page_size", db_name.c_str());
     rc = select_int(db, sql, &page_size);
     if (rc==SQLITE_OK) {
-      node_size = page_size - 64;
-      if ((4 + item_bytes*RDTREE_MAXITEMS) < node_size) {
-        node_size = 4 + item_bytes*RDTREE_MAXITEMS;
+      node_bytes = page_size - 64;
+      if ((4 + item_bytes*RDTREE_MAXITEMS) < node_bytes) {
+        node_bytes = 4 + item_bytes*RDTREE_MAXITEMS;
       }
     }
   }
   else{
     sql = sqlite3_mprintf("SELECT length(data) FROM '%q'.'%q_node' "
 			   "WHERE nodeno=1", db_name.c_str(), table_name.c_str());
-    rc = select_int(db, sql, &node_size);
+    rc = select_int(db, sql, &node_bytes);
   }
 
-  node_capacity = (node_size - 4)/item_bytes;
+  node_capacity = (node_bytes - 4)/item_bytes;
 
   sqlite3_free(sql);
   return rc;
@@ -259,7 +259,7 @@ int RDtreeVtab::sql_init(int is_create)
 			db_name.c_str(), table_name.c_str(), 
 			db_name.c_str(), table_name.c_str(), 
 			db_name.c_str(), table_name.c_str(), 
-			db_name.c_str(), table_name.c_str(), node_size
+			db_name.c_str(), table_name.c_str(), node_bytes
 			);
     if (!create) {
       return SQLITE_NOMEM;
@@ -623,7 +623,7 @@ int RDtreeVtab::parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid)
 RDtreeNode * RDtreeVtab::node_new(RDtreeNode *parent)
 {
   RDtreeNode *node = new RDtreeNode; // FIXME
-  node->data.resize(node_size);
+  node->data.resize(node_bytes);
   node->n_ref = 1;
   node->parent = parent;
   node->is_dirty = 1;
@@ -694,15 +694,15 @@ int RDtreeVtab::node_acquire(
 
   if (rc == SQLITE_ROW) {
     const uint8_t *blob = (const uint8_t *)sqlite3_column_blob(pReadNode, 0);
-    if (node_size == sqlite3_column_bytes(pReadNode, 0)) {
+    if (node_bytes == sqlite3_column_bytes(pReadNode, 0)) {
       node = new RDtreeNode; // FIXME
       node->parent = parent;
       node->n_ref = 1;
       node->nodeid = nodeid;
       node->is_dirty = 0;
       node->next = nullptr;
-      node->data.resize(node_size);
-      memcpy(node->data.data(), blob, node_size);
+      node->data.resize(node_bytes);
+      memcpy(node->data.data(), blob, node_bytes);
       node_incref(parent);
     }
   }
@@ -765,7 +765,7 @@ int RDtreeVtab::node_write(RDtreeNode *node)
     else {
       sqlite3_bind_null(pWriteNode, 1);
     }
-    sqlite3_bind_blob(pWriteNode, 2, node->data.data(), node_size, SQLITE_TRANSIENT);
+    sqlite3_bind_blob(pWriteNode, 2, node->data.data(), node_bytes, SQLITE_TRANSIENT);
     sqlite3_step(pWriteNode);
     node->is_dirty = 0;
     rc = sqlite3_reset(pWriteNode);
@@ -1218,7 +1218,7 @@ int RDtreeVtab::node_insert_item(RDtreeNode *node, RDtreeItem *item)
 void RDtreeVtab::node_zero(RDtreeNode *p)
 {
   assert(p);
-  memset(&p->data.data()[2], 0, node_size-2);
+  memset(&p->data.data()[2], 0, node_bytes-2);
   p->is_dirty = 1;
 }
 
@@ -1568,8 +1568,8 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
     return rc;
   }
 
-  memset(left->data.data(), 0, node_size);
-  memset(right->data.data(), 0, node_size);
+  memset(left->data.data(), 0, node_bytes);
+  memset(right->data.data(), 0, node_bytes);
 
   rc = assign_items(items.data(), node_size, left, right, &leftbounds, &rightbounds);
 
