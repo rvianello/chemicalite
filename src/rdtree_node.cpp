@@ -89,6 +89,26 @@ void RDtreeNode::delete_item(int idx)
 }
 
 /*
+** Insert the contents of item. If the insert is successful, return SQLITE_OK.
+**
+** If there is not enough free space in pNode, return SQLITE_FULL.
+*/
+int RDtreeNode::insert_item(RDtreeItem *item)
+{
+  int node_size = get_size();  /* Current number of items in pNode */
+
+  assert(node_size <= vtab->node_capacity);
+
+  if (node_size < vtab->node_capacity) {
+    overwrite_item(node_size, item);
+    write_uint16(&data.data()[2], node_size+1);
+    dirty = true;
+  } 
+
+  return (node_size == vtab->node_capacity) ? SQLITE_FULL : SQLITE_OK;
+}
+
+/*
 ** Return the 64-bit integer value associated with item item. If this
 ** is a leaf node, this is a rowid. If it is an internal node, then
 ** the 64-bit integer is a child page number.

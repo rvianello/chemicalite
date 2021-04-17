@@ -1092,27 +1092,6 @@ int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
 }
 
 /*
-** Insert the contents of item pItem into node pNode. If the insert
-** is successful, return SQLITE_OK.
-**
-** If there is not enough free space in pNode, return SQLITE_FULL.
-*/
-int RDtreeVtab::node_insert_item(RDtreeNode *node, RDtreeItem *item)
-{
-  int node_size = node->get_size();  /* Current number of items in pNode */
-
-  assert(node_size <= node_capacity);
-
-  if (node_size < node_capacity) {
-    node->overwrite_item(node_size, item);
-    write_uint16(&node->data.data()[2], node_size+1);
-    node->dirty = true;
-  } 
-
-  return (node_size == node_capacity) ? SQLITE_FULL : SQLITE_OK;
-}
-
-/*
 ** Clear the content of node p (set all bytes to 0x00).
 */
 void RDtreeVtab::node_zero(RDtreeNode *p)
@@ -1366,8 +1345,8 @@ int RDtreeVtab::assign_items(RDtreeItem *aItem, int nItem,
 
   *pLeftBounds = aItem[iLeftSeed];
   *pRightBounds = aItem[iRightSeed];
-  node_insert_item(pLeft, &aItem[iLeftSeed]);
-  node_insert_item(pRight, &aItem[iRightSeed]);
+  pLeft->insert_item(&aItem[iLeftSeed]);
+  pRight->insert_item(&aItem[iRightSeed]);
   aiUsed[iLeftSeed] = 1;
   aiUsed[iRightSeed] = 1;
 
@@ -1379,11 +1358,11 @@ int RDtreeVtab::assign_items(RDtreeItem *aItem, int nItem,
 	     &pNext, &iPreferRight);
 
     if ((node_minsize() - pRight->get_size() == i) || (iPreferRight > 0 && (node_minsize() - pLeft->get_size() != i))) {
-      node_insert_item(pRight, pNext);
+      pRight->insert_item(pNext);
       item_extend_bounds(pRightBounds, pNext);
     }
     else {
-      node_insert_item(pLeft, pNext);
+      pLeft->insert_item(pNext);
       item_extend_bounds(pLeftBounds, pNext);
     }
   }
@@ -1742,7 +1721,7 @@ int RDtreeVtab::insert_item(RDtreeNode *node, RDtreeItem *item, int height)
     }
   }
 
-  if (node_insert_item(node, item)) {
+  if (node->insert_item(item)) {
     /* node was full */
     rc = split_node(node, item, height);
   }

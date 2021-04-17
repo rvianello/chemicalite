@@ -23,6 +23,7 @@ public:
   void get_item(int idx, RDtreeItem *item) const;
   void overwrite_item(int idx, RDtreeItem *item);
   void delete_item(int idx);
+  int insert_item(RDtreeItem *item);
 
   RDtreeVtab *vtab;
   RDtreeNode *parent;
