@@ -4,7 +4,7 @@
 #include "rdtree_vtab.hpp"
 
 RDtreeNode::RDtreeNode(RDtreeVtab *vtab_, RDtreeNode *parent_)
-  : vtab(vtab_), parent(parent_), nodeid(0), n_ref(1), is_dirty(0),
+  : vtab(vtab_), parent(parent_), nodeid(0), n_ref(1), dirty(false),
     data(vtab_->node_bytes, 0), next(nullptr)
 {
 }

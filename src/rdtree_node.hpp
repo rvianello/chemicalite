@@ -21,7 +21,7 @@ public:
   RDtreeNode *parent;
   sqlite3_int64 nodeid;
   int n_ref;
-  int is_dirty;
+  bool dirty;
   Blob data;
   RDtreeNode *next;   /* Next node in this deleted chain */
 };

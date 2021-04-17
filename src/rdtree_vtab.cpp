@@ -621,7 +621,7 @@ int RDtreeVtab::parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid)
 RDtreeNode * RDtreeVtab::node_new(RDtreeNode *parent)
 {
   RDtreeNode *node = new RDtreeNode(this, parent);
-  node->is_dirty = 1;
+  node->dirty = true;
   node_incref(parent);
   return node;
 }
@@ -743,7 +743,7 @@ int RDtreeVtab::node_acquire(
 int RDtreeVtab::node_write(RDtreeNode *node)
 {
   int rc = SQLITE_OK;
-  if (node->is_dirty) {
+  if (node->dirty) {
     if (node->nodeid) {
       sqlite3_bind_int64(pWriteNode, 1, node->nodeid);
     }
@@ -752,7 +752,7 @@ int RDtreeVtab::node_write(RDtreeNode *node)
     }
     sqlite3_bind_blob(pWriteNode, 2, node->data.data(), node_bytes, SQLITE_TRANSIENT);
     sqlite3_step(pWriteNode);
-    node->is_dirty = 0;
+    node->dirty = false;
     rc = sqlite3_reset(pWriteNode);
     if (node->nodeid == 0 && rc == SQLITE_OK) {
       node->nodeid = sqlite3_last_insert_rowid(db);
@@ -1161,7 +1161,7 @@ void RDtreeVtab::node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx
   p += write_uint16(p, item->min_weight);
   p += write_uint16(p, item->max_weight);
   memcpy(p, item->bfp.data(), bfp_bytes);
-  node->is_dirty = 1;
+  node->dirty = true;
 }
 
 /*
@@ -1174,7 +1174,7 @@ void RDtreeVtab::node_delete_item(RDtreeNode *node, int iItem)
   int bytes = (node->get_size() - iItem - 1) * item_bytes;
   memmove(dst, src, bytes);
   write_uint16(&node->data.data()[2], node->get_size()-1);
-  node->is_dirty = 1;
+  node->dirty = true;
 }
 
 /*
@@ -1192,7 +1192,7 @@ int RDtreeVtab::node_insert_item(RDtreeNode *node, RDtreeItem *item)
   if (node_size < node_capacity) {
     node_overwrite_item(node, item, node_size);
     write_uint16(&node->data.data()[2], node_size+1);
-    node->is_dirty = 1;
+    node->dirty = true;
   } 
 
   return (node_size == node_capacity) ? SQLITE_FULL : SQLITE_OK;
@@ -1205,7 +1205,7 @@ void RDtreeVtab::node_zero(RDtreeNode *p)
 {
   assert(p);
   memset(&p->data.data()[2], 0, node_bytes-2);
-  p->is_dirty = 1;
+  p->dirty = true;
 }
 
 /*
@@ -1538,7 +1538,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
     right = node_new(node);
     left = node_new(node);
     depth++;
-    node->is_dirty = 1;
+    node->dirty = true;
     write_uint16(node->data.data(), depth);
   }
   else {
@@ -1946,7 +1946,7 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
     if (rc == SQLITE_OK) {
       --depth;
       write_uint16(root->data.data(), depth);
-      root->is_dirty = 1;
+      root->dirty = true;
     }
   }
 
