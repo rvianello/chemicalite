@@ -84,8 +84,6 @@ private:
   int choose_leaf_generic(RDtreeItem *item, int height, RDtreeNode **leaf);
   int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
   int update_mapping(sqlite3_int64 rowid, RDtreeNode *node, int height);
-  int rowid_write(sqlite3_int64 rowid, sqlite3_int64 nodeid);
-  int parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid);
   int adjust_tree(RDtreeNode *node, RDtreeItem *item);
   int fix_node_bounds(RDtreeNode *node);
   int fix_leaf_parent(RDtreeNode *leaf);
@@ -93,12 +91,11 @@ private:
   int test_item(RDtreeCursor *csr, int height, bool *is_eof);
   int descend_to_item(RDtreeCursor *csr, int height, bool *is_eof);
 
-  RDtreeNode * node_new(RDtreeNode *parent);
-
   int node_acquire(
     sqlite3_int64 nodeid, RDtreeNode *parent, RDtreeNode **acquired);
   int find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf);
 
+  RDtreeNode * node_new(RDtreeNode *parent);
   void node_incref(RDtreeNode *);
   int node_decref(RDtreeNode *);
   int node_write(RDtreeNode *node);
@@ -120,6 +117,9 @@ private:
   int increment_weightfreq(int weight);
   int decrement_weightfreq(int weight);
 
+  int rowid_write(sqlite3_int64 rowid, sqlite3_int64 nodeid);
+  int parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid);
+
   sqlite3 *db;                 /* Host database connection */
   unsigned int flags;          /* Configuration flags */
   int bfp_bytes;               /* Size (bytes) of the binary fingerprint */
@@ -129,8 +129,10 @@ private:
   int depth;                   /* Current depth of the rd-tree structure */
   std::string db_name;         /* Name of database containing rd-tree table */
   std::string table_name;      /* Name of rd-tree table */ 
-  std::unordered_map<sqlite3_int64, RDtreeNode *> node_hash; /* Hash table of in-memory nodes. */ 
   int n_ref;                   /* Current number of users of this structure */
+
+  /* Hash table of in-memory nodes. */
+  std::unordered_map<sqlite3_int64, RDtreeNode *> node_hash; 
 
   /* List of nodes removed during a CondenseTree operation. 
   ** RDtreeNode.node stores the depth of the sub-tree 
