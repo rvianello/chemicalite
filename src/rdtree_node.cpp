@@ -76,6 +76,19 @@ void RDtreeNode::overwrite_item(int idx, RDtreeItem *item)
 }
 
 /*
+** Remove the item with index iItem from node pNode.
+*/
+void RDtreeNode::delete_item(int idx)
+{
+  uint8_t *dst = &data.data()[4 + vtab->item_bytes*idx];
+  uint8_t *src = dst + vtab->item_bytes;
+  int bytes = (get_size() - idx - 1) * vtab->item_bytes;
+  memmove(dst, src, bytes);
+  write_uint16(&data.data()[2], get_size()-1);
+  dirty = true;
+}
+
+/*
 ** Return the 64-bit integer value associated with item item. If this
 ** is a leaf node, this is a rowid. If it is an internal node, then
 ** the 64-bit integer is a child page number.

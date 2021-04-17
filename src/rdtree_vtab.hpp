@@ -101,7 +101,6 @@ private:
   int node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *index);
   int node_parent_index(RDtreeNode *node, int *index);
   int node_insert_item(RDtreeNode *node, RDtreeItem *item);
-  void node_delete_item(RDtreeNode *node, int item);
   void node_incref(RDtreeNode *);
   int node_decref(RDtreeNode *);
   int node_write(RDtreeNode *node);

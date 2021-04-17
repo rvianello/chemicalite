@@ -1092,19 +1092,6 @@ int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
 }
 
 /*
-** Remove the item with index iItem from node pNode.
-*/
-void RDtreeVtab::node_delete_item(RDtreeNode *node, int iItem)
-{
-  uint8_t *dst = &node->data.data()[4 + item_bytes*iItem];
-  uint8_t *src = &dst[item_bytes];
-  int bytes = (node->get_size() - iItem - 1) * item_bytes;
-  memmove(dst, src, bytes);
-  write_uint16(&node->data.data()[2], node->get_size()-1);
-  node->dirty = true;
-}
-
-/*
 ** Insert the contents of item pItem into node pNode. If the insert
 ** is successful, return SQLITE_OK.
 **
@@ -1702,7 +1689,7 @@ int RDtreeVtab::fix_node_bounds(RDtreeNode *node)
 ** Delete the item at index iItem of node pNode. After removing the
 ** item, adjust the rd-tree data structure if required.
 */
-int RDtreeVtab::delete_item(RDtreeNode *node, int iItem, int height)
+int RDtreeVtab::delete_item(RDtreeNode *node, int idx, int height)
 {
   int rc;
 
@@ -1717,7 +1704,7 @@ int RDtreeVtab::delete_item(RDtreeNode *node, int iItem, int height)
   /* Remove the item from the node. This call just moves bytes around
   ** the in-memory node image, so it cannot fail.
   */
-  node_delete_item(node, iItem);
+  node->delete_item(idx);
 
   /* If the node is not the tree root and now has less than the minimum
   ** number of cells, remove it from the tree. Otherwise, update the
