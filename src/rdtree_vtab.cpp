@@ -834,22 +834,6 @@ int RDtreeVtab::find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf)
 }
 
 /*
-** One of the items in node node is guaranteed to have a 64-bit 
-** integer value equal to rowid. Return the index of this item.
-*/
-int RDtreeVtab::node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *index)
-{
-  int node_size = node->get_size();
-  for (int ii = 0; ii < node_size; ++ii) {
-    if (node->get_rowid(ii) == rowid) {
-      *index = ii;
-      return SQLITE_OK;
-    }
-  }
-  return SQLITE_CORRUPT_VTAB;
-}
-
-/*
 **
 */
 double RDtreeVtab::item_weight_distance(RDtreeItem *a, RDtreeItem *b)
@@ -1397,7 +1381,7 @@ int RDtreeVtab::node_parent_index(RDtreeNode *node, int *index)
 {
   RDtreeNode *parent = node->parent;
   if (parent) {
-    return node_rowid_index(parent, node->nodeid, index);
+    return parent->get_rowid_index(node->nodeid, index);
   }
   *index = -1;
   return SQLITE_OK;
@@ -1792,7 +1776,7 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
 
   /* Delete the cell in question from the leaf node. */
   if (rc == SQLITE_OK) {
-    rc = node_rowid_index(leaf, rowid, &item);
+    rc = leaf->get_rowid_index(rowid, &item);
     if (rc == SQLITE_OK) {
       const uint8_t *bfp = leaf->get_bfp(item);
       rc = decrement_bitfreq(bfp);
@@ -2174,7 +2158,7 @@ int RDtreeVtab::filter(
     csr->node = leaf; 
     if (leaf) {
       assert(rc == SQLITE_OK);
-      rc = node_rowid_index(leaf, rowid, &csr->item);
+      rc = leaf->get_rowid_index(rowid, &csr->item);
     }
   }
   else {

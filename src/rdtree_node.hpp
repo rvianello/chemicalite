@@ -15,8 +15,8 @@ class RDtreeNode {
 public:
   RDtreeNode(RDtreeVtab *vtab, RDtreeNode *parent);
 
-  sqlite3_int64 get_rowid(int item) const;
   int get_size() const;
+
   int get_min_weight(int item) const;
   int get_max_weight(int item) const;
   const uint8_t * get_bfp(int item) const;
@@ -24,6 +24,8 @@ public:
   void overwrite_item(int idx, RDtreeItem *item);
   void delete_item(int idx);
   int insert_item(RDtreeItem *item);
+  sqlite3_int64 get_rowid(int item) const;
+  int get_rowid_index(sqlite3_int64 rowid, int *idx) const;
 
   RDtreeVtab *vtab;
   RDtreeNode *parent;

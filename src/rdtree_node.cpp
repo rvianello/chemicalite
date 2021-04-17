@@ -118,3 +118,20 @@ sqlite3_int64 RDtreeNode::get_rowid(int item) const
   assert(item < get_size());
   return read_uint64(&data.data()[4 + vtab->item_bytes*item]);
 }
+
+/*
+** One of the items in node node is guaranteed to have a 64-bit 
+** integer value equal to rowid. Return the index of this item.
+*/
+int RDtreeNode::get_rowid_index(sqlite3_int64 rowid, int *idx) const
+{
+  int node_size = get_size();
+  for (int ii = 0; ii < node_size; ++ii) {
+    if (get_rowid(ii) == rowid) {
+      *idx = ii;
+      return SQLITE_OK;
+    }
+  }
+  return SQLITE_CORRUPT_VTAB;
+}
+
