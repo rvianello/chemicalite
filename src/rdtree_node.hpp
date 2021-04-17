@@ -16,6 +16,7 @@ public:
   RDtreeNode(RDtreeVtab *vtab, RDtreeNode *parent);
 
   int get_size() const;
+  void zero();
 
   int get_min_weight(int item) const;
   int get_max_weight(int item) const;

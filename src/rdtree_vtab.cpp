@@ -1076,16 +1076,6 @@ int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
 }
 
 /*
-** Clear the content of node p (set all bytes to 0x00).
-*/
-void RDtreeVtab::node_zero(RDtreeNode *p)
-{
-  assert(p);
-  memset(&p->data.data()[2], 0, node_bytes-2);
-  p->dirty = true;
-}
-
-/*
 ** Pick the next item to be inserted into one of the two subsets. Select the
 ** one associated to a strongest "preference" for one of the two.
 */
@@ -1407,7 +1397,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   for (int i = 0; i < node_size; i++) {
     node->get_item(i, &items[i]);
   }
-  node_zero(node);
+  node->zero();
   items[node_size] = *item;
   node_size += 1;
 

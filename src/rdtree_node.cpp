@@ -16,6 +16,16 @@ int RDtreeNode::get_size() const
   return read_uint16(&data.data()[2]);
 }
 
+/*
+** Clear the content of node p (set all bytes to 0x00).
+*/
+void RDtreeNode::zero()
+{
+  memset(&data.data()[2], 0, vtab->node_bytes-2);
+  dirty = true;
+}
+
+
 /* Return the min weight computed on the fingerprints associated to this
 ** item. If node is a leaf node then this is the actual population count
 ** for the item's fingerprint. On internal nodes the min weight contributes

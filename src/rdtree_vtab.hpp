@@ -93,7 +93,6 @@ private:
   int descend_to_item(RDtreeCursor *csr, int height, bool *is_eof);
 
   RDtreeNode * node_new(RDtreeNode *parent);
-  void node_zero(RDtreeNode *node);
 
   int node_acquire(
     sqlite3_int64 nodeid, RDtreeNode *parent, RDtreeNode **acquired);
