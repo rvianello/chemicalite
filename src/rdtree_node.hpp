@@ -5,19 +5,25 @@ extern const sqlite3_api_routines *sqlite3_api;
 
 #include "utils.hpp"
 
+class RDtreeVtab;
+
 /* 
 ** An rd-tree structure node.
 */
 class RDtreeNode {
 public:
-  int get_size() const;
+  RDtreeNode(RDtreeVtab *vtab, RDtreeNode *parent);
 
-  RDtreeNode *parent; /* Parent node in the tree */
+  int get_size() const;
+  sqlite3_int64 get_rowid(int item) const;
+
+  RDtreeVtab *vtab;
+  RDtreeNode *parent;
   sqlite3_int64 nodeid;
   int n_ref;
   int is_dirty;
   Blob data;
-  RDtreeNode *next;   /* Next node in this hash chain */
+  RDtreeNode *next;   /* Next node in this deleted chain */
 };
 
 #endif

@@ -620,12 +620,8 @@ int RDtreeVtab::parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid)
 */
 RDtreeNode * RDtreeVtab::node_new(RDtreeNode *parent)
 {
-  RDtreeNode *node = new RDtreeNode; // FIXME
-  node->data.resize(node_bytes, 0);
-  node->n_ref = 1;
-  node->parent = parent;
+  RDtreeNode *node = new RDtreeNode(this, parent);
   node->is_dirty = 1;
-  node->next = nullptr;
   node_incref(parent);
   return node;
 }
@@ -692,13 +688,8 @@ int RDtreeVtab::node_acquire(
   if (rc == SQLITE_ROW) {
     const uint8_t *blob = (const uint8_t *)sqlite3_column_blob(pReadNode, 0);
     if (node_bytes == sqlite3_column_bytes(pReadNode, 0)) {
-      node = new RDtreeNode; // FIXME
-      node->parent = parent;
-      node->n_ref = 1;
+      node = new RDtreeNode(this, parent);
       node->nodeid = nodeid;
-      node->is_dirty = 0;
-      node->next = nullptr;
-      node->data.resize(node_bytes);
       memcpy(node->data.data(), blob, node_bytes);
       node_incref(parent);
     }
@@ -847,12 +838,13 @@ int RDtreeVtab::find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf)
 ** node pNode. If pNode is a leaf node, this is a rowid. If it is
 ** an internal node, then the 64-bit integer is a child page number.
 */
+/* moved to node
 sqlite3_int64 RDtreeVtab::node_get_rowid(RDtreeNode *node, int item)
 {
   assert(item < node->get_size());
   return read_uint64(&node->data.data()[4 + item_bytes*item]);
 }
-
+*/
 
 /*
 ** One of the items in node node is guaranteed to have a 64-bit 
@@ -862,7 +854,7 @@ int RDtreeVtab::node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *ind
 {
   int node_size = node->get_size();
   for (int ii = 0; ii < node_size; ++ii) {
-    if (node_get_rowid(node, ii) == rowid) {
+    if (node->get_rowid(ii) == rowid) {
       *index = ii;
       return SQLITE_OK;
     }
@@ -910,7 +902,7 @@ int RDtreeVtab::node_get_max_weight(RDtreeNode *node, int item)
 */
 void RDtreeVtab::node_get_item(RDtreeNode *node, int idx, RDtreeItem *item)
 {
-  item->rowid = node_get_rowid(node, idx);
+  item->rowid = node->get_rowid(idx);
   item->min_weight = read_uint16(&node->data.data()[4 + item_bytes*idx + 8 /* rowid */]);
   item->max_weight = read_uint16(&node->data.data()[4 + item_bytes*idx + 8 /* rowid */ + 2 /* min weight */]);
   uint8_t *bfp = node_get_bfp(node, idx);
@@ -1620,7 +1612,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
 
   int right_size = right->get_size();
   for (int i = 0; i < right_size; i++) {
-    sqlite3_int64 rowid = node_get_rowid(right, i);
+    sqlite3_int64 rowid = right->get_rowid(i);
     rc = update_mapping(rowid, right, height);
     if (rowid == item->rowid) {
       new_item_is_right = 1;
@@ -1635,7 +1627,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   if (node->nodeid == 1) {
     int left_size = left->get_size();
     for (int i = 0; i < left_size; i++) {
-      sqlite3_int64 rowid = node_get_rowid(left, i);
+      sqlite3_int64 rowid = left->get_rowid(i);
       rc = update_mapping(rowid, left, height);
       if (rc != SQLITE_OK) {
         node_decref(right);
@@ -1942,7 +1934,7 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
   */
   if (rc == SQLITE_OK && depth > 0 && root->get_size() == 1) {
     RDtreeNode *child;
-    sqlite3_int64 child_rowid = node_get_rowid(root, 0);
+    sqlite3_int64 child_rowid = root->get_rowid(0);
     rc = node_acquire(child_rowid, root, &child);
     if( rc==SQLITE_OK ){
       rc = remove_node(child, depth - 1);
@@ -2189,7 +2181,7 @@ int RDtreeVtab::descend_to_item(RDtreeCursor *csr, int height, bool *is_eof)
   }
 
   RDtreeNode *child;
-  sqlite3_int64 rowid = node_get_rowid(csr->node, csr->item);
+  sqlite3_int64 rowid = csr->node->get_rowid(csr->item);
   rc = node_acquire(rowid, csr->node, &child);
   if (rc != SQLITE_OK) {
     return rc;
@@ -2373,7 +2365,7 @@ int RDtreeVtab::rowid(sqlite3_vtab_cursor *vtab_cursor, sqlite_int64 *pRowid)
   RDtreeCursor *csr = (RDtreeCursor *)vtab_cursor;
 
   assert(csr->node);
-  *pRowid = node_get_rowid(csr->node, csr->item);
+  *pRowid = csr->node->get_rowid(csr->item);
 
   return SQLITE_OK;
 }
@@ -2387,7 +2379,7 @@ int RDtreeVtab::column(sqlite3_vtab_cursor *vtab_cursor, sqlite3_context *ctx, i
   RDtreeCursor *csr = (RDtreeCursor *)vtab_cursor;
 
   if (col == 0) {
-    sqlite3_int64 rowid = node_get_rowid(csr->node, csr->item);
+    sqlite3_int64 rowid = csr->node->get_rowid(csr->item);
     sqlite3_result_int64(ctx, rowid);
   }
   else {

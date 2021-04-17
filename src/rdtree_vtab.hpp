@@ -12,6 +12,8 @@ class RDtreeCursor;
 
 class RDtreeVtab : public sqlite3_vtab {
 
+  friend class RDtreeNode;
+
 public:
   static int create(
     sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
@@ -98,7 +100,7 @@ private:
   int find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf);
   int node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *index);
   int node_parent_index(RDtreeNode *node, int *index);
-  sqlite3_int64 node_get_rowid(RDtreeNode *node, int item);
+  /* sqlite3_int64 node_get_rowid(RDtreeNode *node, int item); */
   uint8_t *node_get_bfp(RDtreeNode *node, int item);
   int node_get_min_weight(RDtreeNode *node, int item);
   int node_get_max_weight(RDtreeNode *node, int item);
