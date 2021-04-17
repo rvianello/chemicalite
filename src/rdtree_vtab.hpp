@@ -100,8 +100,6 @@ private:
   int find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf);
   int node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *index);
   int node_parent_index(RDtreeNode *node, int *index);
-  /*uint8_t *node_get_bfp(RDtreeNode *node, int item);*/
-  void node_get_item(RDtreeNode *node, int idx, RDtreeItem *item);
   int node_insert_item(RDtreeNode *node, RDtreeItem *item);
   void node_delete_item(RDtreeNode *node, int item);
   void node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx);

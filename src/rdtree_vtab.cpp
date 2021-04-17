@@ -850,19 +850,6 @@ int RDtreeVtab::node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *ind
 }
 
 /*
-** Deserialize item iItem of node pNode. Populate the structure pointed
-** to by pItem with the results.
-*/
-void RDtreeVtab::node_get_item(RDtreeNode *node, int idx, RDtreeItem *item)
-{
-  item->rowid = node->get_rowid(idx);
-  item->min_weight = read_uint16(&node->data.data()[4 + item_bytes*idx + 8 /* rowid */]);
-  item->max_weight = read_uint16(&node->data.data()[4 + item_bytes*idx + 8 /* rowid */ + 2 /* min weight */]);
-  const uint8_t *bfp = node->get_bfp(idx);
-  item->bfp.assign(bfp, bfp+bfp_bytes);
-}
-
-/*
 **
 */
 double RDtreeVtab::item_weight_distance(RDtreeItem *a, RDtreeItem *b)
@@ -940,7 +927,7 @@ int RDtreeVtab::choose_leaf_subset(
       RDtreeItem curr_item;
       int growth;
       int weight;
-      node_get_item(node, idx, &curr_item);
+      node->get_item(idx, &curr_item);
       growth = item_growth(&curr_item, item);
       weight = item_weight(&curr_item);
 
@@ -987,7 +974,7 @@ int RDtreeVtab::choose_leaf_similarity(
       RDtreeItem curr_item;
       double distance;
       int growth;
-      node_get_item(node, idx, &curr_item);
+      node->get_item(idx, &curr_item);
       distance = item_weight_distance(&curr_item, item);
       growth = item_growth(&curr_item, item);
 
@@ -1032,7 +1019,7 @@ int RDtreeVtab::choose_leaf_generic(
     */
     for (int idx = 0; idx < node_size; idx++) {
       RDtreeItem curr_item;      
-      node_get_item(node, idx, &curr_item);
+      node->get_item(idx, &curr_item);
       
       int growth = item_growth(&curr_item, item);
       double distance = item_weight_distance(&curr_item, item);
@@ -1093,7 +1080,7 @@ int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
       return SQLITE_CORRUPT_VTAB;
     }
 
-    node_get_item(parent, idx, &item);
+    parent->get_item(idx, &item);
     if (!item_contains(&item, new_item)) {
       item_extend_bounds(&item, new_item);
       node_overwrite_item(parent, &item, idx);
@@ -1481,7 +1468,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   */
   std::vector<RDtreeItem> items(node_size + 1); // TODO: try/catch
   for (int i = 0; i < node_size; i++) {
-    node_get_item(node, i, &items[i]);
+    node->get_item(i, &items[i]);
   }
   node_zero(node);
   items[node_size] = *item;
@@ -1708,10 +1695,10 @@ int RDtreeVtab::fix_node_bounds(RDtreeNode *node)
     int ii; 
     int nItem = node->get_size();
     RDtreeItem bounds;  /* Bounding box for node */
-    node_get_item(node, 0, &bounds);
+    node->get_item(0, &bounds);
     for (ii = 1; ii < nItem; ii++) {
       RDtreeItem item;
-      node_get_item(node, ii, &item);
+      node->get_item(ii, &item);
       item_extend_bounds(&bounds, &item);
     }
     bounds.rowid = node->nodeid;
@@ -1809,7 +1796,7 @@ int RDtreeVtab::reinsert_node_content(RDtreeNode *node)
 
   for (ii = 0; rc == SQLITE_OK && ii < nItem; ii++) {
     RDtreeItem item;
-    node_get_item(node, ii, &item);
+    node->get_item(ii, &item);
 
     /* Find a node to store this cell in. node->nodeid currently contains
     ** the height of the sub-tree headed by the cell.
@@ -2084,7 +2071,7 @@ int RDtreeVtab::test_item(RDtreeCursor *csr, int height, bool *is_eof)
   RDtreeItem item;
   int rc = SQLITE_OK;
 
-  node_get_item(csr->node, csr->item, &item);
+  csr->node->get_item(csr->item, &item);
 
   *is_eof = false;
   for (auto p: csr->constraints) {

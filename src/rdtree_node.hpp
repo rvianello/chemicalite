@@ -6,6 +6,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "utils.hpp"
 
 class RDtreeVtab;
+class RDtreeItem;
 
 /* 
 ** An rd-tree structure node.
@@ -18,6 +19,7 @@ public:
   int get_min_weight(int item) const;
   int get_max_weight(int item) const;
   const uint8_t * get_bfp(int item) const;
+  void get_item(int idx, RDtreeItem *item) const;
   sqlite3_int64 get_rowid(int item) const;
 
   RDtreeVtab *vtab;

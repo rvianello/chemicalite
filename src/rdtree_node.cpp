@@ -1,6 +1,7 @@
 #include <cassert>
 
 #include "rdtree_node.hpp"
+#include "rdtree_item.hpp"
 #include "rdtree_vtab.hpp"
 
 RDtreeNode::RDtreeNode(RDtreeVtab *vtab_, RDtreeNode *parent_)
@@ -46,6 +47,18 @@ const uint8_t *RDtreeNode::get_bfp(int item) const
 {
   assert(item < get_size());
   return &data.data()[4 + vtab->item_bytes*item + 8 /* rowid */ + 4 /* min/max weight */];
+}
+
+/*
+** Deserialize item idx. Populate the structure pointed to by item with the results.
+*/
+void RDtreeNode::get_item(int idx, RDtreeItem *item) const
+{
+  item->rowid = get_rowid(idx);
+  item->min_weight = get_min_weight(idx);
+  item->max_weight = get_max_weight(idx);
+  const uint8_t *bfp = get_bfp(idx);
+  item->bfp.assign(bfp, bfp+vtab->bfp_bytes);
 }
 
 /*
