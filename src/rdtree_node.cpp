@@ -14,6 +14,28 @@ int RDtreeNode::get_size() const
   return read_uint16(&data.data()[2]);
 }
 
+/* Return the min weight computed on the fingerprints associated to this
+** item. If node is a leaf node then this is the actual population count
+** for the item's fingerprint. On internal nodes the min weight contributes
+** to defining the cell bounds
+*/
+int RDtreeNode::get_min_weight(int item) const
+{
+  assert(item < get_size());
+  return read_uint16(&data.data()[4 + vtab->item_bytes*item + 8]);
+}
+
+/* Return the max weight computed on the fingerprints associated to this
+** item. If node is a leaf node then this is the actual population count
+** for the item's fingerprint. On internal nodes the max weight contributes
+** to defining the cell bounds
+*/
+int RDtreeNode::get_max_weight(int item) const
+{
+  assert(item < get_size());
+  return read_uint16(&data.data()[4 + vtab->item_bytes*item + 8 /* rowid */ + 2 /* min weight */]);
+}
+
 /*
 ** Return the 64-bit integer value associated with item item. If this
 ** is a leaf node, this is a rowid. If it is an internal node, then

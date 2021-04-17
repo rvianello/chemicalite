@@ -879,22 +879,22 @@ uint8_t *RDtreeVtab::node_get_bfp(RDtreeNode *node, int item)
 ** for the item's fingerprint. On internal nodes the min weight contributes
 ** to defining the cell bounds
 */
-int RDtreeVtab::node_get_min_weight(RDtreeNode *node, int item)
+/* moved int RDtreeVtab::node_get_min_weight(RDtreeNode *node, int item)
 {
   assert(item < node->get_size());
   return read_uint16(&node->data.data()[4 + item_bytes*item + 8]);
-}
+}*/
 
 /* Return the max weight computed on the fingerprints associated to this
 ** item. If pNode is a leaf node then this is the actual population count
 ** for the item's fingerprint. On internal nodes the max weight contributes
 ** to defining the cell bounds
 */
-int RDtreeVtab::node_get_max_weight(RDtreeNode *node, int item)
+/* moved int RDtreeVtab::node_get_max_weight(RDtreeNode *node, int item)
 {
   assert(item < node->get_size());
-  return read_uint16(&node->data.data()[4 + item_bytes*item + 8 /* rowid */ + 2 /* min weight */]);
-}
+  return read_uint16(&node->data.data()[4 + item_bytes*item + 8 + 2]);
+} */
 
 /*
 ** Deserialize item iItem of node pNode. Populate the structure pointed
@@ -1905,7 +1905,7 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
       rc = decrement_bitfreq(bfp);
     }
     if (rc == SQLITE_OK) {
-      int weight = node_get_max_weight(leaf, item);
+      int weight = leaf->get_max_weight(item);
       rc = decrement_weightfreq(weight);
     }
     if (rc == SQLITE_OK) {

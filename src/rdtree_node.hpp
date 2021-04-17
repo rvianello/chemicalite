@@ -15,6 +15,8 @@ public:
   RDtreeNode(RDtreeVtab *vtab, RDtreeNode *parent);
 
   int get_size() const;
+  int get_min_weight(int item) const;
+  int get_max_weight(int item) const;
   sqlite3_int64 get_rowid(int item) const;
 
   RDtreeVtab *vtab;
