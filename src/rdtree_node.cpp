@@ -37,6 +37,18 @@ int RDtreeNode::get_max_weight(int item) const
 }
 
 /*
+** Return pointer to the binary fingerprint associated with the given item of
+** the given node. If node is a leaf node, this is a virtual table element.
+** If it is an internal node, then the binary fingerprint defines the 
+** bounds of a child node
+*/
+const uint8_t *RDtreeNode::get_bfp(int item) const
+{
+  assert(item < get_size());
+  return &data.data()[4 + vtab->item_bytes*item + 8 /* rowid */ + 4 /* min/max weight */];
+}
+
+/*
 ** Return the 64-bit integer value associated with item item. If this
 ** is a leaf node, this is a rowid. If it is an internal node, then
 ** the 64-bit integer is a child page number.

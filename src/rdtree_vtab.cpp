@@ -520,12 +520,12 @@ int RDtreeVtab::disconnect()
 /*
 ** Increment the bits frequency count
 */
-int RDtreeVtab::increment_bitfreq(uint8_t *bfp)
+int RDtreeVtab::increment_bitfreq(const uint8_t *bfp)
 {
   int rc = SQLITE_OK;
   
   int i, bitno = 0;
-  uint8_t * bfp_end = bfp + bfp_bytes;
+  const uint8_t * bfp_end = bfp + bfp_bytes;
   
   while (bfp < bfp_end) {
     uint8_t byte = *bfp++;
@@ -544,12 +544,12 @@ int RDtreeVtab::increment_bitfreq(uint8_t *bfp)
 /*
 ** Decrement the bits frequency count
 */
-int RDtreeVtab::decrement_bitfreq(uint8_t *bfp)
+int RDtreeVtab::decrement_bitfreq(const uint8_t *bfp)
 {
   int rc = SQLITE_OK;
   
   int i, bitno = 0;
-  uint8_t * bfp_end = bfp + bfp_bytes;
+  const uint8_t * bfp_end = bfp + bfp_bytes;
   
   while (bfp < bfp_end) {
     uint8_t byte = *bfp++;
@@ -834,19 +834,6 @@ int RDtreeVtab::find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf)
 }
 
 /*
-** Return the 64-bit integer value associated with item item of
-** node pNode. If pNode is a leaf node, this is a rowid. If it is
-** an internal node, then the 64-bit integer is a child page number.
-*/
-/* moved to node
-sqlite3_int64 RDtreeVtab::node_get_rowid(RDtreeNode *node, int item)
-{
-  assert(item < node->get_size());
-  return read_uint64(&node->data.data()[4 + item_bytes*item]);
-}
-*/
-
-/*
 ** One of the items in node node is guaranteed to have a 64-bit 
 ** integer value equal to rowid. Return the index of this item.
 */
@@ -863,40 +850,6 @@ int RDtreeVtab::node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *ind
 }
 
 /*
-** Return pointer to the binary fingerprint associated with the given item of
-** the given node. If node is a leaf node, this is a virtual table element.
-** If it is an internal node, then the binary fingerprint defines the 
-** bounds of a child node
-*/
-uint8_t *RDtreeVtab::node_get_bfp(RDtreeNode *node, int item)
-{
-  assert(item < node->get_size());
-  return &node->data.data()[4 + item_bytes*item + 8 /* rowid */ + 4 /* min/max weight */];
-}
-
-/* Return the min weight computed on the fingerprints associated to this
-** item. If pNode is a leaf node then this is the actual population count
-** for the item's fingerprint. On internal nodes the min weight contributes
-** to defining the cell bounds
-*/
-/* moved int RDtreeVtab::node_get_min_weight(RDtreeNode *node, int item)
-{
-  assert(item < node->get_size());
-  return read_uint16(&node->data.data()[4 + item_bytes*item + 8]);
-}*/
-
-/* Return the max weight computed on the fingerprints associated to this
-** item. If pNode is a leaf node then this is the actual population count
-** for the item's fingerprint. On internal nodes the max weight contributes
-** to defining the cell bounds
-*/
-/* moved int RDtreeVtab::node_get_max_weight(RDtreeNode *node, int item)
-{
-  assert(item < node->get_size());
-  return read_uint16(&node->data.data()[4 + item_bytes*item + 8 + 2]);
-} */
-
-/*
 ** Deserialize item iItem of node pNode. Populate the structure pointed
 ** to by pItem with the results.
 */
@@ -905,7 +858,7 @@ void RDtreeVtab::node_get_item(RDtreeNode *node, int idx, RDtreeItem *item)
   item->rowid = node->get_rowid(idx);
   item->min_weight = read_uint16(&node->data.data()[4 + item_bytes*idx + 8 /* rowid */]);
   item->max_weight = read_uint16(&node->data.data()[4 + item_bytes*idx + 8 /* rowid */ + 2 /* min weight */]);
-  uint8_t *bfp = node_get_bfp(node, idx);
+  const uint8_t *bfp = node->get_bfp(idx);
   item->bfp.assign(bfp, bfp+bfp_bytes);
 }
 
@@ -1901,7 +1854,7 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
   if (rc == SQLITE_OK) {
     rc = node_rowid_index(leaf, rowid, &item);
     if (rc == SQLITE_OK) {
-      uint8_t *bfp = node_get_bfp(leaf, item);
+      const uint8_t *bfp = leaf->get_bfp(item);
       rc = decrement_bitfreq(bfp);
     }
     if (rc == SQLITE_OK) {
@@ -2383,8 +2336,8 @@ int RDtreeVtab::column(sqlite3_vtab_cursor *vtab_cursor, sqlite3_context *ctx, i
     sqlite3_result_int64(ctx, rowid);
   }
   else {
-    uint8_t *data = node_get_bfp(csr->node, csr->item);
-    std::string bfp(data, data+bfp_bytes);
+    const uint8_t *data = csr->node->get_bfp(csr->item);
+    std::string bfp(data, data+bfp_bytes); // FIXME (not pretty)
     Blob blob = bfp_to_blob(bfp, &rc);
     if (rc == SQLITE_OK) {
       sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);

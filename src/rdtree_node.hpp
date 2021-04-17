@@ -17,6 +17,7 @@ public:
   int get_size() const;
   int get_min_weight(int item) const;
   int get_max_weight(int item) const;
+  const uint8_t * get_bfp(int item) const;
   sqlite3_int64 get_rowid(int item) const;
 
   RDtreeVtab *vtab;

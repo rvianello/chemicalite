@@ -100,10 +100,7 @@ private:
   int find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf);
   int node_rowid_index(RDtreeNode *node, sqlite3_int64 rowid, int *index);
   int node_parent_index(RDtreeNode *node, int *index);
-  /* sqlite3_int64 node_get_rowid(RDtreeNode *node, int item); */
-  uint8_t *node_get_bfp(RDtreeNode *node, int item);
-  /* int node_get_min_weight(RDtreeNode *node, int item); */
-  /* int node_get_max_weight(RDtreeNode *node, int item); */
+  /*uint8_t *node_get_bfp(RDtreeNode *node, int item);*/
   void node_get_item(RDtreeNode *node, int idx, RDtreeItem *item);
   int node_insert_item(RDtreeNode *node, RDtreeItem *item);
   void node_delete_item(RDtreeNode *node, int item);
@@ -124,8 +121,8 @@ private:
   int item_growth(RDtreeItem *base, RDtreeItem *added);
   void item_extend_bounds(RDtreeItem *base, RDtreeItem *added);
 
-  int increment_bitfreq(uint8_t *bfp);
-  int decrement_bitfreq(uint8_t *bfp);
+  int increment_bitfreq(const uint8_t *bfp);
+  int decrement_bitfreq(const uint8_t *bfp);
   int increment_weightfreq(int weight);
   int decrement_weightfreq(int weight);
 
