@@ -25,6 +25,18 @@ void RDtreeNode::zero()
   dirty = true;
 }
 
+/*
+** Return the index of the parent's item containing a pointer to this node.
+** If this is the root node, return -1.
+*/
+int RDtreeNode::get_index_in_parent(int *idx) const
+{
+  if (parent) {
+    return parent->get_rowid_index(nodeid, idx);
+  }
+  *idx = -1;
+  return SQLITE_OK;
+}
 
 /* Return the min weight computed on the fingerprints associated to this
 ** item. If node is a leaf node then this is the actual population count

@@ -1060,7 +1060,7 @@ int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
     RDtreeItem item;
     int idx;
 
-    if (node_parent_index(p, &idx)) {
+    if (p->get_index_in_parent(&idx)) {
       return SQLITE_CORRUPT_VTAB;
     }
 
@@ -1363,20 +1363,6 @@ int RDtreeVtab::update_mapping(sqlite3_int64 rowid, RDtreeNode *node, int height
   }
 }
 
-/*
-** Return the index of the parent's item containing a pointer to node pNode.
-** If pNode is the root node, return -1.
-*/
-int RDtreeVtab::node_parent_index(RDtreeNode *node, int *index)
-{
-  RDtreeNode *parent = node->parent;
-  if (parent) {
-    return parent->get_rowid_index(node->nodeid, index);
-  }
-  *index = -1;
-  return SQLITE_OK;
-}
-
 int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
 {
   int new_item_is_right = 0;
@@ -1458,7 +1444,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   else {
     RDtreeNode *parent = left->parent;
     int parent_idx;
-    rc = node_parent_index(left, &parent_idx);
+    rc = left->get_index_in_parent(&parent_idx);
     if (rc == SQLITE_OK) {
       parent->overwrite_item(parent_idx, &leftbounds);
       rc = adjust_tree(parent, &leftbounds);
@@ -1574,7 +1560,7 @@ int RDtreeVtab::remove_node(RDtreeNode *node, int height)
   assert( node->n_ref == 1 );
 
   /* Remove the entry in the parent item. */
-  rc = node_parent_index(node, &item);
+  rc = node->get_index_in_parent(&item);
   if (rc == SQLITE_OK) {
     parent = node->parent;
     node->parent = 0;
@@ -1629,7 +1615,7 @@ int RDtreeVtab::fix_node_bounds(RDtreeNode *node)
       item_extend_bounds(&bounds, &item);
     }
     bounds.rowid = node->nodeid;
-    rc = node_parent_index(node, &ii);
+    rc = node->get_index_in_parent(&ii);
     if (rc == SQLITE_OK) {
       parent->overwrite_item(ii, &bounds);
       rc = fix_node_bounds(parent);
@@ -2110,7 +2096,7 @@ int RDtreeVtab::next(sqlite3_vtab_cursor *cursor)
         }
       }
       csr->node = node->parent;
-      rc = node_parent_index(node, &csr->item);
+      rc = node->get_index_in_parent(&csr->item);
       if (rc != SQLITE_OK) {
         return rc;
       }

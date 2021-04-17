@@ -97,7 +97,6 @@ private:
   int node_acquire(
     sqlite3_int64 nodeid, RDtreeNode *parent, RDtreeNode **acquired);
   int find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf);
-  int node_parent_index(RDtreeNode *node, int *index);
   void node_incref(RDtreeNode *);
   int node_decref(RDtreeNode *);
   int node_write(RDtreeNode *node);

@@ -27,6 +27,7 @@ public:
   int insert_item(RDtreeItem *item);
   sqlite3_int64 get_rowid(int item) const;
   int get_rowid_index(sqlite3_int64 rowid, int *idx) const;
+  int get_index_in_parent(int *idx) const;
 
   RDtreeVtab *vtab;
   RDtreeNode *parent;
