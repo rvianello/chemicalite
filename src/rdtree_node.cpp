@@ -7,7 +7,7 @@
 
 RDtreeNode::RDtreeNode(RDtreeVtab *vtab_, RDtreeNode *parent_)
   : vtab(vtab_), parent(parent_), nodeid(0), n_ref(1), dirty(false),
-    data(vtab_->node_bytes, 0), next(nullptr)
+    data(vtab_->node_bytes, 0)
 {
 }
 

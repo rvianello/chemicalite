@@ -1,5 +1,6 @@
 #ifndef CHEMICALITE_RDTREE_VTAB_INCLUDED
 #define CHEMICALITE_RDTREE_VTAB_INCLUDED
+#include <stack>
 #include <string>
 #include <unordered_map>
 
@@ -97,6 +98,7 @@ private:
   int node_acquire(
     sqlite3_int64 nodeid, RDtreeNode *parent, RDtreeNode **acquired);
   int find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf);
+
   void node_incref(RDtreeNode *);
   int node_decref(RDtreeNode *);
   int node_write(RDtreeNode *node);
@@ -130,12 +132,11 @@ private:
   std::unordered_map<sqlite3_int64, RDtreeNode *> node_hash; /* Hash table of in-memory nodes. */ 
   int n_ref;                   /* Current number of users of this structure */
 
-  /* List of nodes removed during a CondenseTree operation. List is
-  ** linked together via the pointer normally used for hash chains -
-  ** RDtreeNode.pNext. RDtreeNode.iNode stores the depth of the sub-tree 
-  ** headed by the node (leaf nodes have RDtreeNode.iNode==0).
+  /* List of nodes removed during a CondenseTree operation. 
+  ** RDtreeNode.node stores the depth of the sub-tree 
+  ** headed by the node (leaf nodes have RDtreeNode.node==0).
   */
-  RDtreeNode *pDeleted;
+  std::stack<RDtreeNode *> removed_nodes;
 
   /* Statements to read/write/delete a record from xxx_node */
   sqlite3_stmt *pReadNode;

@@ -35,7 +35,6 @@ public:
   int n_ref;
   bool dirty;
   Blob data;
-  RDtreeNode *next;   /* Next node in this deleted chain */
 };
 
 #endif

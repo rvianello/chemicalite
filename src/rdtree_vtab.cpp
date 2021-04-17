@@ -1589,13 +1589,12 @@ int RDtreeVtab::remove_node(RDtreeNode *node, int height)
   }
   
   /* Remove the node from the in-memory hash table and link it into
-  ** the RDtree.pDeleted list. Its contents will be re-inserted later on.
+  ** the pool of removed nodes. Its contents will be re-inserted later on.
   */
   node_hash_remove(node);
   node->nodeid = height;
-  node->next = pDeleted;
-  node->n_ref++;
-  pDeleted = node;
+  node->n_ref++; // why?
+  removed_nodes.push(node);
 
   return SQLITE_OK;
 }
@@ -1804,12 +1803,15 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
   }
 
   /* Re-insert the contents of any underfull nodes removed from the tree. */
-  for (leaf = pDeleted; leaf; leaf = pDeleted) {
+  while (!removed_nodes.empty()) {
+    RDtreeNode *removed_node = removed_nodes.top();
     if (rc == SQLITE_OK) {
-      rc = reinsert_node_content(leaf);
+      // CHECK: can this operation remove other nodes
+      // during this same loop?
+      rc = reinsert_node_content(removed_node);
     }
-    pDeleted = leaf->next;
-    delete leaf;
+    delete removed_node;
+    removed_nodes.pop();
   }
 
   /* Release the reference to the root node. */
