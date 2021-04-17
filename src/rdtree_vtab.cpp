@@ -1083,25 +1083,12 @@ int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
     parent->get_item(idx, &item);
     if (!item_contains(&item, new_item)) {
       item_extend_bounds(&item, new_item);
-      node_overwrite_item(parent, &item, idx);
+      parent->overwrite_item(idx, &item);
     }
  
     p = parent;
   }
   return SQLITE_OK;
-}
-
-/*
-** Overwrite item iItem of node pNode with the contents of pItem.
-*/
-void RDtreeVtab::node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx)
-{
-  uint8_t *p = &node->data.data()[4 + item_bytes*idx];
-  p += write_uint64(p, item->rowid);
-  p += write_uint16(p, item->min_weight);
-  p += write_uint16(p, item->max_weight);
-  memcpy(p, item->bfp.data(), bfp_bytes);
-  node->dirty = true;
 }
 
 /*
@@ -1130,7 +1117,7 @@ int RDtreeVtab::node_insert_item(RDtreeNode *node, RDtreeItem *item)
   assert(node_size <= node_capacity);
 
   if (node_size < node_capacity) {
-    node_overwrite_item(node, item, node_size);
+    node->overwrite_item(node_size, item);
     write_uint16(&node->data.data()[2], node_size+1);
     node->dirty = true;
   } 
@@ -1533,7 +1520,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
     int parent_idx;
     rc = node_parent_index(left, &parent_idx);
     if (rc == SQLITE_OK) {
-      node_overwrite_item(parent, &leftbounds, parent_idx);
+      parent->overwrite_item(parent_idx, &leftbounds);
       rc = adjust_tree(parent, &leftbounds);
     }
     if (rc != SQLITE_OK) {
@@ -1704,7 +1691,7 @@ int RDtreeVtab::fix_node_bounds(RDtreeNode *node)
     bounds.rowid = node->nodeid;
     rc = node_parent_index(node, &ii);
     if (rc == SQLITE_OK) {
-      node_overwrite_item(parent, &bounds, ii);
+      parent->overwrite_item(ii, &bounds);
       rc = fix_node_bounds(parent);
     }
   }

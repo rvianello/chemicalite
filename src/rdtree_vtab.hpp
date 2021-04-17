@@ -102,7 +102,6 @@ private:
   int node_parent_index(RDtreeNode *node, int *index);
   int node_insert_item(RDtreeNode *node, RDtreeItem *item);
   void node_delete_item(RDtreeNode *node, int item);
-  void node_overwrite_item(RDtreeNode *node, RDtreeItem *item, int idx);
   void node_incref(RDtreeNode *);
   int node_decref(RDtreeNode *);
   int node_write(RDtreeNode *node);

@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstring>
 
 #include "rdtree_node.hpp"
 #include "rdtree_item.hpp"
@@ -59,6 +60,19 @@ void RDtreeNode::get_item(int idx, RDtreeItem *item) const
   item->max_weight = get_max_weight(idx);
   const uint8_t *bfp = get_bfp(idx);
   item->bfp.assign(bfp, bfp+vtab->bfp_bytes);
+}
+
+/*
+** Overwrite item idx of node with the contents of item.
+*/
+void RDtreeNode::overwrite_item(int idx, RDtreeItem *item)
+{
+  uint8_t *p = &data.data()[4 + vtab->item_bytes*idx];
+  p += write_uint64(p, item->rowid);
+  p += write_uint16(p, item->min_weight);
+  p += write_uint16(p, item->max_weight);
+  memcpy(p, item->bfp.data(), vtab->bfp_bytes);
+  dirty = true;
 }
 
 /*
