@@ -1830,7 +1830,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
 {
   int rc = SQLITE_OK;
   RDtreeItem item;                /* New item to insert if argc>1 */
-  int bHaveRowid = 0;             /* Set to 1 after new rowid is determined */
+  bool have_rowid = false;        /* Set to true after new rowid is determined */
 
   incref();
   assert(argc == 1 || argc == 4);
@@ -1872,7 +1872,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
         }
       }
 
-      bHaveRowid = 1;
+      have_rowid = true;
     }
 
     std::string bfp = arg_to_bfp(argv[3], &rc);
@@ -1881,7 +1881,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
       rc = SQLITE_MISMATCH;
     }
     else {
-      if (bHaveRowid) {
+      if (have_rowid) {
         item.rowid = rowid;
       }
       // FIXME
@@ -1912,7 +1912,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
     RDtreeNode *pLeaf = 0;
 
     /* Figure out the rowid of the new row. */
-    if (bHaveRowid == 0) {
+    if (!have_rowid) {
       rc = new_rowid(&item.rowid);
     }
     *pRowid = item.rowid;
