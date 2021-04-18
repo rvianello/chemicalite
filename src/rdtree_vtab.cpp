@@ -1833,7 +1833,38 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
   bool have_rowid = false;        /* Set to true after new rowid is determined */
 
   incref();
+
+  /*
+  ** The number of args can be either 1, for a pure delete operation, or 2*N - where N
+  ** is the number of columns in the table - for an insert, update or replace operation.
+  **
+  ** In this case it's then either 1 or 4.
+  */
   assert(argc == 1 || argc == 4);
+
+  /*
+  ** argc = 1
+  ** argv[0] != NULL
+  ** DELETE the row with rowid equal argv[0], no insert
+  **
+  ** argc > 1
+  ** argv[0] == NULL
+  ** INSERT A new row is inserted with column values taken from argv[2] and following.
+  ** In a rowid virtual table, if argv[1] is an SQL NULL, then a new unique rowid is
+  ** generated automatically.
+  **
+  ** argc > 1
+  ** argv[0] != NULL
+  ** argv[0] == argv[1]
+  ** UPDATE The row with rowid argv[0] is updated with new values in argv[2] and
+  ** following parameters.
+  **
+  ** argc > 1
+  ** argv[0] != NULL
+  ** argv[0] != argv[1]
+  ** UPDATE with rowid change: The row with rowid argv[0] is updated with the rowid in
+  ** argv[1] and new values in argv[2] and following parameters.
+  */
 
   /* Constraint handling. A write operation on an rd-tree table may return
   ** SQLITE_CONSTRAINT in case of a duplicate rowid value or in case the 
