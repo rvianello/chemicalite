@@ -1826,7 +1826,7 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
 /*
 ** The xUpdate method for rdtree module virtual tables.
 */
-int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
+int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *updated_rowid)
 {
   int rc = SQLITE_OK;
   RDtreeItem item;                /* New item to insert if argc>1 */
@@ -1835,7 +1835,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
   incref();
 
   /*
-  ** The number of args can be either 1, for a pure delete operation, or 2*N - where N
+  ** The number of args can be either 1, for a pure delete operation, or 2+N - where N
   ** is the number of columns in the table - for an insert, update or replace operation.
   **
   ** In this case it's then either 1 or 4.
@@ -1924,7 +1924,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
     if (rc != SQLITE_OK) {
       goto update_end;
     }
-  }
+  }  // if (argc > 1)
 
   /* If argv[0] is not an SQL NULL value, it is the rowid of a
   ** record to delete from the r-tree table. The following block does
@@ -1946,7 +1946,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid)
     if (!have_rowid) {
       rc = new_rowid(&item.rowid);
     }
-    *pRowid = item.rowid;
+    *updated_rowid = item.rowid;
 
     if (rc == SQLITE_OK) {
       rc = choose_leaf(&item, 0, &pLeaf);
@@ -2246,12 +2246,12 @@ int RDtreeVtab::eof(sqlite3_vtab_cursor *cursor)
 /* 
 ** rdtree virtual table module xRowid method.
 */
-int RDtreeVtab::rowid(sqlite3_vtab_cursor *vtab_cursor, sqlite_int64 *pRowid)
+int RDtreeVtab::rowid(sqlite3_vtab_cursor *vtab_cursor, sqlite_int64 *rowid_result)
 {
   RDtreeCursor *csr = (RDtreeCursor *)vtab_cursor;
 
   assert(csr->node);
-  *pRowid = csr->node->get_rowid(csr->item);
+  *rowid_result = csr->node->get_rowid(csr->item);
 
   return SQLITE_OK;
 }

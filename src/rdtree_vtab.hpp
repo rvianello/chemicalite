@@ -18,10 +18,10 @@ class RDtreeVtab : public sqlite3_vtab {
 public:
   static int create(
     sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
-	sqlite3_vtab **pvtab, char **err);
+	  sqlite3_vtab **pvtab, char **err);
   static int connect(
     sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
-	sqlite3_vtab **pvtab, char **err);
+	  sqlite3_vtab **pvtab, char **err);
   int bestindex(sqlite3_index_info *idxinfo);
   int disconnect();
   int destroy();
@@ -43,6 +43,7 @@ private:
 	sqlite3_vtab **pvtab, char **err, int is_create);
   void incref();
   void decref();
+
   int get_node_bytes(int is_create);
   int sql_init(int is_create);
   int delete_rowid(sqlite3_int64 rowid);
