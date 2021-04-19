@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "rdtree_vtab.hpp"
+#include "rdtree_strategy.hpp"
 #include "rdtree_node.hpp"
 #include "rdtree_item.hpp"
 #include "rdtree_cursor.hpp"
@@ -124,6 +125,16 @@ int RDtreeVtab::init(
   rdtree->bfp_bytes = bfp_bytes;
   rdtree->item_bytes = 8 /* row id */ + 4 /* min/max weight */ + bfp_bytes; 
   rdtree->n_ref = 1;
+  
+  if (flags | RDTREE_OPT_FOR_SIMILARITY_QUERIES) {
+    rdtree->strategy.reset(new RDtreeStrategySimilarity(rdtree));
+  }
+  else if (flags | RDTREE_OPT_FOR_SUBSET_QUERIES) {
+    rdtree->strategy.reset(new RDtreeStrategySubset(rdtree));
+  }
+  else {
+    rdtree->strategy.reset(new RDtreeStrategyGeneric(rdtree));
+  }
 
   /* Figure out the node size to use. */
   int rc = rdtree->get_node_bytes(is_create);
@@ -1401,6 +1412,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   }
 
   if (!left || !right) {
+    // FIXME (out of memory scenario)
     rc = SQLITE_NOMEM;
     node_decref(right);
     node_decref(left);

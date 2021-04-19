@@ -1,8 +1,10 @@
 #ifndef CHEMICALITE_RDTREE_VTAB_INCLUDED
 #define CHEMICALITE_RDTREE_VTAB_INCLUDED
+#include <memory>
 #include <stack>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
@@ -10,11 +12,9 @@ extern const sqlite3_api_routines *sqlite3_api;
 class RDtreeNode;
 class RDtreeItem;
 class RDtreeCursor;
+class RDtreeStrategy;
 
 class RDtreeVtab : public sqlite3_vtab {
-
-  friend class RDtreeNode;
-
 public:
   static int create(
     sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
@@ -37,7 +37,6 @@ public:
   int update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid);
   int rename(const char *newname);
 
-private:
   static int init(
     sqlite3 *db, int argc, const char *const*argv, 
 	sqlite3_vtab **pvtab, char **err, int is_create);
@@ -131,6 +130,11 @@ private:
   std::string db_name;         /* Name of database containing rd-tree table */
   std::string table_name;      /* Name of rd-tree table */ 
   int n_ref;                   /* Current number of users of this structure */
+
+  /* The object encapsulating the strategy governing how items are 
+  ** distributed and looked up for inside the tree
+  */
+  std::unique_ptr<RDtreeStrategy> strategy;
 
   /* Hash table of in-memory nodes. */
   std::unordered_map<sqlite3_int64, RDtreeNode *> node_hash; 
