@@ -51,34 +51,6 @@ public:
   int remove_node(RDtreeNode *node, int height);
   int reinsert_node_content(RDtreeNode *node);
   int split_node(RDtreeNode *node, RDtreeItem *item, int height);
-  int assign_items(
-          RDtreeItem *items, int num_items,
-		      RDtreeNode *left, RDtreeNode *right,
-		      RDtreeItem *leftbounds, RDtreeItem *rightbounds);
-  void pick_seeds(RDtreeItem *items, int num_items, int *leftseed, int *rightseed);
-  void pick_seeds_subset(RDtreeItem *items, int num_items, int *leftseed, int *rightseed);
-  void pick_seeds_similarity(RDtreeItem *items, int num_items, int *leftseed, int *rightseed);
-  void pick_seeds_generic(RDtreeItem *items, int num_items, int *leftseed, int *rightseed);
-  void pick_next(
-        RDtreeItem *aItem, int nItem, int *aiUsed,
-        RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
-		    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
-		    RDtreeItem **ppNext, int *pPreferRight);
-  void pick_next_subset(
-        RDtreeItem *aItem, int nItem, int *aiUsed,
-        RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
-		    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
-		    RDtreeItem **ppNext, int *pPreferRight);
-  void pick_next_similarity(
-        RDtreeItem *aItem, int nItem, int *aiUsed,
-        RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
-		    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
-		    RDtreeItem **ppNext, int *pPreferRight);
-  void pick_next_generic(
-        RDtreeItem *aItem, int nItem, int *aiUsed,
-        RDtreeItem *pLeftSeed, RDtreeItem *pRightSeed,
-		    RDtreeItem *pLeftBounds, RDtreeItem *pRightBounds,
-		    RDtreeItem **ppNext, int *pPreferRight);
   int choose_leaf_subset(RDtreeItem *item, int height, RDtreeNode **leaf);
   int choose_leaf_similarity(RDtreeItem *item, int height, RDtreeNode **leaf);
   int choose_leaf_generic(RDtreeItem *item, int height, RDtreeNode **leaf);

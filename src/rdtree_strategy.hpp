@@ -30,9 +30,16 @@ public:
 	RDtreeNode *left, RDtreeNode *right,
 	RDtreeItem *left_bounds, RDtreeItem *right_bounds);
 
+  /*
+  ** Pick the two most dissimilar fingerprints.
+  */
   virtual void pick_seeds(
     RDtreeItem *items, int num_items, int *left_seed_idx, int *right_seed_idx);
 
+  /*
+  ** Pick the next item to be inserted into one of the two subsets. Select the
+  ** one associated to a strongest "preference" for one of the two.
+  */
   virtual void pick_next(
     RDtreeItem *items, int num_items, int *used,
     RDtreeItem *left_seed, RDtreeItem *right_seed,
