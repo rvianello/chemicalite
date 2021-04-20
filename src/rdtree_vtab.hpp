@@ -51,10 +51,6 @@ public:
   int remove_node(RDtreeNode *node, int height);
   int reinsert_node_content(RDtreeNode *node);
   int split_node(RDtreeNode *node, RDtreeItem *item, int height);
-  int choose_leaf_subset(RDtreeItem *item, int height, RDtreeNode **leaf);
-  int choose_leaf_similarity(RDtreeItem *item, int height, RDtreeNode **leaf);
-  int choose_leaf_generic(RDtreeItem *item, int height, RDtreeNode **leaf);
-  int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
   int update_mapping(sqlite3_int64 rowid, RDtreeNode *node, int height);
   int adjust_tree(RDtreeNode *node, RDtreeItem *item);
   int fix_node_bounds(RDtreeNode *node);

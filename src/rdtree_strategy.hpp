@@ -15,7 +15,11 @@ public:
 	RDtreeNode *left, RDtreeNode *right,
 	RDtreeItem *left_bounds, RDtreeItem *right_bounds) = 0;
 
-  /* virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf) = 0; */
+  /*
+  ** This function implements the chooseLeaf algorithm from Gutman[84].
+  ** ChooseSubTree in r*tree terminology.
+  */
+  virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf) = 0;
 
 protected:
   RDtreeVtab * vtab_;    
@@ -44,6 +48,8 @@ public:
     RDtreeItem *items, int num_items, int *used,
     RDtreeItem *left_seed, RDtreeItem *right_seed,
 	RDtreeItem **next_item, int *prefer_right);
+
+  virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
 };
 
 class RDtreeStrategySubset : public RDtreeStrategyGeneric {
@@ -63,6 +69,8 @@ public:
     RDtreeItem *left_seed, RDtreeItem *right_seed,
 	RDtreeItem **next_item, int *prefer_right);
   */
+
+  virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
 };
 
 class RDtreeStrategySimilarity : public RDtreeStrategyGeneric {
@@ -76,6 +84,8 @@ public:
     RDtreeItem *items, int num_items, int *used,
     RDtreeItem *left_seed, RDtreeItem *right_seed,
 	RDtreeItem **next_item, int *prefer_right);
+
+  virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
 };
 
 #endif

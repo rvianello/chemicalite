@@ -102,6 +102,94 @@ void RDtreeStrategyGeneric::pick_next(
   *prefer_right = right_is_closer;
 }
 
+int RDtreeStrategyGeneric::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
+{
+  RDtreeNode *node;
+  int rc = vtab_->node_acquire(1, 0, &node);
+
+  for (int ii = 0; rc == SQLITE_OK && ii < (vtab_->depth - height); ii++) {
+    sqlite3_int64 best = 0;
+
+    int min_growth = 0;
+    double min_distance = 0.;
+    int min_weight = 0;
+
+    int node_size = node->get_size();
+    RDtreeNode *child;
+
+    /* Select the child node which will be enlarged the least if pItem
+    ** is inserted into it.
+    */
+    for (int idx = 0; idx < node_size; idx++) {
+      RDtreeItem curr_item;
+      node->get_item(idx, &curr_item);
+
+      int growth = vtab_->item_growth(&curr_item, item);
+      double distance = vtab_->item_weight_distance(&curr_item, item);
+      int weight = vtab_->item_weight(&curr_item);
+
+      if (idx == 0 || growth < min_growth ||
+	        (growth == min_growth && distance < min_distance) ||
+	        (growth == min_growth && distance == min_distance && weight < min_weight)) {
+        min_growth = growth;
+        min_distance = distance;
+        min_weight = weight;
+        best = curr_item.rowid;
+      }
+    }
+
+    rc = vtab_->node_acquire(best, node, &child);
+    vtab_->node_decref(node);
+    node = child;
+  }
+
+  *leaf = node;
+  return rc;
+}
+
+int RDtreeStrategySubset::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
+{
+  RDtreeNode *node;
+  int rc = vtab_->node_acquire(1, 0, &node);
+
+  for (int ii = 0; rc == SQLITE_OK && ii < (vtab_->depth - height); ii++) {
+    sqlite3_int64 best = 0;
+
+    int min_growth = 0;
+    int min_weight = 0;
+
+    int node_size = node->get_size();
+    RDtreeNode *child;
+
+    /* Select the child node which will be enlarged the least if item
+    ** is inserted into it. Resolve ties by choosing the entry with
+    ** the smallest weight.
+    */
+    for (int idx = 0; idx < node_size; idx++) {
+      RDtreeItem curr_item;
+      int growth;
+      int weight;
+      node->get_item(idx, &curr_item);
+      growth = vtab_->item_growth(&curr_item, item);
+      weight = vtab_->item_weight(&curr_item);
+
+      if (idx == 0 || growth < min_growth || (growth == min_growth && weight < min_weight) ) {
+        min_growth = growth;
+        min_weight = weight;
+        best = curr_item.rowid;
+      }
+    }
+
+    //sqlite3_free(aItem);
+    rc = vtab_->node_acquire(best, node, &child);
+    vtab_->node_decref(node);
+    node = child;
+  }
+
+  *leaf = node;
+  return rc;
+}
+
 void RDtreeStrategySimilarity::pick_seeds(
     RDtreeItem *items, int num_items, int *left_seed_idx, int *right_seed_idx)
 {
@@ -156,4 +244,45 @@ void RDtreeStrategySimilarity::pick_next(
   used[selected] = 1;
   *next_item = &items[selected];
   *prefer_right = right_is_closer;
+}
+
+int RDtreeStrategySimilarity::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
+{
+  RDtreeNode *node;
+  int rc = vtab_->node_acquire(1, 0, &node);
+
+  for (int ii = 0; rc == SQLITE_OK && ii < (vtab_->depth - height); ii++) {
+    sqlite3_int64 best = 0;
+
+    int min_growth = 0;
+    double min_distance = 0.;
+
+    int node_size = node->get_size();
+    RDtreeNode *child;
+
+    /* Select the child node which will be enlarged the least if pItem
+    ** is inserted into it.
+    */
+    for (int idx = 0; idx < node_size; idx++) {
+      RDtreeItem curr_item;
+      double distance;
+      int growth;
+      node->get_item(idx, &curr_item);
+      distance = vtab_->item_weight_distance(&curr_item, item);
+      growth = vtab_->item_growth(&curr_item, item);
+
+      if (idx == 0 || distance < min_distance || (distance == min_distance && growth < min_growth) ) {
+        min_distance = distance;
+        min_growth = growth;
+        best = curr_item.rowid;
+      }
+    }
+
+    rc = vtab_->node_acquire(best, node, &child);
+    vtab_->node_decref(node);
+    node = child;
+  }
+
+  *leaf = node;
+  return rc;
 }
