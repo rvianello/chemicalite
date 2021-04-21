@@ -12,10 +12,11 @@ extern const sqlite3_api_routines *sqlite3_api;
 class RDtreeNode;
 class RDtreeItem;
 class RDtreeCursor;
-class RDtreeStrategy;
 
 class RDtreeVtab : public sqlite3_vtab {
 public:
+  virtual ~RDtreeVtab() {}
+
   static int create(
     sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
 	  sqlite3_vtab **pvtab, char **err);
@@ -60,6 +61,17 @@ public:
   int test_item(RDtreeCursor *csr, int height, bool *is_eof);
   int descend_to_item(RDtreeCursor *csr, int height, bool *is_eof);
 
+  /* Define the strategy with which full nodes are split */
+  virtual int assign_items(
+    RDtreeItem *items, int num_items,
+  	RDtreeNode *left, RDtreeNode *right,
+	  RDtreeItem *left_bounds, RDtreeItem *right_bounds) = 0;
+  /*
+  ** This function implements the chooseLeaf algorithm from Gutman[84].
+  ** ChooseSubTree in r*tree terminology.
+  */
+  virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf) = 0;
+
   int node_acquire(
     sqlite3_int64 nodeid, RDtreeNode *parent, RDtreeNode **acquired);
   int find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf);
@@ -92,11 +104,6 @@ public:
   std::string db_name;         /* Name of database containing rd-tree table */
   std::string table_name;      /* Name of rd-tree table */ 
   int n_ref;                   /* Current number of users of this structure */
-
-  /* The object encapsulating the strategy governing how items are 
-  ** distributed and looked up for inside the tree
-  */
-  std::unique_ptr<RDtreeStrategy> strategy;
 
   /* Hash table of in-memory nodes. */
   std::unordered_map<sqlite3_int64, RDtreeNode *> node_hash; 

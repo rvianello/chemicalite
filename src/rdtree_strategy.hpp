@@ -1,10 +1,9 @@
 #ifndef CHEMICALITE_RDTREE_STRATEGY_INCLUDED
 #define CHEMICALITE_RDTREE_STRATEGY_INCLUDED
 
-class RDtreeVtab;
-class RDtreeNode;
-class RDtreeItem;
+#include "rdtree_vtab.hpp"
 
+#if 0
 class RDtreeStrategy {
 public:
   RDtreeStrategy(RDtreeVtab *vtab) : vtab_(vtab) {}
@@ -24,10 +23,10 @@ public:
 protected:
   RDtreeVtab * vtab_;    
 };
+#endif
 
-class RDtreeStrategyGeneric : public RDtreeStrategy {
+class RDtreeGenericStrategy : public RDtreeVtab {
 public:
-  RDtreeStrategyGeneric(RDtreeVtab *vtab) : RDtreeStrategy(vtab) {}
 
   virtual int assign_items(
     RDtreeItem *items, int num_items,
@@ -52,12 +51,11 @@ public:
   virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
 };
 
-class RDtreeStrategySubset : public RDtreeStrategyGeneric {
+class RDtreeSubsetStrategy : public RDtreeGenericStrategy {
 public:
-  RDtreeStrategySubset(RDtreeVtab *vtab) : RDtreeStrategyGeneric(vtab) {}
 
-  /* at this time - after some back and forth - the strategy "optimized"
-  ** for subset queries, is just the same as the generic one
+  /* at this time - after some back and forth - the node-splitting strategy
+  ** "optimized" for subset queries, is just the same as the generic one
   */
 
   /*
@@ -73,10 +71,8 @@ public:
   virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
 };
 
-class RDtreeStrategySimilarity : public RDtreeStrategyGeneric {
+class RDtreeSimilarityStrategy : public RDtreeGenericStrategy {
 public:
-  RDtreeStrategySimilarity(RDtreeVtab *vtab) : RDtreeStrategyGeneric(vtab) {}
-
   virtual void pick_seeds(
     RDtreeItem *items, int num_items, int *left_seed_idx, int *right_seed_idx);
 

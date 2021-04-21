@@ -138,23 +138,23 @@ int RDtreeVtab::init(
   sqlite3_vtab_config(db, SQLITE_VTAB_CONSTRAINT_SUPPORT, 1);
 
   /* Allocate the sqlite3_vtab structure */
-  RDtreeVtab * rdtree = new RDtreeVtab; // FIXME try/catch?
+  RDtreeVtab * rdtree = nullptr;
+    if (flags | RDTREE_OPTIMIZED_FOR_SIMILARITY_QUERIES) {
+    rdtree = new RDtreeSimilarityStrategy;
+  }
+  else if (flags | RDTREE_OPTIMIZED_FOR_SUBSET_QUERIES) {
+    rdtree = new RDtreeSubsetStrategy;
+  }
+  else {
+    rdtree = new RDtreeGenericStrategy;
+  }
+
   rdtree->db_name = argv[1];
   rdtree->table_name = argv[2];
   rdtree->db = db;
   rdtree->bfp_bytes = bfp_bytes;
   rdtree->item_bytes = 8 /* row id */ + 4 /* min/max weight */ + bfp_bytes; 
   rdtree->n_ref = 1;
-  
-  if (flags | RDTREE_OPTIMIZED_FOR_SIMILARITY_QUERIES) {
-    rdtree->strategy.reset(new RDtreeStrategySimilarity(rdtree));
-  }
-  else if (flags | RDTREE_OPTIMIZED_FOR_SUBSET_QUERIES) {
-    rdtree->strategy.reset(new RDtreeStrategySubset(rdtree));
-  }
-  else {
-    rdtree->strategy.reset(new RDtreeStrategyGeneric(rdtree));
-  }
 
   /* Figure out the node size to use. */
   int rc = rdtree->get_node_bytes(is_create);
@@ -960,7 +960,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   memset(left->data.data(), 0, node_bytes);
   memset(right->data.data(), 0, node_bytes);
 
-  rc = strategy->assign_items(
+  rc = assign_items(
     items.data(), node_size, left, right, &leftbounds, &rightbounds);
 
   if (rc != SQLITE_OK) {
@@ -1265,7 +1265,7 @@ int RDtreeVtab::reinsert_node_content(RDtreeNode *node)
     ** the height of the sub-tree headed by the cell.
     */
     RDtreeNode *insert;
-    rc = strategy->choose_leaf(&item, (int)node->nodeid, &insert);
+    rc = choose_leaf(&item, (int)node->nodeid, &insert);
     if (rc == SQLITE_OK) {
       int rc2;
       rc = insert_item(insert, &item, (int)node->nodeid);
@@ -1500,7 +1500,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *updated_row
     *updated_rowid = item.rowid;
 
     if (rc == SQLITE_OK) {
-      rc = strategy->choose_leaf(&item, 0, &pLeaf);
+      rc = choose_leaf(&item, 0, &pLeaf);
     }
 
     if (rc == SQLITE_OK) {

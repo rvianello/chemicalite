@@ -8,7 +8,7 @@
 #include "bfp_ops.hpp"
 
 
-int RDtreeStrategyGeneric::assign_items(
+int RDtreeGenericStrategy::assign_items(
     RDtreeItem *items, int num_items,
 	RDtreeNode *left, RDtreeNode *right,
 	RDtreeItem *left_bounds, RDtreeItem *right_bounds)
@@ -32,7 +32,7 @@ int RDtreeStrategyGeneric::assign_items(
     RDtreeItem *next_item;
     pick_next(items, num_items, used.data(), &items[left_seed_idx], &items[right_seed_idx], &next_item, &prefer_right);
 
-    if ((vtab_->node_minsize() - right->get_size() == i) || (prefer_right > 0 && (vtab_->node_minsize() - left->get_size() != i))) {
+    if ((node_minsize() - right->get_size() == i) || (prefer_right > 0 && (node_minsize() - left->get_size() != i))) {
       right->insert_item(next_item);
       right_bounds->extend_bounds(*next_item);
     }
@@ -45,7 +45,7 @@ int RDtreeStrategyGeneric::assign_items(
   return SQLITE_OK;
 }
 
-void RDtreeStrategyGeneric::pick_seeds(
+void RDtreeGenericStrategy::pick_seeds(
     RDtreeItem *items, int num_items, int *left_seed_idx, int *right_seed_idx)
 {
   int left_idx = 0;
@@ -55,7 +55,7 @@ void RDtreeStrategyGeneric::pick_seeds(
   for (int ii = 0; ii < num_items; ii++) {
     for (int jj = ii + 1; jj < num_items; jj++) {
       double tanimoto 
-        = bfp_op_tanimoto(vtab_->bfp_bytes, items[ii].bfp.data(), items[jj].bfp.data());
+        = bfp_op_tanimoto(bfp_bytes, items[ii].bfp.data(), items[jj].bfp.data());
       double distance = 1. - tanimoto;
 
       if (distance > max_distance) {
@@ -70,7 +70,7 @@ void RDtreeStrategyGeneric::pick_seeds(
   *right_seed_idx = right_idx;
 }
 
-void RDtreeStrategyGeneric::pick_next(
+void RDtreeGenericStrategy::pick_next(
     RDtreeItem *items, int num_items, int *used,
     RDtreeItem *left_seed, RDtreeItem *right_seed,
 	RDtreeItem **next_item, int *prefer_right)
@@ -82,9 +82,9 @@ void RDtreeStrategyGeneric::pick_next(
   for (int ii = 0; ii < num_items; ii++){
     if (used[ii] == 0) {
       double left 
-        = 1. - bfp_op_tanimoto(vtab_->bfp_bytes, items[ii].bfp.data(), left_seed->bfp.data());
+        = 1. - bfp_op_tanimoto(bfp_bytes, items[ii].bfp.data(), left_seed->bfp.data());
       double right 
-        = 1. - bfp_op_tanimoto(vtab_->bfp_bytes, items[ii].bfp.data(), right_seed->bfp.data());
+        = 1. - bfp_op_tanimoto(bfp_bytes, items[ii].bfp.data(), right_seed->bfp.data());
       double diff = left - right;
       double preference = 0.;
       if ((left + right) > 0.) { // CHECK don't want to divide by zero, but it's always >= 0.
@@ -102,12 +102,12 @@ void RDtreeStrategyGeneric::pick_next(
   *prefer_right = right_is_closer;
 }
 
-int RDtreeStrategyGeneric::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
+int RDtreeGenericStrategy::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
 {
   RDtreeNode *node;
-  int rc = vtab_->node_acquire(1, 0, &node);
+  int rc = node_acquire(1, 0, &node);
 
-  for (int ii = 0; rc == SQLITE_OK && ii < (vtab_->depth - height); ii++) {
+  for (int ii = 0; rc == SQLITE_OK && ii < (depth - height); ii++) {
     sqlite3_int64 best = 0;
 
     int min_growth = 0;
@@ -121,7 +121,7 @@ int RDtreeStrategyGeneric::choose_leaf(RDtreeItem *item, int height, RDtreeNode 
     ** is inserted into it.
     */
     for (int idx = 0; idx < node_size; idx++) {
-      RDtreeItem curr_item(vtab_->bfp_bytes);
+      RDtreeItem curr_item(bfp_bytes);
       node->get_item(idx, &curr_item);
 
       int growth = curr_item.growth(*item);
@@ -138,8 +138,8 @@ int RDtreeStrategyGeneric::choose_leaf(RDtreeItem *item, int height, RDtreeNode 
       }
     }
 
-    rc = vtab_->node_acquire(best, node, &child);
-    vtab_->node_decref(node);
+    rc = node_acquire(best, node, &child);
+    node_decref(node);
     node = child;
   }
 
@@ -147,12 +147,12 @@ int RDtreeStrategyGeneric::choose_leaf(RDtreeItem *item, int height, RDtreeNode 
   return rc;
 }
 
-int RDtreeStrategySubset::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
+int RDtreeSubsetStrategy::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
 {
   RDtreeNode *node;
-  int rc = vtab_->node_acquire(1, 0, &node);
+  int rc = node_acquire(1, 0, &node);
 
-  for (int ii = 0; rc == SQLITE_OK && ii < (vtab_->depth - height); ii++) {
+  for (int ii = 0; rc == SQLITE_OK && ii < (depth - height); ii++) {
     sqlite3_int64 best = 0;
 
     int min_growth = 0;
@@ -166,7 +166,7 @@ int RDtreeStrategySubset::choose_leaf(RDtreeItem *item, int height, RDtreeNode *
     ** the smallest weight.
     */
     for (int idx = 0; idx < node_size; idx++) {
-      RDtreeItem curr_item(vtab_->bfp_bytes);
+      RDtreeItem curr_item(bfp_bytes);
       int growth;
       int weight;
       node->get_item(idx, &curr_item);
@@ -181,8 +181,8 @@ int RDtreeStrategySubset::choose_leaf(RDtreeItem *item, int height, RDtreeNode *
     }
 
     //sqlite3_free(aItem);
-    rc = vtab_->node_acquire(best, node, &child);
-    vtab_->node_decref(node);
+    rc = node_acquire(best, node, &child);
+    node_decref(node);
     node = child;
   }
 
@@ -190,7 +190,7 @@ int RDtreeStrategySubset::choose_leaf(RDtreeItem *item, int height, RDtreeNode *
   return rc;
 }
 
-void RDtreeStrategySimilarity::pick_seeds(
+void RDtreeSimilarityStrategy::pick_seeds(
     RDtreeItem *items, int num_items, int *left_seed_idx, int *right_seed_idx)
 {
   int left_idx = 0;
@@ -214,7 +214,7 @@ void RDtreeStrategySimilarity::pick_seeds(
   *right_seed_idx = right_idx;
 }
 
-void RDtreeStrategySimilarity::pick_next(
+void RDtreeSimilarityStrategy::pick_next(
     RDtreeItem *items, int num_items, int *used,
     RDtreeItem *left_seed, RDtreeItem *right_seed,
 	RDtreeItem **next_item, int *prefer_right)
@@ -246,12 +246,12 @@ void RDtreeStrategySimilarity::pick_next(
   *prefer_right = right_is_closer;
 }
 
-int RDtreeStrategySimilarity::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
+int RDtreeSimilarityStrategy::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
 {
   RDtreeNode *node;
-  int rc = vtab_->node_acquire(1, 0, &node);
+  int rc = node_acquire(1, 0, &node);
 
-  for (int ii = 0; rc == SQLITE_OK && ii < (vtab_->depth - height); ii++) {
+  for (int ii = 0; rc == SQLITE_OK && ii < (depth - height); ii++) {
     sqlite3_int64 best = 0;
 
     int min_growth = 0;
@@ -264,7 +264,7 @@ int RDtreeStrategySimilarity::choose_leaf(RDtreeItem *item, int height, RDtreeNo
     ** is inserted into it.
     */
     for (int idx = 0; idx < node_size; idx++) {
-      RDtreeItem curr_item(vtab_->bfp_bytes);
+      RDtreeItem curr_item(bfp_bytes);
       double distance;
       int growth;
       node->get_item(idx, &curr_item);
@@ -278,8 +278,8 @@ int RDtreeStrategySimilarity::choose_leaf(RDtreeItem *item, int height, RDtreeNo
       }
     }
 
-    rc = vtab_->node_acquire(best, node, &child);
-    vtab_->node_decref(node);
+    rc = node_acquire(best, node, &child);
+    node_decref(node);
     node = child;
   }
 
