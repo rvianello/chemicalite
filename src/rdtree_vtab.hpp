@@ -84,7 +84,6 @@ public:
   int parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid);
 
   sqlite3 *db;                 /* Host database connection */
-  unsigned int flags;          /* Configuration flags */
   int bfp_bytes;               /* Size (bytes) of the binary fingerprint */
   int item_bytes;              /* Bytes consumed per item */
   int node_bytes;              /* Size (bytes) of each node in the node table */

@@ -142,7 +142,6 @@ int RDtreeVtab::init(
   rdtree->db_name = argv[1];
   rdtree->table_name = argv[2];
   rdtree->db = db;
-  rdtree->flags = flags;
   rdtree->bfp_bytes = bfp_bytes;
   rdtree->item_bytes = 8 /* row id */ + 4 /* min/max weight */ + bfp_bytes; 
   rdtree->n_ref = 1;
