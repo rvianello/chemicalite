@@ -52,8 +52,8 @@ static const int RDTREE_MAXITEMS = 51;
 static const int RDTREE_MAX_DEPTH = 64;
 
 static const unsigned int RDTREE_FLAGS_UNASSIGNED = 0;
-static const unsigned int RDTREE_OPT_FOR_SUBSET_QUERIES = 1;
-static const unsigned int RDTREE_OPT_FOR_SIMILARITY_QUERIES = 2;
+static const unsigned int RDTREE_OPTIMIZED_FOR_SUBSET_QUERIES = 1;
+static const unsigned int RDTREE_OPTIMIZED_FOR_SIMILARITY_QUERIES = 2;
 
 int RDtreeVtab::create(
   sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
@@ -123,11 +123,11 @@ int RDtreeVtab::init(
 
   unsigned int flags = RDTREE_FLAGS_UNASSIGNED;
   if (argc == 6) {
-    if (strcmp(argv[5], "OPT_FOR_SUBSET_QUERIES") == 0) {
-      flags |= RDTREE_OPT_FOR_SUBSET_QUERIES;
+    if (strcmp(argv[5], "OPTIMIZED_FOR_SUBSET_QUERIES") == 0) {
+      flags |= RDTREE_OPTIMIZED_FOR_SUBSET_QUERIES;
     }
-    else if (strcmp(argv[5], "OPT_FOR_SIMILARITY_QUERIES") == 0) {
-      flags |= RDTREE_OPT_FOR_SIMILARITY_QUERIES;
+    else if (strcmp(argv[5], "OPTIMIZED_FOR_SIMILARITY_QUERIES") == 0) {
+      flags |= RDTREE_OPTIMIZED_FOR_SIMILARITY_QUERIES;
     }
     else {
       *err = sqlite3_mprintf("unrecognized option: %s", argv[5]);
@@ -146,10 +146,10 @@ int RDtreeVtab::init(
   rdtree->item_bytes = 8 /* row id */ + 4 /* min/max weight */ + bfp_bytes; 
   rdtree->n_ref = 1;
   
-  if (flags | RDTREE_OPT_FOR_SIMILARITY_QUERIES) {
+  if (flags | RDTREE_OPTIMIZED_FOR_SIMILARITY_QUERIES) {
     rdtree->strategy.reset(new RDtreeStrategySimilarity(rdtree));
   }
-  else if (flags | RDTREE_OPT_FOR_SUBSET_QUERIES) {
+  else if (flags | RDTREE_OPTIMIZED_FOR_SUBSET_QUERIES) {
     rdtree->strategy.reset(new RDtreeStrategySubset(rdtree));
   }
   else {
