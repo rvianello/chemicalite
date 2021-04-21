@@ -13,6 +13,27 @@
 #include "bfp.hpp"
 #include "bfp_ops.hpp"
 
+/*
+** Database Format of RD-Tree Tables
+** ---------------------------------
+**
+** The data structure for a single virtual rd-tree table is stored in three 
+** native SQLite tables declared as follows. In each case, the '%' character
+** in the table name is replaced with the user-supplied name of the rd-tree
+** table.
+**
+**   CREATE TABLE %_node(nodeno INTEGER PRIMARY KEY, data BLOB)
+**   CREATE TABLE %_parent(nodeno INTEGER PRIMARY KEY, parentnode INTEGER)
+**   CREATE TABLE %_rowid(rowid INTEGER PRIMARY KEY, nodeno INTEGER)
+**
+** The data for each node of the rd-tree structure is stored in the %_node
+** table. For each node that is not the root node of the r-tree, there is
+** an entry in the %_parent table associating the node with its parent.
+** And for each row of data in the table, there is an entry in the %_rowid
+** table that maps from the entries rowid to the id of the node that it
+** is stored on.
+*/
+
 static const int RDTREE_MAX_BITSTRING_SIZE = 256;
 static const int RDTREE_MAXITEMS = 51;
 
@@ -845,51 +866,6 @@ int RDtreeVtab::find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf)
 }
 
 /*
-**
-*/
-double RDtreeVtab::item_weight_distance(RDtreeItem *a, RDtreeItem *b)
-{
-  int d1 = abs(a->min_weight - b->min_weight);
-  int d2 = abs(a->max_weight - b->max_weight);
-  return (double) (d1 + d2);
-  /* return (double) (d1 > d2) ? d1 : d2; */
-}
-
-int RDtreeVtab::item_weight(RDtreeItem *item)
-{
-  return bfp_op_weight(bfp_bytes, item->bfp.data());
-}
-
-/*
-** Return true if item p2 is a subset of item p1. False otherwise.
-*/
-int RDtreeVtab::item_contains(RDtreeItem *a, RDtreeItem *b)
-{
-  return (
-    a->min_weight <= b->min_weight &&
-	  a->max_weight >= b->max_weight &&
-	  bfp_op_contains(bfp_bytes, a->bfp.data(), b->bfp.data()) );
-}
-
-/*
-** Return the amount item pBase would grow by if it were unioned with pAdded.
-*/
-int RDtreeVtab::item_growth(RDtreeItem *base, RDtreeItem *added)
-{
-  return bfp_op_growth(bfp_bytes, base->bfp.data(), added->bfp.data());
-}
-
-/*
-** Extend the bounds of p1 to contain p2
-*/
-void RDtreeVtab::item_extend_bounds(RDtreeItem *base, RDtreeItem *added)
-{
-  bfp_op_union(bfp_bytes, base->bfp.data(), added->bfp.data());
-  if (base->min_weight > added->min_weight) { base->min_weight = added->min_weight; }
-  if (base->max_weight < added->max_weight) { base->max_weight = added->max_weight; }
-}
-
-/*
 ** An item with the same content as pItem has just been inserted into
 ** the node pNode. This function updates the bounds in
 ** all ancestor elements.
@@ -899,7 +875,7 @@ int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
   RDtreeNode *p = node;
   while (p->parent) {
     RDtreeNode *parent = p->parent;
-    RDtreeItem item;
+    RDtreeItem item(bfp_bytes);
     int idx;
 
     if (p->get_index_in_parent(&idx)) {
@@ -907,8 +883,8 @@ int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
     }
 
     parent->get_item(idx, &item);
-    if (!item_contains(&item, new_item)) {
-      item_extend_bounds(&item, new_item);
+    if (!item.contains(*new_item)) {
+      item.extend_bounds(*new_item);
       parent->overwrite_item(idx, &item);
     }
  
@@ -946,13 +922,13 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   RDtreeNode *left = 0;
   RDtreeNode *right = 0;
 
-  RDtreeItem leftbounds;
-  RDtreeItem rightbounds;
+  RDtreeItem leftbounds(bfp_bytes);
+  RDtreeItem rightbounds(bfp_bytes);
 
   /* Allocate an array and populate it with a copy of pItem and 
   ** all items from node left. Then zero the original node.
   */
-  std::vector<RDtreeItem> items(node_size + 1); // TODO: try/catch
+  std::vector<RDtreeItem> items(node_size + 1, RDtreeItem(bfp_bytes)); // TODO: try/catch
   for (int i = 0; i < node_size; i++) {
     node->get_item(i, &items[i]);
   }
@@ -1181,12 +1157,12 @@ int RDtreeVtab::fix_node_bounds(RDtreeNode *node)
   if (parent) {
     int ii; 
     int nItem = node->get_size();
-    RDtreeItem bounds;  /* Bounding box for node */
+    RDtreeItem bounds(bfp_bytes);  /* Bounding box for node */
     node->get_item(0, &bounds);
     for (ii = 1; ii < nItem; ii++) {
-      RDtreeItem item;
+      RDtreeItem item(bfp_bytes);
       node->get_item(ii, &item);
-      item_extend_bounds(&bounds, &item);
+      bounds.extend_bounds(item);
     }
     bounds.rowid = node->nodeid;
     rc = node->get_index_in_parent(&ii);
@@ -1282,7 +1258,7 @@ int RDtreeVtab::reinsert_node_content(RDtreeNode *node)
   int nItem = node->get_size();
 
   for (ii = 0; rc == SQLITE_OK && ii < nItem; ii++) {
-    RDtreeItem item;
+    RDtreeItem item(bfp_bytes);
     node->get_item(ii, &item);
 
     /* Find a node to store this cell in. node->nodeid currently contains
@@ -1404,7 +1380,7 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
 int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *updated_rowid)
 {
   int rc = SQLITE_OK;
-  RDtreeItem item;                /* New item to insert if argc>1 */
+  RDtreeItem item(bfp_bytes);                /* New item to insert if argc>1 */
   bool have_rowid = false;        /* Set to true after new rowid is determined */
 
   incref();
@@ -1589,7 +1565,7 @@ int RDtreeVtab::close(sqlite3_vtab_cursor *cursor)
 
 int RDtreeVtab::test_item(RDtreeCursor *csr, int height, bool *is_eof)
 {
-  RDtreeItem item;
+  RDtreeItem item(bfp_bytes);
   int rc = SQLITE_OK;
 
   csr->node->get_item(csr->item, &item);

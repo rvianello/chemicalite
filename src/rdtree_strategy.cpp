@@ -34,11 +34,11 @@ int RDtreeStrategyGeneric::assign_items(
 
     if ((vtab_->node_minsize() - right->get_size() == i) || (prefer_right > 0 && (vtab_->node_minsize() - left->get_size() != i))) {
       right->insert_item(next_item);
-      vtab_->item_extend_bounds(right_bounds, next_item);
+      right_bounds->extend_bounds(*next_item);
     }
     else {
       left->insert_item(next_item);
-      vtab_->item_extend_bounds(left_bounds, next_item);
+      left_bounds->extend_bounds(*next_item);
     }
   }
 
@@ -121,12 +121,12 @@ int RDtreeStrategyGeneric::choose_leaf(RDtreeItem *item, int height, RDtreeNode 
     ** is inserted into it.
     */
     for (int idx = 0; idx < node_size; idx++) {
-      RDtreeItem curr_item;
+      RDtreeItem curr_item(vtab_->bfp_bytes);
       node->get_item(idx, &curr_item);
 
-      int growth = vtab_->item_growth(&curr_item, item);
-      double distance = vtab_->item_weight_distance(&curr_item, item);
-      int weight = vtab_->item_weight(&curr_item);
+      int growth = curr_item.growth(*item);
+      double distance = RDtreeItem::weight_distance(curr_item, *item);
+      int weight = curr_item.weight();
 
       if (idx == 0 || growth < min_growth ||
 	        (growth == min_growth && distance < min_distance) ||
@@ -166,12 +166,12 @@ int RDtreeStrategySubset::choose_leaf(RDtreeItem *item, int height, RDtreeNode *
     ** the smallest weight.
     */
     for (int idx = 0; idx < node_size; idx++) {
-      RDtreeItem curr_item;
+      RDtreeItem curr_item(vtab_->bfp_bytes);
       int growth;
       int weight;
       node->get_item(idx, &curr_item);
-      growth = vtab_->item_growth(&curr_item, item);
-      weight = vtab_->item_weight(&curr_item);
+      growth = curr_item.growth(*item);
+      weight = curr_item.weight();
 
       if (idx == 0 || growth < min_growth || (growth == min_growth && weight < min_weight) ) {
         min_growth = growth;
@@ -200,7 +200,7 @@ void RDtreeStrategySimilarity::pick_seeds(
   for (int ii = 0; ii < num_items; ii++) {
     for (int jj = ii + 1; jj < num_items; jj++) {
 
-      double distance = vtab_->item_weight_distance(&items[ii], &items[jj]);
+      double distance = RDtreeItem::weight_distance(items[ii], items[jj]);
       
       if (distance > max_distance) {
         left_idx = ii;
@@ -226,8 +226,8 @@ void RDtreeStrategySimilarity::pick_next(
 
   for (ii = 0; ii < num_items; ii++) {
     if (used[ii] == 0) {
-      double left = vtab_->item_weight_distance(&items[ii], left_seed);
-      double right = vtab_->item_weight_distance(&items[ii], right_seed);
+      double left = RDtreeItem::weight_distance(items[ii], *left_seed);
+      double right = RDtreeItem::weight_distance(items[ii], *right_seed);
       double diff = left - right;
       double sum = left + right;
       double preference = fabs(diff);
@@ -264,12 +264,12 @@ int RDtreeStrategySimilarity::choose_leaf(RDtreeItem *item, int height, RDtreeNo
     ** is inserted into it.
     */
     for (int idx = 0; idx < node_size; idx++) {
-      RDtreeItem curr_item;
+      RDtreeItem curr_item(vtab_->bfp_bytes);
       double distance;
       int growth;
       node->get_item(idx, &curr_item);
-      distance = vtab_->item_weight_distance(&curr_item, item);
-      growth = vtab_->item_growth(&curr_item, item);
+      distance = RDtreeItem::weight_distance(curr_item, *item);
+      growth = curr_item.growth(*item);
 
       if (idx == 0 || distance < min_distance || (distance == min_distance && growth < min_growth) ) {
         min_distance = distance;

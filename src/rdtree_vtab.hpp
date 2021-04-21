@@ -37,11 +37,12 @@ public:
   int update(int argc, sqlite3_value **argv, sqlite_int64 *pRowid);
   int rename(const char *newname);
 
-  static int init(
-    sqlite3 *db, int argc, const char *const*argv, 
-	sqlite3_vtab **pvtab, char **err, int is_create);
   void incref();
   void decref();
+
+  static int init(
+    sqlite3 *db, int argc, const char *const*argv, 
+	  sqlite3_vtab **pvtab, char **err, int is_create);
 
   int get_node_bytes(int is_create);
   int sql_init(int is_create);
@@ -73,12 +74,6 @@ public:
   void node_hash_insert(RDtreeNode * node);
   RDtreeNode * node_hash_lookup(sqlite3_int64 nodeid);
   void node_hash_remove(RDtreeNode * node);
-
-  double item_weight_distance(RDtreeItem *a, RDtreeItem *b);
-  int item_weight(RDtreeItem *item);
-  int item_contains(RDtreeItem *a, RDtreeItem *b);
-  int item_growth(RDtreeItem *base, RDtreeItem *added);
-  void item_extend_bounds(RDtreeItem *base, RDtreeItem *added);
 
   int increment_bitfreq(const uint8_t *bfp);
   int decrement_bitfreq(const uint8_t *bfp);

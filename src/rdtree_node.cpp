@@ -5,6 +5,25 @@
 #include "rdtree_item.hpp"
 #include "rdtree_vtab.hpp"
 
+/*
+** The root node of an rd-tree always exists, even if the rd-tree table is
+** empty. The nodeno of the root node is always 1. All other nodes in the
+** table must be the same size as the root node. The content of each node
+** is formatted as follows:
+**
+**   1. If the node is the root node (node 1), then the first 2 bytes
+**      of the node contain the tree depth as a big-endian integer.
+**      For non-root nodes, the first 2 bytes are left unused.
+**
+**   2. The next 2 bytes contain the number of entries currently 
+**      stored in the node.
+**
+**   3. The remainder of the node contains the node entries. Each entry
+**      consists of a single 64-bits integer followed by a binary fingerprint. 
+**      For leaf nodes the integer is the rowid of a record. For internal
+**      nodes it is the node number of a child page.
+*/
+
 RDtreeNode::RDtreeNode(RDtreeVtab *vtab_, RDtreeNode *parent_)
   : vtab(vtab_), parent(parent_), nodeid(0), n_ref(1), dirty(false),
     data(vtab_->node_bytes, 0)
@@ -81,7 +100,7 @@ void RDtreeNode::get_item(int idx, RDtreeItem *item) const
   item->min_weight = get_min_weight(idx);
   item->max_weight = get_max_weight(idx);
   const uint8_t *bfp = get_bfp(idx);
-  item->bfp.assign(bfp, bfp+vtab->bfp_bytes);
+  item->bfp.assign(bfp, bfp+vtab->bfp_bytes); // CHECK or copy?
 }
 
 /*
@@ -93,7 +112,7 @@ void RDtreeNode::overwrite_item(int idx, RDtreeItem *item)
   p += write_uint64(p, item->rowid);
   p += write_uint16(p, item->min_weight);
   p += write_uint16(p, item->max_weight);
-  memcpy(p, item->bfp.data(), vtab->bfp_bytes);
+  memcpy(p, item->bfp.data(), vtab->bfp_bytes); // FIXME std::copy
   dirty = true;
 }
 

@@ -19,7 +19,7 @@ add_library(chemicalite MODULE
         rdtree.cpp
         rdtree_vtab.cpp
         rdtree_node.cpp
-        #rdtree_item.cpp
+        rdtree_item.cpp
         rdtree_strategy.cpp
         versions.cpp
         chemicalite.cpp
