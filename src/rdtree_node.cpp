@@ -30,6 +30,13 @@ RDtreeNode::RDtreeNode(RDtreeVtab *vtab_, RDtreeNode *parent_)
 {
 }
 
+int RDtreeNode::get_depth() const
+{
+  // This is only meaningful if this is the root node
+  assert(nodeid == 1);
+  return read_uint16(data.data());
+}
+
 int RDtreeNode::get_size() const
 {
   return read_uint16(&data.data()[2]);

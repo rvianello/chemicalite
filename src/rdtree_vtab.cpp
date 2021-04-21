@@ -206,6 +206,7 @@ int RDtreeVtab::init(
   return rc;
 }
 
+/* utility function used twice in get_node_bytes here below */
 static int select_int(sqlite3 * db, const char *query, int *value)
 {
   int rc = SQLITE_OK;
@@ -721,21 +722,21 @@ int RDtreeVtab::node_acquire(
     if (node_bytes == sqlite3_column_bytes(pReadNode, 0)) {
       node = new RDtreeNode(this, parent);
       node->nodeid = nodeid;
-      memcpy(node->data.data(), blob, node_bytes);
+      memcpy(node->data.data(), blob, node_bytes); // FIXME std::copy
       node_incref(parent);
     }
   }
 
   rc = sqlite3_reset(pReadNode);
 
-  /* If the root node was just loaded, set pRDtree->iDepth to the height
+  /* If the root node was just loaded, set pRDtree->depth to the height
   ** of the rd-tree structure. A height of zero means all data is stored on
   ** the root node. A height of one means the children of the root node
   ** are the leaves, and so on. If the depth as specified on the root node
   ** is greater than RDTREE_MAX_DEPTH, the rd-tree structure must be corrupt.
   */
   if (node && nodeid == 1) {
-    depth = read_uint16(node->data.data());
+    depth = node->get_depth();
     if (depth > RDTREE_MAX_DEPTH) {
       rc = SQLITE_CORRUPT_VTAB;
     }
@@ -969,9 +970,9 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   }
 
   /* Ensure both child nodes have node numbers assigned to them by calling
-  ** nodeWrite(). Node right always needs a node number, as it was created
-  ** by nodeNew() above. But node left sometimes already has a node number.
-  ** In this case avoid the call to nodeWrite().
+  ** node_write(). Node right always needs a node number, as it was created
+  ** by node_new() above. But node left sometimes already has a node number.
+  ** In this case avoid the call to node_write().
   */
   if ((SQLITE_OK != (rc = node_write(right))) || 
       (0 == left->nodeid && SQLITE_OK != (rc = node_write(left)))) {
@@ -1581,18 +1582,6 @@ int RDtreeVtab::test_item(RDtreeCursor *csr, int height, bool *is_eof)
       break;
     }
   }
-#if 0
-  // replacing..
-  for (int ii = 0; *is_eof == false && rc == SQLITE_OK && ii < csr->nConstraint; ii++) {
-    RDtreeConstraint *p = &csr->aConstraint[ii];
-    if (height == 0) {
-      rc = p->op->test_leaf(this, p, &item, is_eof);
-    }
-    else {
-      rc = p->op->test_internal(this, p, &item, is_eof);
-    }
-  }
-#endif
 
   return rc;
 }
