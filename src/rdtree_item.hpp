@@ -3,7 +3,7 @@
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
 
-#include "utils.hpp"\
+#include "utils.hpp"
 
 /* 
 ** Structure to store a deserialized rd-tree record.
