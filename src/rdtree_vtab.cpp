@@ -235,7 +235,7 @@ static int select_int(sqlite3 * db, const char *query, int *value)
 /*
 ** This function is called from within the xConnect() or xCreate() method to
 ** determine the node-size used by the rdtree table being created or connected
-** to. If successful, pRDtree->node_bytes is populated and SQLITE_OK returned.
+** to. If successful, rdtree->node_bytes is populated and SQLITE_OK returned.
 ** Otherwise, an SQLite error code is returned.
 **
 ** If this function is being called as part of an xConnect(), then the rdtree
@@ -257,8 +257,15 @@ int RDtreeVtab::get_node_bytes(int is_create)
     rc = select_int(db, sql, &page_size);
     if (rc==SQLITE_OK) {
       node_bytes = page_size - 64;
-      if ((4 + item_bytes*RDTREE_MAXITEMS) < node_bytes) {
-        node_bytes = 4 + item_bytes*RDTREE_MAXITEMS;
+      int max_node_bytes = (
+        2 // tree depth, only used for the root node
+        + 2 // current number of stored items
+        + item_bytes*RDTREE_MAXITEMS // max space possibly used for items
+      );
+      // if the allowed node size exceeds the max space we need/want to use
+      // reduce it to match this max value
+      if (node_bytes > max_node_bytes) {
+        node_bytes = max_node_bytes;
       }
     }
   }
@@ -268,6 +275,7 @@ int RDtreeVtab::get_node_bytes(int is_create)
     rc = select_int(db, sql, &node_bytes);
   }
 
+  // so, how may items can be stored in one node?
   node_capacity = (node_bytes - 4)/item_bytes;
 
   sqlite3_free(sql);
@@ -372,6 +380,7 @@ int RDtreeVtab::sql_init(int is_create)
     }
   }
   
+  // TODO make the block below "prettier"
   static constexpr const int N_STATEMENT = 13;
 
   static const char *asql[N_STATEMENT] = {
@@ -645,9 +654,9 @@ int RDtreeVtab::parent_write(sqlite3_int64 nodeid, sqlite3_int64 parentid)
 }
 
 /*
-** Allocate and return new rd-tree node. Initially, (RDtreeNode.iNode==0),
+** Allocate and return new rd-tree node. Initially, (RDtreeNode.nodeid==0),
 ** indicating that node has not yet been assigned a node number. It is
-** assigned a node number when nodeWrite() is called to write the
+** assigned a node number when node_write() is called to write the
 ** node contents out to the database.
 */
 RDtreeNode * RDtreeVtab::node_new(RDtreeNode *parent)
@@ -659,7 +668,7 @@ RDtreeNode * RDtreeVtab::node_new(RDtreeNode *parent)
 }
 
 /*
-** Search the node hash table for node iNode. If found, return a pointer
+** Search the node hash table for node nodeid. If found, return a pointer
 ** to it. Otherwise, return 0.
 */
 RDtreeNode * RDtreeVtab::node_hash_lookup(sqlite3_int64 nodeid)
@@ -704,6 +713,7 @@ int RDtreeVtab::node_acquire(
   */
   RDtreeNode * node = node_hash_lookup(nodeid);
   if (node) {
+    // TODO: review this node assignment logic (why inside this function?)
     assert(!parent || !node->parent || node->parent == parent);
     if (parent && !node->parent) {
       node_incref(parent);
@@ -714,6 +724,7 @@ int RDtreeVtab::node_acquire(
     return SQLITE_OK;
   }
 
+  // the lookup failed, read the node from the db table
   sqlite3_bind_int64(pReadNode, 1, nodeid);
   rc = sqlite3_step(pReadNode);
 
@@ -736,6 +747,8 @@ int RDtreeVtab::node_acquire(
   ** is greater than RDTREE_MAX_DEPTH, the rd-tree structure must be corrupt.
   */
   if (node && nodeid == 1) {
+    // TODO: is it possible to move this logic outside node_acquire()
+    // so that it's not checked on each call?
     depth = node->get_depth();
     if (depth > RDTREE_MAX_DEPTH) {
       rc = SQLITE_CORRUPT_VTAB;
@@ -745,6 +758,8 @@ int RDtreeVtab::node_acquire(
   /* If no error has occurred so far, check if the "number of entries"
   ** field on the node is too large. If so, set the return code to 
   ** SQLITE_CORRUPT_VTAB.
+  **
+  ** This is a safety check.
   */
   if (node && rc == SQLITE_OK) {
     if (node->get_size() > node_capacity) {
@@ -866,8 +881,8 @@ int RDtreeVtab::find_leaf_node(sqlite3_int64 rowid, RDtreeNode **leaf)
 }
 
 /*
-** An item with the same content as pItem has just been inserted into
-** the node pNode. This function updates the bounds in
+** An item with the same content as new_item has just been inserted into
+** the node. This function updates the bounds in
 ** all ancestor elements.
 */
 int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
@@ -878,7 +893,7 @@ int RDtreeVtab::adjust_tree(RDtreeNode *node, RDtreeItem *new_item)
     RDtreeItem item(bfp_bytes);
     int idx;
 
-    if (p->get_index_in_parent(&idx)) {
+    if (p->get_index_in_parent(&idx) != SQLITE_OK) {
       return SQLITE_CORRUPT_VTAB;
     }
 
@@ -957,7 +972,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
     return rc;
   }
 
-  memset(left->data.data(), 0, node_bytes);
+  memset(left->data.data(), 0, node_bytes); // TODO: review 
   memset(right->data.data(), 0, node_bytes);
 
   rc = assign_items(
@@ -984,6 +999,13 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   rightbounds.rowid = right->nodeid;
   leftbounds.rowid = left->nodeid;
 
+  /*
+  ** Update the left node bounds in the parent node.
+  ** If the root node was split, left is a new node, and its
+  ** bounds need to be inserted in the parent (the root node).
+  ** Otherwise, the left node already existed, and its bounds
+  ** need to be overwritten with the updated version.
+  */
   if (node->nodeid == 1) {
     rc = insert_item(left->parent, &leftbounds, height+1);
     if (rc != SQLITE_OK) {
@@ -1007,6 +1029,10 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
     }
   }
 
+  /*
+  ** The right node is always new, its bounds need to be
+  ** inserted into the parent node.
+  */
   if ((rc = 
        insert_item(right->parent, &rightbounds, height+1))) {
     node_decref(right);
@@ -1014,6 +1040,14 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
     return rc;
   }
 
+  /*
+  ** The items in the just created right node come from the node
+  ** that was just split, their mapping information (rowid to node, 
+  ** or nodeid to parent, depending on height) need to be updated.
+  **
+  ** In the process, keep track of whether the new item was inserted
+  ** into the right node.
+  */
   int right_size = right->get_size();
   for (int i = 0; i < right_size; i++) {
     sqlite3_int64 rowid = right->get_rowid(i);
@@ -1028,6 +1062,11 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
     }
   }
 
+  /*
+  ** The items on the left is new only when the root node
+  ** was split. In that case the left node items need to be
+  ** remapped as well.
+  */
   if (node->nodeid == 1) {
     int left_size = left->get_size();
     for (int i = 0; i < left_size; i++) {
@@ -1040,6 +1079,10 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
       }
     }
   }
+  /*
+  ** But if the new item was put into the left node,
+  ** it's mapping info are anyways to be set
+  */
   else if (new_item_is_right == 0) {
     rc = update_mapping(item->rowid, left, height);
   }
@@ -1050,39 +1093,41 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
 }
 
 /*
-** If node pLeaf is not the root of the rd-tree and its parent pointer is 
-** still NULL, load all ancestor nodes of pLeaf into memory and populate
+** If leaf is not the root of the rd-tree and its parent pointer is 
+** still NULL, load all ancestor nodes of leaf into memory and populate
 ** the pLeaf->parent chain all the way up to the root node.
 **
 ** This operation is required when a row is deleted (or updated - an update
 ** is implemented as a delete followed by an insert). SQLite provides the
-** rowid of the row to delete, which can be used to find the leaf on which
-** the entry resides (argument pLeaf). Once the leaf is located, this 
-** function is called to determine its ancestry.
+** rowid of the row to delete, which can be used to find the leaf node on which
+** the entry resides. Once the leaf is located, this function is called to
+** determine its ancestry.
 */
 int RDtreeVtab::fix_leaf_parent(RDtreeNode *leaf)
 {
   int rc = SQLITE_OK;
   RDtreeNode *child = leaf;
+  // as long as node has a null parent, and it's not the root
   while (rc == SQLITE_OK && child->nodeid != 1 && child->parent == 0) {
     int rc2 = SQLITE_OK;          /* sqlite3_reset() return code */
     sqlite3_bind_int64(pReadParent, 1, child->nodeid);
     rc = sqlite3_step(pReadParent);
     if (rc == SQLITE_ROW) {
-      RDtreeNode *test;            /* Used to test for reference loops */
-      sqlite3_int64 nodeid;        /* Node number of parent node */
+      sqlite3_int64 parent_nodeid = sqlite3_column_int64(pReadParent, 0);
 
       /* Before setting pChild->parent, test that we are not creating a
       ** loop of references (as we would if, say, pChild==parent). We don't
       ** want to do this as it leads to a memory leak when trying to delete
       ** the reference counted node structures.
+      **
+      ** (but what if a loop is detected?)
       */
-      nodeid = sqlite3_column_int64(pReadParent, 0);
-      for (test = leaf; test && test->nodeid != nodeid; test = test->parent)
+      RDtreeNode *test;            /* Used to test for reference loops */
+      for (test = leaf; test && test->nodeid != parent_nodeid; test = test->parent)
 	      ; /* loop from pLeaf up towards pChild looking for nodeid.. */
 
-      if (!test) { /* Ok */
-        rc2 = node_acquire(nodeid, 0, &child->parent);
+      if (!test) { /* Ok, it means the loop above reached the top */
+        rc2 = node_acquire(parent_nodeid, 0, &child->parent);
       }
     }
     rc = sqlite3_reset(pReadParent);
