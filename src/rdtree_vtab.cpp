@@ -1103,7 +1103,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
 ** the entry resides. Once the leaf is located, this function is called to
 ** determine its ancestry.
 */
-int RDtreeVtab::fix_leaf_parent(RDtreeNode *leaf)
+int RDtreeVtab::load_leaf_parent_chain(RDtreeNode *leaf)
 {
   int rc = SQLITE_OK;
   RDtreeNode *child = leaf;
@@ -1195,7 +1195,7 @@ int RDtreeVtab::remove_node(RDtreeNode *node, int height)
   return SQLITE_OK;
 }
 
-int RDtreeVtab::fix_node_bounds(RDtreeNode *node)
+int RDtreeVtab::update_node_bounds(RDtreeNode *node)
 {
   int rc = SQLITE_OK; 
   RDtreeNode *parent = node->parent;
@@ -1213,7 +1213,7 @@ int RDtreeVtab::fix_node_bounds(RDtreeNode *node)
     rc = node->get_index_in_parent(&ii);
     if (rc == SQLITE_OK) {
       parent->overwrite_item(ii, &bounds);
-      rc = fix_node_bounds(parent);
+      rc = update_node_bounds(parent);
     }
   }
   return rc;
@@ -1231,7 +1231,7 @@ int RDtreeVtab::delete_item(RDtreeNode *node, int idx, int height)
   ** If node is not the root and its parent is null, load all the ancestor
   ** nodes into memory
   */
-  if ((rc = fix_leaf_parent(node)) != SQLITE_OK) {
+  if ((rc = load_leaf_parent_chain(node)) != SQLITE_OK) {
     return rc;
   }
 
@@ -1252,7 +1252,7 @@ int RDtreeVtab::delete_item(RDtreeNode *node, int idx, int height)
       rc = remove_node(node, height);
     }
     else {
-      rc = fix_node_bounds(node);
+      rc = update_node_bounds(node);
     }
   }
 

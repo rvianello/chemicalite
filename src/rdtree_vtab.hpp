@@ -55,8 +55,8 @@ public:
   int split_node(RDtreeNode *node, RDtreeItem *item, int height);
   int update_mapping(sqlite3_int64 rowid, RDtreeNode *node, int height);
   int adjust_tree(RDtreeNode *node, RDtreeItem *item);
-  int fix_node_bounds(RDtreeNode *node);
-  int fix_leaf_parent(RDtreeNode *leaf);
+  int update_node_bounds(RDtreeNode *node);
+  int load_leaf_parent_chain(RDtreeNode *leaf);
   int new_rowid(sqlite3_int64 *rowid);
   int test_item(RDtreeCursor *csr, int height, bool *is_eof);
   int descend_to_item(RDtreeCursor *csr, int height, bool *is_eof);
