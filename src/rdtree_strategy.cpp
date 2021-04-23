@@ -102,7 +102,7 @@ void RDtreeGenericStrategy::pick_next(
   *prefer_right = right_is_closer;
 }
 
-int RDtreeGenericStrategy::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
+int RDtreeGenericStrategy::choose_node(RDtreeItem *item, int height, RDtreeNode **leaf)
 {
   RDtreeNode *node;
   int rc = node_acquire(1, 0, &node);
@@ -147,7 +147,7 @@ int RDtreeGenericStrategy::choose_leaf(RDtreeItem *item, int height, RDtreeNode 
   return rc;
 }
 
-int RDtreeSubsetStrategy::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
+int RDtreeSubsetStrategy::choose_node(RDtreeItem *item, int height, RDtreeNode **leaf)
 {
   RDtreeNode *node;
   int rc = node_acquire(1, 0, &node);
@@ -246,7 +246,7 @@ void RDtreeSimilarityStrategy::pick_next(
   *prefer_right = right_is_closer;
 }
 
-int RDtreeSimilarityStrategy::choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf)
+int RDtreeSimilarityStrategy::choose_node(RDtreeItem *item, int height, RDtreeNode **leaf)
 {
   RDtreeNode *node;
   int rc = node_acquire(1, 0, &node);

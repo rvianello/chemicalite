@@ -56,7 +56,7 @@ public:
   int update_mapping(sqlite3_int64 rowid, RDtreeNode *node, int height);
   int adjust_tree(RDtreeNode *node, RDtreeItem *item);
   int update_node_bounds(RDtreeNode *node);
-  int load_leaf_parent_chain(RDtreeNode *leaf);
+  int load_parent_chain(RDtreeNode *leaf);
   int new_rowid(sqlite3_int64 *rowid);
   int test_item(RDtreeCursor *csr, int height, bool *is_eof);
   int descend_to_item(RDtreeCursor *csr, int height, bool *is_eof);
@@ -70,7 +70,7 @@ public:
   ** This function implements the chooseLeaf algorithm from Gutman[84].
   ** ChooseSubTree in r*tree terminology.
   */
-  virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf) = 0;
+  virtual int choose_node(RDtreeItem *item, int height, RDtreeNode **leaf) = 0;
 
   int node_acquire(
     sqlite3_int64 nodeid, RDtreeNode *parent, RDtreeNode **acquired);

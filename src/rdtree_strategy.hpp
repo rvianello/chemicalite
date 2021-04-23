@@ -30,7 +30,7 @@ public:
   ** This function implements the chooseLeaf algorithm from Gutman[84].
   ** ChooseSubTree in r*tree terminology.
   */
-  virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
+  virtual int choose_node(RDtreeItem *item, int height, RDtreeNode **leaf);
 };
 
 class RDtreeSubsetStrategy : public RDtreeGenericStrategy {
@@ -50,7 +50,7 @@ public:
 	RDtreeItem **next_item, int *prefer_right);
   */
 
-  virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
+  virtual int choose_node(RDtreeItem *item, int height, RDtreeNode **leaf);
 };
 
 class RDtreeSimilarityStrategy : public RDtreeGenericStrategy {
@@ -63,7 +63,7 @@ public:
     RDtreeItem *left_seed, RDtreeItem *right_seed,
 	RDtreeItem **next_item, int *prefer_right);
 
-  virtual int choose_leaf(RDtreeItem *item, int height, RDtreeNode **leaf);
+  virtual int choose_node(RDtreeItem *item, int height, RDtreeNode **leaf);
 };
 
 #endif

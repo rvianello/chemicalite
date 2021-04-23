@@ -1103,10 +1103,10 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
 ** the entry resides. Once the leaf is located, this function is called to
 ** determine its ancestry.
 */
-int RDtreeVtab::load_leaf_parent_chain(RDtreeNode *leaf)
+int RDtreeVtab::load_parent_chain(RDtreeNode *node)
 {
   int rc = SQLITE_OK;
-  RDtreeNode *child = leaf;
+  RDtreeNode *child = node;
   // as long as node has a null parent, and it's not the root
   while (rc == SQLITE_OK && child->nodeid != 1 && child->parent == 0) {
     int rc2 = SQLITE_OK;          /* sqlite3_reset() return code */
@@ -1123,7 +1123,7 @@ int RDtreeVtab::load_leaf_parent_chain(RDtreeNode *leaf)
       ** (but what if a loop is detected?)
       */
       RDtreeNode *test;            /* Used to test for reference loops */
-      for (test = leaf; test && test->nodeid != parent_nodeid; test = test->parent)
+      for (test = node; test && test->nodeid != parent_nodeid; test = test->parent)
 	      ; /* loop from pLeaf up towards pChild looking for nodeid.. */
 
       if (!test) { /* Ok, it means the loop above reached the top */
@@ -1139,7 +1139,7 @@ int RDtreeVtab::load_leaf_parent_chain(RDtreeNode *leaf)
 }
 
 /*
-** deleting an Item may result in the removal of an underfull node from the
+** deleting an Item may result in the removal of an underfull node,
 ** that in turn requires the deletion of the corresponding Item from the
 ** parent node, and may therefore trigger the further removal of additional
 ** nodes.. removed nodes are collected into a linked list where they are 
@@ -1169,6 +1169,8 @@ int RDtreeVtab::remove_node(RDtreeNode *node, int height)
   if (rc != SQLITE_OK) {
     return rc;
   }
+
+  /* Then we need to remove the mapping information */
 
   /* Remove the xxx_node entry. */
   sqlite3_bind_int64(pDeleteNode, 1, node->nodeid);
@@ -1200,19 +1202,23 @@ int RDtreeVtab::update_node_bounds(RDtreeNode *node)
   int rc = SQLITE_OK; 
   RDtreeNode *parent = node->parent;
   if (parent) {
-    int ii; 
-    int nItem = node->get_size();
-    RDtreeItem bounds(bfp_bytes);  /* Bounding box for node */
+    int node_size = node->get_size();
+    // compute the bounding box for this node
+    RDtreeItem bounds(bfp_bytes); 
     node->get_item(0, &bounds);
-    for (ii = 1; ii < nItem; ii++) {
+    for (int ii = 1; ii < node_size; ii++) {
       RDtreeItem item(bfp_bytes);
       node->get_item(ii, &item);
       bounds.extend_bounds(item);
     }
     bounds.rowid = node->nodeid;
-    rc = node->get_index_in_parent(&ii);
+    // update the bounding box info in the
+    // parent's item that points to this node
+    // and then recur up the tree
+    int idx;
+    rc = node->get_index_in_parent(&idx);
     if (rc == SQLITE_OK) {
-      parent->overwrite_item(ii, &bounds);
+      parent->overwrite_item(idx, &bounds);
       rc = update_node_bounds(parent);
     }
   }
@@ -1231,7 +1237,7 @@ int RDtreeVtab::delete_item(RDtreeNode *node, int idx, int height)
   ** If node is not the root and its parent is null, load all the ancestor
   ** nodes into memory
   */
-  if ((rc = load_leaf_parent_chain(node)) != SQLITE_OK) {
+  if ((rc = load_parent_chain(node)) != SQLITE_OK) {
     return rc;
   }
 
@@ -1268,6 +1274,9 @@ int RDtreeVtab::insert_item(RDtreeNode *node, RDtreeItem *item, int height)
   int rc = SQLITE_OK;
 
   if (height > 0) {
+    // if we are inserting an item into an intermediate node
+    // then this item points to a subtree.
+    // re-parent the top node of this subtree.
     RDtreeNode *child = node_hash_lookup(item->rowid);
     if (child) {
       node_decref(child->parent);
@@ -1298,11 +1307,10 @@ int RDtreeVtab::insert_item(RDtreeNode *node, RDtreeItem *item, int height)
 
 int RDtreeVtab::reinsert_node_content(RDtreeNode *node)
 {
-  int ii;
   int rc = SQLITE_OK;
-  int nItem = node->get_size();
+  int node_size = node->get_size();
 
-  for (ii = 0; rc == SQLITE_OK && ii < nItem; ii++) {
+  for (int ii = 0; rc == SQLITE_OK && ii < node_size; ii++) {
     RDtreeItem item(bfp_bytes);
     node->get_item(ii, &item);
 
@@ -1310,7 +1318,7 @@ int RDtreeVtab::reinsert_node_content(RDtreeNode *node)
     ** the height of the sub-tree headed by the cell.
     */
     RDtreeNode *insert;
-    rc = choose_leaf(&item, (int)node->nodeid, &insert);
+    rc = choose_node(&item, (int)node->nodeid, &insert);
     if (rc == SQLITE_OK) {
       int rc2;
       rc = insert_item(insert, &item, (int)node->nodeid);
@@ -1329,7 +1337,7 @@ int RDtreeVtab::reinsert_node_content(RDtreeNode *node)
 */
 int RDtreeVtab::delete_rowid(sqlite3_int64 rowid) 
 {
-  int rc, rc2;                    /* Return code */
+  int rc, rc2;                   /* Return code */
   RDtreeNode *leaf = 0;          /* Leaf node containing record rowid */
   int item;                      /* Index of rowid item in leaf */
   RDtreeNode *root;              /* Root node of rtree structure */
@@ -1384,7 +1392,7 @@ int RDtreeVtab::delete_rowid(sqlite3_int64 rowid)
     RDtreeNode *child;
     sqlite3_int64 child_rowid = root->get_rowid(0);
     rc = node_acquire(child_rowid, root, &child);
-    if( rc==SQLITE_OK ){
+    if (rc==SQLITE_OK) {
       rc = remove_node(child, depth - 1);
     }
     rc2 = node_decref(child);
@@ -1545,7 +1553,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *updated_row
     *updated_rowid = item.rowid;
 
     if (rc == SQLITE_OK) {
-      rc = choose_leaf(&item, 0, &pLeaf);
+      rc = choose_node(&item, 0, &pLeaf);
     }
 
     if (rc == SQLITE_OK) {
