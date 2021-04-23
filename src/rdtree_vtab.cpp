@@ -1492,11 +1492,13 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *updated_row
 
       rowid = sqlite3_value_int64(argv[2]);
 
+      // if it's an insert || an update with rowid change
       if ((sqlite3_value_type(argv[0]) == SQLITE_NULL) || (sqlite3_value_int64(argv[0]) != rowid)) {
         sqlite3_bind_int64(pReadRowid, 1, rowid);
         int steprc = sqlite3_step(pReadRowid);
         rc = sqlite3_reset(pReadRowid);
-        if (SQLITE_ROW == steprc) { /* rowid already exists */
+        if (SQLITE_ROW == steprc) {
+          // rowid already exists
           if (sqlite3_vtab_on_conflict(db) == SQLITE_REPLACE) {
             rc = delete_rowid(rowid);
           }
@@ -1519,9 +1521,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *updated_row
       if (have_rowid) {
         item.rowid = rowid;
       }
-      // FIXME
-      item.bfp.resize(bfp_bytes);
-      memcpy(item.bfp.data(), bfp.data(), bfp_bytes);
+      memcpy(item.bfp.data(), bfp.data(), bfp_bytes); // TODO std::copy
       item.min_weight = item.max_weight = bfp_op_weight(bfp_bytes, item.bfp.data());
     }
 
@@ -1533,6 +1533,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *updated_row
   /* If argv[0] is not an SQL NULL value, it is the rowid of a
   ** record to delete from the r-tree table. The following block does
   ** just that.
+  ** (note: updates too are performed as a delete+re-insert)
   */
   if (sqlite3_value_type(argv[0]) != SQLITE_NULL) {
     rc = delete_rowid(sqlite3_value_int64(argv[0]));
@@ -1544,7 +1545,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *updated_row
   */
   if ((rc == SQLITE_OK) && (argc > 1)) {
     /* Insert the new record into the rd-tree */
-    RDtreeNode *pLeaf = 0;
+    RDtreeNode *leaf = 0;
 
     /* Figure out the rowid of the new row. */
     if (!have_rowid) {
@@ -1553,13 +1554,13 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *updated_row
     *updated_rowid = item.rowid;
 
     if (rc == SQLITE_OK) {
-      rc = choose_node(&item, 0, &pLeaf);
+      rc = choose_node(&item, 0, &leaf);
     }
 
     if (rc == SQLITE_OK) {
       int rc2;
-      rc = insert_item(pLeaf, &item, 0);
-      rc2 = node_decref(pLeaf);
+      rc = insert_item(leaf, &item, 0);
+      rc2 = node_decref(leaf);
       if (rc == SQLITE_OK) {
         rc = rc2;
       }
@@ -1623,18 +1624,19 @@ int RDtreeVtab::test_item(RDtreeCursor *csr, int height, bool *is_eof)
 
   csr->node->get_item(csr->item, &item);
 
-  *is_eof = false;
+  bool item_eof = false;
   for (auto p: csr->constraints) {
     if (height == 0) {
-      rc = p->op->test_leaf(this, *p, &item, is_eof);
+      rc = p->op->test_leaf(this, *p, &item, &item_eof);
     }
     else {
-      rc = p->op->test_internal(this, *p, &item, is_eof);
+      rc = p->op->test_internal(this, *p, &item, &item_eof);
     }
-    if (!is_eof) {
+    if (item_eof) {
       break;
     }
   }
+  *is_eof = item_eof;
 
   return rc;
 }
@@ -1649,6 +1651,7 @@ int RDtreeVtab::descend_to_item(RDtreeCursor *csr, int height, bool *is_eof)
 {
   assert(height >= 0);
 
+  // backup the cursor's current position
   RDtreeNode *saved_node = csr->node;
   int saved_item = csr->item;
 
@@ -1658,6 +1661,8 @@ int RDtreeVtab::descend_to_item(RDtreeCursor *csr, int height, bool *is_eof)
     return rc;
   }
 
+  // load the child node pointed to by the item
+  // at the current cursor position
   RDtreeNode *child;
   sqlite3_int64 rowid = csr->node->get_rowid(csr->item);
   rc = node_acquire(rowid, csr->node, &child);
@@ -1665,19 +1670,29 @@ int RDtreeVtab::descend_to_item(RDtreeCursor *csr, int height, bool *is_eof)
     return rc;
   }
 
+  // move the cursor to the child node
   node_decref(csr->node);
   csr->node = child;
-  *is_eof = true; // useless? defensive?
+
+  // further descend into the new node's items
+  // until the left-most item matching the constraints
+  // is found
+  // (that is, exit the loop when eof is not true)
+  bool local_eof = true;
   int num_items = child->get_size();
-  for (int ii=0; *is_eof && ii < num_items; ii++) {
+  // keep looping until we find an item that matches the
+  // constraints (ie that flips the local_eof to false)
+  for (int ii=0; local_eof && ii < num_items; ii++) {
     csr->item = ii;
-    rc = descend_to_item(csr, height-1, is_eof);
+    rc = descend_to_item(csr, height-1, &local_eof);
     if (rc != SQLITE_OK) {
       return rc;
     }
   }
 
-  if (*is_eof) {
+  if (local_eof) {
+    // We couldn't find any matching node under this node
+    // restore the cursor position
     assert(csr->node == child);
     node_incref(saved_node);
     node_decref(child);
@@ -1685,6 +1700,7 @@ int RDtreeVtab::descend_to_item(RDtreeCursor *csr, int height, bool *is_eof)
     csr->item = saved_item;
   }
 
+  *is_eof = local_eof;
   return rc;
 }
 
@@ -1795,9 +1811,10 @@ int RDtreeVtab::filter(
     RDtreeNode *root = 0;
 
     if (rc == SQLITE_OK) {
-      csr->node = 0;
+      csr->node = nullptr;
       rc = node_acquire(1, 0, &root);
     }
+
     if (rc == SQLITE_OK) {
       bool is_eof = true;
       int num_items = root->get_size();
@@ -1813,7 +1830,7 @@ int RDtreeVtab::filter(
       if (rc == SQLITE_OK && is_eof) {
         assert( csr->node == root );
         node_decref(root);
-        csr->node = 0;
+        csr->node = nullptr;
       }
       assert(rc != SQLITE_OK || !csr->node || csr->item < csr->node->get_size());
     }
