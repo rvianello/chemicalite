@@ -9,13 +9,19 @@
 
 class RDtreeSubset : public RDtreeConstraint {
 public:
-  virtual int initialize();
-  virtual int test_internal(const RDtreeItem &, bool &);
-  virtual int test_leaf(const RDtreeItem &, bool &);
-  int test(const RDtreeItem &, bool &);
+  static std::shared_ptr<RDtreeConstraint> create(const uint8_t * data, int size, const RDtreeVtab *, int * rc);
 
-  int weight;
+  RDtreeSubset(const uint8_t * data, int size);
+  virtual int initialize() const;
+  virtual int test_internal(const RDtreeItem &, bool &) const;
+  virtual int test_leaf(const RDtreeItem &, bool &) const;
+  int test(const RDtreeItem &, bool &) const;
+
   Blob bfp;
+  int weight;
+
+private:
+  virtual Blob do_serialize() const;
 };
 
 #endif

@@ -35,8 +35,8 @@
 ** is stored on.
 */
 
-static const int RDTREE_MAX_BITSTRING_SIZE = 256;
-static const int RDTREE_MAXITEMS = 51;
+const int RDtreeVtab::RDTREE_MAX_BITSTRING_SIZE = 256;
+const int RDtreeVtab::RDTREE_MAXITEMS = 51;
 
 /*
 ** The largest supported item size is 264 bytes (8 byte rowid + 256 bytes 
@@ -50,7 +50,7 @@ static const int RDTREE_MAXITEMS = 51;
 ** While these look like the minimal lower bounds, the optimal page size is to 
 ** be investigated.
 */
-static const int RDTREE_MAX_DEPTH = 64;
+const int RDtreeVtab::RDTREE_MAX_DEPTH = 64;
 
 static const unsigned int RDTREE_FLAGS_UNASSIGNED = 0;
 static const unsigned int RDTREE_OPTIMIZED_FOR_SUBSET_QUERIES = 1;

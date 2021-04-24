@@ -15,6 +15,10 @@ class RDtreeCursor;
 
 class RDtreeVtab : public sqlite3_vtab {
 public:
+  static const int RDTREE_MAX_BITSTRING_SIZE;
+  static const int RDTREE_MAXITEMS;
+  static const int RDTREE_MAX_DEPTH;
+
   virtual ~RDtreeVtab() {}
 
   static int create(

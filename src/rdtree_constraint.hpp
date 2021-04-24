@@ -5,6 +5,8 @@
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
 
+#include "utils.hpp"
+
 class RDtreeVtab;
 class RDtreeItem;
 
@@ -13,12 +15,20 @@ class RDtreeItem;
 */
 
 class RDtreeConstraint {
+protected:
+  static const uint32_t RDTREE_CONSTRAINT_MAGIC;
+  static const uint32_t RDTREE_SUBSET_CONSTRAINT_MAGIC;
+
 public:
   static std::shared_ptr<RDtreeConstraint> deserialize(const uint8_t * data, int size, const RDtreeVtab *, int * rc);
 
-  virtual int initialize() = 0;
-  virtual int test_internal(const RDtreeItem &, bool &) = 0;
-  virtual int test_leaf(const RDtreeItem &, bool &) = 0;
+  Blob serialize() const;
+  virtual int initialize() const = 0;
+  virtual int test_internal(const RDtreeItem &, bool &) const = 0;
+  virtual int test_leaf(const RDtreeItem &, bool &) const = 0;
+
+private:
+  virtual Blob do_serialize() const = 0;
 };
 
 
