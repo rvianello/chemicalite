@@ -21,6 +21,8 @@ add_library(chemicalite MODULE
         rdtree_node.cpp
         rdtree_item.cpp
         rdtree_strategy.cpp
+        rdtree_constraint.cpp
+        rdtree_constraint_subset.cpp
         versions.cpp
         chemicalite.cpp
         #rdkit_adapter.cpp

@@ -9,6 +9,7 @@
 #include "rdtree_node.hpp"
 #include "rdtree_item.hpp"
 #include "rdtree_cursor.hpp"
+#include "rdtree_constraint.hpp"
 
 #include "bfp.hpp"
 #include "bfp_ops.hpp"
@@ -1591,27 +1592,12 @@ int RDtreeVtab::open(sqlite3_vtab_cursor **cursor)
   return rc;
 }
 
-/*
-** Free the RDtreeCursor.aConstraint[] array and its contents.
-*/
-/*
-maybe used by RDtreeVtab::close() see below
-
-static void freeCursorConstraints(RDtreeCursor *csr)
-{
-  if (csr->aConstraint) {
-    sqlite3_free(csr->aConstraint);
-    csr->aConstraint = 0;
-  }
-}*/
-
 /* 
 ** rdtree virtual table module xClose method.
 */
 int RDtreeVtab::close(sqlite3_vtab_cursor *cursor)
 {
   RDtreeCursor *csr = (RDtreeCursor *)cursor;
-  // maybe later freeCursorConstraints(csr);
   int rc = node_decref(csr->node);
   delete csr;
   return rc;
@@ -1627,10 +1613,10 @@ int RDtreeVtab::test_item(RDtreeCursor *csr, int height, bool *is_eof)
   bool item_eof = false;
   for (auto p: csr->constraints) {
     if (height == 0) {
-      rc = p->op->test_leaf(this, *p, &item, &item_eof);
+      rc = p->test_leaf(item, item_eof);
     }
     else {
-      rc = p->op->test_internal(this, *p, &item, &item_eof);
+      rc = p->test_internal(item, item_eof);
     }
     if (item_eof) {
       break;
@@ -1764,7 +1750,7 @@ int RDtreeVtab::filter(
 
   incref();
 
-  // needed? or not needed? freeCursorConstraints(csr);
+  csr->constraints.clear(); // needed? or not needed?
   csr->strategy = idxnum;
 
   if (csr->strategy == 1) {
@@ -1779,33 +1765,34 @@ int RDtreeVtab::filter(
     }
   }
   else {
-    /* Normal case - rd-tree scan. Set up the RDtreeCursor.aConstraint array 
+    /* Normal case - rd-tree scan. Set up RDtreeCursor.constraints 
     ** with the configured constraints. 
     */
     if (argc > 0) {
-      #if 0 // FIXME
-      csr->aConstraint = sqlite3_malloc(sizeof(RDtreeConstraint) * argc);
-      csr->nConstraint = argc;
-      if (!csr->aConstraint) {
-        rc = SQLITE_NOMEM;
-      }
-      else {
-        memset(csr->aConstraint, 0, sizeof(RDtreeConstraint) * argc);
-        for (int ii = 0; ii < argc; ii++) {
-          RDtreeConstraint *p = &csr->aConstraint[ii];
-          /* A MATCH operator. The right-hand-side must be a blob that
-          ** can be cast into an RDtreeMatchArg object.
-          */
-          rc = deserializeMatchArg(argv[ii], p);
-          if (rc == SQLITE_OK && p->op->xInitializeConstraint) {
-              rc = p->op->xInitializeConstraint(pRDtree, p);
-          }
-          if (rc != SQLITE_OK) {
-            break;
-          }
+      for (int ii = 0; rc == SQLITE_OK && ii < argc; ii++) {
+        /* A MATCH operator. The right-hand-side must be a blob that
+        ** can be deserialized into an RDtreeConstraint object.
+        */
+        sqlite3_value *arg = argv[ii];
+
+        /* Check that value is actually a blob. */
+        if( sqlite3_value_type(arg) != SQLITE_BLOB ) {
+          return SQLITE_MISMATCH;
+        }
+
+        int size = sqlite3_value_bytes(arg);
+        uint8_t * data = (uint8_t *) sqlite3_value_blob(arg);
+
+        // rc = deserializeMatchArg(argv[ii], p);
+        std::shared_ptr<RDtreeConstraint> p = RDtreeConstraint::deserialize(data, size, this, &rc);
+
+        if (rc == SQLITE_OK) {
+            rc = p->initialize();
+        }
+        if (rc == SQLITE_OK) {
+          csr->constraints.push_back(p);
         }
       }
-      #endif
     }
   
     RDtreeNode *root = 0;
