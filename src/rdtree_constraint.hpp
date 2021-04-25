@@ -22,6 +22,8 @@ protected:
 public:
   static std::shared_ptr<RDtreeConstraint> deserialize(const uint8_t * data, int size, const RDtreeVtab *, int * rc);
 
+  virtual ~RDtreeConstraint() {}
+
   Blob serialize() const;
   virtual int initialize() const = 0;
   virtual int test_internal(const RDtreeItem &, bool &) const = 0;
