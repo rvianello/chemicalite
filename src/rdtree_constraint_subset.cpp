@@ -5,11 +5,11 @@
 #include "rdtree_item.hpp"
 #include "bfp_ops.hpp"
 
-std::shared_ptr<RDtreeConstraint> RDtreeSubset::deserialize(const uint8_t * data, int size, const RDtreeVtab *vtab, int * rc)
+std::shared_ptr<RDtreeConstraint> RDtreeSubset::deserialize(const uint8_t * data, int size, const RDtreeVtab & vtab, int * rc)
 {
   std::shared_ptr<RDtreeConstraint> result;
 
-  if (size != vtab->bfp_bytes) {
+  if (size != vtab.bfp_bytes) {
     *rc = SQLITE_MISMATCH;
   }
   else {

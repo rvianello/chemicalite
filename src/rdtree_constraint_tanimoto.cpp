@@ -7,15 +7,15 @@
 #include "rdtree_item.hpp"
 #include "bfp_ops.hpp"
 
-std::shared_ptr<RDtreeConstraint> RDtreeTanimoto::deserialize(const uint8_t * data, int size, const RDtreeVtab *vtab, int * rc)
+std::shared_ptr<RDtreeConstraint> RDtreeTanimoto::deserialize(const uint8_t * data, int size, const RDtreeVtab & vtab, int * rc)
 {
   std::shared_ptr<RDtreeConstraint> result;
 
-  if (size != (vtab->bfp_bytes + (int)sizeof(double))) {
+  if (size != (vtab.bfp_bytes + (int)sizeof(double))) {
     *rc = SQLITE_MISMATCH;
   }
   else {
-    double * d = (double *) (data + vtab->bfp_bytes);
+    double * d = (double *) (data + vtab.bfp_bytes);
     double threshold = *d;
     result = std::shared_ptr<RDtreeConstraint>(new RDtreeTanimoto(data, size, threshold));
   }

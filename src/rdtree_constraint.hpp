@@ -21,7 +21,7 @@ protected:
   static const uint32_t RDTREE_TANIMOTO_CONSTRAINT_MAGIC;
 
 public:
-  static std::shared_ptr<RDtreeConstraint> deserialize(const uint8_t * data, int size, const RDtreeVtab *, int * rc);
+  static std::shared_ptr<RDtreeConstraint> deserialize(const uint8_t * data, int size, const RDtreeVtab &, int * rc);
 
   virtual ~RDtreeConstraint() {}
 

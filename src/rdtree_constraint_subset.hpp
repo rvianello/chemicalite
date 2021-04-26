@@ -9,7 +9,7 @@
 
 class RDtreeSubset : public RDtreeConstraint {
 public:
-  static std::shared_ptr<RDtreeConstraint> deserialize(const uint8_t * data, int size, const RDtreeVtab *, int * rc);
+  static std::shared_ptr<RDtreeConstraint> deserialize(const uint8_t * data, int size, const RDtreeVtab &, int * rc);
 
   RDtreeSubset(const uint8_t * data, int size);
   virtual int initialize(const RDtreeVtab &);

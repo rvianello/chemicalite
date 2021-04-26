@@ -10,7 +10,7 @@ const uint32_t RDtreeConstraint::RDTREE_SUBSET_CONSTRAINT_MAGIC = 0x7c4f9902;
 const uint32_t RDtreeConstraint::RDTREE_TANIMOTO_CONSTRAINT_MAGIC = 0xf8324b5e;
 
 std::shared_ptr<RDtreeConstraint>
-RDtreeConstraint::deserialize(const uint8_t *data, int size, const RDtreeVtab *vtab, int *rc)
+RDtreeConstraint::deserialize(const uint8_t *data, int size, const RDtreeVtab & vtab, int *rc)
 {
   std::shared_ptr<RDtreeConstraint> result;
 
