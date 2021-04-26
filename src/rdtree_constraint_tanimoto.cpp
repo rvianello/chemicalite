@@ -75,7 +75,7 @@ int RDtreeTanimoto::initialize(const RDtreeVtab & vtab)
 
   char *zSql = sqlite3_mprintf(
     "SELECT bitno FROM '%q'.'%q_bitfreq' WHERE bitno IN (",
-	vtab.db_name, vtab.table_name);
+	vtab.db_name.c_str(), vtab.table_name.c_str());
   char *zTmp;
 
   bool first = true;
