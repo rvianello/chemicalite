@@ -1787,7 +1787,7 @@ int RDtreeVtab::filter(
         std::shared_ptr<RDtreeConstraint> p = RDtreeConstraint::deserialize(data, size, this, &rc);
 
         if (rc == SQLITE_OK) {
-            rc = p->initialize();
+            rc = p->initialize(*this);
         }
         if (rc == SQLITE_OK) {
           csr->constraints.push_back(p);

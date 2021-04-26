@@ -5,7 +5,7 @@
 #include "rdtree_item.hpp"
 #include "bfp_ops.hpp"
 
-std::shared_ptr<RDtreeConstraint> RDtreeSubset::create(const uint8_t * data, int size, const RDtreeVtab *vtab, int * rc)
+std::shared_ptr<RDtreeConstraint> RDtreeSubset::deserialize(const uint8_t * data, int size, const RDtreeVtab *vtab, int * rc)
 {
   std::shared_ptr<RDtreeConstraint> result;
 
@@ -25,7 +25,7 @@ RDtreeSubset::RDtreeSubset(const uint8_t * data, int size)
   weight = bfp_op_weight(size, data);
 }
 
-int RDtreeSubset::initialize() const {return SQLITE_OK;}
+int RDtreeSubset::initialize(const RDtreeVtab &) {return SQLITE_OK;}
 
 int RDtreeSubset::test_internal(const RDtreeItem & item, bool & eof) const {return test(item, eof);}
 int RDtreeSubset::test_leaf(const RDtreeItem & item, bool & eof) const {return test(item, eof);}

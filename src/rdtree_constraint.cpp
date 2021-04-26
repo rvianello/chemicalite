@@ -2,10 +2,12 @@
 
 #include "rdtree_constraint.hpp"
 #include "rdtree_constraint_subset.hpp"
+#include "rdtree_constraint_tanimoto.hpp"
 #include "utils.hpp"
 
 const uint32_t RDtreeConstraint::RDTREE_CONSTRAINT_MAGIC = 0x3daf12ab;
 const uint32_t RDtreeConstraint::RDTREE_SUBSET_CONSTRAINT_MAGIC = 0x7c4f9902;
+const uint32_t RDtreeConstraint::RDTREE_TANIMOTO_CONSTRAINT_MAGIC = 0xf8324b5e;
 
 std::shared_ptr<RDtreeConstraint>
 RDtreeConstraint::deserialize(const uint8_t *data, int size, const RDtreeVtab *vtab, int *rc)
@@ -30,7 +32,10 @@ RDtreeConstraint::deserialize(const uint8_t *data, int size, const RDtreeVtab *v
 
   switch (constraint_id) {
   case RDTREE_SUBSET_CONSTRAINT_MAGIC:
-    result = RDtreeSubset::create(data, size-8, vtab, rc);
+    result = RDtreeSubset::deserialize(data, size-8, vtab, rc);
+    break;
+  case RDTREE_TANIMOTO_CONSTRAINT_MAGIC:
+    result = RDtreeTanimoto::deserialize(data, size-8, vtab, rc);
     break;
   default:
     *rc = SQLITE_ERROR;

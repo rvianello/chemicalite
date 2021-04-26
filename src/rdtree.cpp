@@ -7,6 +7,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "rdtree.hpp"
 #include "rdtree_vtab.hpp"
 #include "rdtree_constraint_subset.hpp"
+#include "rdtree_constraint_tanimoto.hpp"
 #include "bfp.hpp"
 
 /* 
@@ -187,14 +188,40 @@ static void rdtree_subset(sqlite3_context* ctx, int /*argc*/, sqlite3_value** ar
   // the bfp is turned into a serialized match object
   Blob blob = RDtreeSubset((uint8_t *)bfp.data(), bfp.size()).serialize();
 
-  if (rc == SQLITE_OK) {
-    sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
-  }	
-  else {
-    sqlite3_result_error_code(ctx, rc);
-  }
+  sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
 }
 
+/*
+** A factory function for a tanimoto similarity search match object
+*/
+static void rdtree_tanimoto(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
+{
+  int rc = SQLITE_OK;
+
+  /* The first argument should be a bfp */
+  std::string bfp = arg_to_bfp(argv[0], &rc);
+
+  if (rc != SQLITE_OK) {
+    sqlite3_result_error_code(ctx, rc);
+    return;
+  }
+
+  /* Check that the second argument is a float number */
+  if (rc == SQLITE_OK && sqlite3_value_type(argv[1]) != SQLITE_FLOAT) {
+    rc = SQLITE_MISMATCH;
+  }
+
+  if (rc != SQLITE_OK) {
+    sqlite3_result_error_code(ctx, rc);
+    return;
+  }
+
+  // the bfp is turned into a serialized match object
+  Blob blob = RDtreeTanimoto(
+    (uint8_t *)bfp.data(), bfp.size(), sqlite3_value_double(argv[1])).serialize();
+
+  sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
+}
 
 int chemicalite_init_rdtree(sqlite3 *db)
 {
@@ -208,6 +235,7 @@ int chemicalite_init_rdtree(sqlite3 *db)
   }
 
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "rdtree_subset", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<rdtree_subset>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "rdtree_tanimoto", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<rdtree_tanimoto>, 0, 0);
 
   return rc;
 }

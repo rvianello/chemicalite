@@ -18,6 +18,7 @@ class RDtreeConstraint {
 protected:
   static const uint32_t RDTREE_CONSTRAINT_MAGIC;
   static const uint32_t RDTREE_SUBSET_CONSTRAINT_MAGIC;
+  static const uint32_t RDTREE_TANIMOTO_CONSTRAINT_MAGIC;
 
 public:
   static std::shared_ptr<RDtreeConstraint> deserialize(const uint8_t * data, int size, const RDtreeVtab *, int * rc);
@@ -25,7 +26,7 @@ public:
   virtual ~RDtreeConstraint() {}
 
   Blob serialize() const;
-  virtual int initialize() const = 0;
+  virtual int initialize(const RDtreeVtab &) = 0;
   virtual int test_internal(const RDtreeItem &, bool &) const = 0;
   virtual int test_leaf(const RDtreeItem &, bool &) const = 0;
 
