@@ -39,5 +39,38 @@ TEST_CASE("rdtree create/drop", "[rdtree]")
     REQUIRE(rc == SQLITE_ERROR);
   }
 
+  SECTION ("create and drop rdtree vtab OPTIMIZED_FOR_SUBSET_QUERIES")
+  {
+    int rc = sqlite3_exec(
+        db, 
+        "CREATE VIRTUAL TABLE xyz USING rdtree(id integer primary key, s bits(256), OPTIMIZED_FOR_SUBSET_QUERIES)",
+        NULL, NULL, NULL);
+    REQUIRE(rc == SQLITE_OK);
+
+    rc = sqlite3_exec(db, "DROP TABLE xyz", NULL, NULL, NULL);
+    REQUIRE(rc == SQLITE_OK);
+  }
+
+  SECTION ("create and drop rdtree vtab OPTIMIZED_FOR_SIMILARITY_QUERIES")
+  {
+    int rc = sqlite3_exec(
+        db, 
+        "CREATE VIRTUAL TABLE xyz USING rdtree(id integer primary key, s bits(256), OPTIMIZED_FOR_SIMILARITY_QUERIES)",
+        NULL, NULL, NULL);
+    REQUIRE(rc == SQLITE_OK);
+
+    rc = sqlite3_exec(db, "DROP TABLE xyz", NULL, NULL, NULL);
+    REQUIRE(rc == SQLITE_OK);
+  }
+
+  SECTION ("create and drop rdtree vtab w/ erroneous option")
+  {
+    int rc = sqlite3_exec(
+        db, 
+        "CREATE VIRTUAL TABLE xyz USING rdtree(id integer primary key, s bits(256), FOOBAR)",
+        NULL, NULL, NULL);
+    REQUIRE(rc != SQLITE_OK);
+  }
+
   test_db_close(db);
 }
