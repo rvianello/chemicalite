@@ -69,7 +69,7 @@ int RDtreeTanimoto::initialize(const RDtreeVtab & vtab)
 
 #else
   /* More sophisticated approach. Use the bit frequency table to pick
-  ** the bits from bfp that are less frequetly occurring in the database
+  ** the bits from bfp that are less frequently occurring in the database
   ** and may therefore provide a more selective power
   */
 
