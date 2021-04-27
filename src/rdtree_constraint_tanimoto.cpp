@@ -17,7 +17,8 @@ std::shared_ptr<RDtreeConstraint> RDtreeTanimoto::deserialize(const uint8_t * da
   else {
     double * d = (double *) (data + vtab.bfp_bytes);
     double threshold = *d;
-    result = std::shared_ptr<RDtreeConstraint>(new RDtreeTanimoto(data, size, threshold));
+
+    result = std::shared_ptr<RDtreeConstraint>(new RDtreeTanimoto(data, size-sizeof(double), threshold));
   }
 
   return result;
