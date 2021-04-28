@@ -1,3 +1,4 @@
+#include <cassert>
 #include <algorithm>
 
 #include "rdtree_vtab.hpp"
@@ -40,6 +41,8 @@ int RDtreeSubset::test_leaf(const RDtreeItem & item, bool & eof) const {return t
 */
 int RDtreeSubset::test(const RDtreeItem & item, bool & eof) const
 {
+  assert(item.bfp.size() == bfp.size());
+
   if (item.max_weight < weight) {
     eof = true;
   }

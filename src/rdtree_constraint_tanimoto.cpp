@@ -39,7 +39,7 @@ int RDtreeTanimoto::initialize(const RDtreeVtab & vtab)
   /* compute the required number of bit to be set */
   int na = weight;
   double t = threshold;
-  int nbits = ceil((1 - t)*na) + 1;
+  int nbits = ceil((1 - t)*na) + 1; // FIXME review edge cases
 
 #if 0
   /* Easy method first. Just pick the first nbits bits from aBfp, and 
@@ -142,6 +142,9 @@ int RDtreeTanimoto::test_internal(const RDtreeItem & item, bool & eof) const
   double t = threshold;
   int na = weight;
   
+  assert(item.bfp.size() == bfp.size());
+  assert(item.bfp.size() == bfp_filter.size());
+  
   /* It is known that for the tanimoto similarity to be above a given 
   ** threshold t, it must be
   **
@@ -187,6 +190,9 @@ int RDtreeTanimoto::test_leaf(const RDtreeItem & item, bool & eof) const
   int na = weight;
   int nb = item.max_weight; /* on a leaf node max == min*/
   
+  assert(item.bfp.size() == bfp.size());
+  assert(item.bfp.size() == bfp_filter.size());
+
   if ((nb < t*na) || (na < t*nb)) {
     eof = true;
   }
