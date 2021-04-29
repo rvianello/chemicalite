@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
 
@@ -61,6 +63,7 @@ static void bfp_compare(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv
 
 static double tanimoto_similarity(const std::string & bfp1, const std::string & bfp2)
 {
+  assert(bfp1.size() == bfp2.size());
   return bfp_op_tanimoto(
     bfp1.size(),
     reinterpret_cast<const uint8_t *>(bfp1.data()),
@@ -69,6 +72,7 @@ static double tanimoto_similarity(const std::string & bfp1, const std::string & 
 
 static double dice_similarity(const std::string & bfp1, const std::string & bfp2)
 {
+  assert(bfp1.size() == bfp2.size());
   return bfp_op_dice(
     bfp1.size(),
     reinterpret_cast<const uint8_t *>(bfp1.data()),
