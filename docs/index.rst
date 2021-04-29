@@ -15,8 +15,6 @@ Contents:
 
    installation
    build
-   .. tutorial_1st
-   .. tutorial_2nd
    api
    links
 
