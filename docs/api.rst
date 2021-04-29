@@ -82,8 +82,8 @@ Molecule
 * `mol_hash_smallworldindexbrl(mol) -> text`
 * `mol_hash_arthorsubstructureorder(mol) -> text`
 
-Binary Fingerprints
-...................
+Binary Fingerprint
+..................
 
 * `mol_layered_bfp(mol) -> bfp`
 * `mol_layered_bfp(mol, int) -> bfp`
@@ -119,20 +119,20 @@ Utility
 * `rdkit_build() -> text`
 * `boost_version() -> text`
   
-Substructure queries
---------------------
+Substructure and Similarity Queries
+-----------------------------------
 
-Substructure searches are performed constraining the selection on a column of `mol` data with a `WHERE` clause based on the return value of function `mol_is_substruct`. This can be optionally (and preferably) joined with a `MATCH` constraint on an `rdtree` index, using the match object returned by `rdtree_subset`::
+* `rdtree_subset(bfp) -> blob`
+* `rdtree_tanimoto(bfp) -> blob`
+
+Substructure searches are performed constraining the selection on a column of `mol` data with a `WHERE` clause based on the return value of function `mol_is_substruct`. This can be optionally (but preferably) joined with a `MATCH` constraint on an `rdtree` index, using the match object returned by `rdtree_subset`::
 
     SELECT * FROM mytable, str_idx_mytable_molcolumn AS idx WHERE
         mytable.id = idx.id AND 
         mol_is_substruct(mytable.molcolumn, 'c1ccnnc1') AND
         idx.id MATCH rdtree_subset(mol_bfp_signature('c1ccnnc1'));
 
-Similarity queries
-------------------
-
-Similarity search on `rdtree` virtual tables of binary fingerprint data are supported by means of the match object returned by the `rdtree_tanimoto` factory function::
+Similarity search queryes on `rdtree` virtual tables of binary fingerprint data are supported by the match object returned by the `rdtree_tanimoto` factory function::
 
     SELECT c.smiles, bfp_tanimoto(mol_morgan_bfp(c.molecule, 2), mol_morgan_bfp(?, 2)) as t
         FROM mytable as c JOIN (SELECT id FROM morgan WHERE id match rdtree_tanimoto(mol_morgan_bfp(?, 2), ?)) as idx
