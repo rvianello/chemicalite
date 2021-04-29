@@ -104,7 +104,7 @@ Binary Fingerprints
 ..
 
 * `bfp_tanimoto(bfp, bfp) -> real`
-.. * `bfp_dice(bfp, bfp) -> real`
+* `bfp_dice(bfp, bfp) -> real`
 
 ..
 
