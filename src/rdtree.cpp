@@ -218,7 +218,6 @@ static void rdtree_link_index(sqlite3_context* ctx, int argc, sqlite3_value** ar
   char * create_insert_trigger;
   char * create_update_trigger;
   char * create_delete_trigger;
-  char * load_index;
 
   int rc = SQLITE_OK;
 
@@ -296,36 +295,18 @@ static void rdtree_link_index(sqlite3_context* ctx, int argc, sqlite3_value** ar
     goto stri_free_update;
   }
 
-  load_index
-    = sqlite3_mprintf("INSERT INTO '%q'('%q', '%q') "
-		      "SELECT ROWID, \"%w\"('%q'%s) FROM '%q'",
-		      rdtree, rdtree_id.c_str(), rdtree_bfp.c_str(),
-          bfp_constructor, column, bfp_args.c_str(), table);
-
-  if (!load_index) {
-    rc = SQLITE_NOMEM;
-    goto stri_free_delete;
-  }
-
   /* INSERT trigger */
   rc = sqlite3_exec(db, create_insert_trigger, NULL, NULL, NULL);
-  if (rc != SQLITE_OK) goto stri_free_load;
+  if (rc != SQLITE_OK) goto stri_free_delete;
  
   /* UPDATE trigger */
   rc = sqlite3_exec(db, create_update_trigger, NULL, NULL, NULL);
-  if (rc != SQLITE_OK) goto stri_free_load;
+  if (rc != SQLITE_OK) goto stri_free_delete;
 
   /* DELETE trigger */
   rc = sqlite3_exec(db, create_delete_trigger, NULL, NULL, NULL);
-  if (rc != SQLITE_OK) goto stri_free_load;
-
-  /* load the index with the current data */
-  rc = sqlite3_exec(db, load_index, NULL, NULL, NULL);
 
   /* free the allocated statements */
- stri_free_load:  
-  sqlite3_free(load_index);
-
  stri_free_delete:  
   sqlite3_free(create_delete_trigger);
 
