@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cstring>
 
 #include <sqlite3ext.h>
@@ -172,6 +173,266 @@ static sqlite3_module rdtreeModule = {
 };
 
 /*
+** Connect an rdtree index to a mol column
+*/
+static void rdtree_link_index(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+{
+  assert(argc == 5 || argc == 6);
+
+  /* check arguments type */
+  if (sqlite3_value_type(argv[0]) != SQLITE_TEXT || // table
+      sqlite3_value_type(argv[1]) != SQLITE_TEXT || // column
+      sqlite3_value_type(argv[2]) != SQLITE_TEXT || // rdtree
+      sqlite3_value_type(argv[3]) != SQLITE_TEXT) { // bfp_constructor
+    sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
+    return;
+  }
+
+  for (int argn = 4; argn < argc; ++argn) {
+    // the additional args are int arguments passed to the bfp constructor.
+    // in most cases it's the bfp length, for morgan bfps the radius is also
+    // needed.
+    if (sqlite3_value_type(argv[argn]) != SQLITE_INTEGER) {
+      sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
+      return;
+    }
+  }
+
+  sqlite3 *db = sqlite3_context_db_handle(ctx);
+  const char *table = (const char *)sqlite3_value_text(argv[0]);
+  const char *column = (const char *)sqlite3_value_text(argv[1]);
+  const char *rdtree = (const char *)sqlite3_value_text(argv[2]);
+  const char *bfp_constructor = (const char *)sqlite3_value_text(argv[3]);
+
+  std::string bfp_args = "";
+  for (int argn = 4; argn < argc; ++argn) {
+    bfp_args += ", ";
+    bfp_args += std::to_string(sqlite3_value_int(argv[argn]));
+  }
+
+  char * pragma_table_info_rdtree;
+  sqlite3_stmt *table_info_rdtree_stmt;
+  std::string rdtree_id;
+  std::string rdtree_bfp;
+
+  char * create_insert_trigger;
+  char * create_update_trigger;
+  char * create_delete_trigger;
+  char * load_index;
+
+  int rc = SQLITE_OK;
+
+  pragma_table_info_rdtree
+    = sqlite3_mprintf("PRAGMA table_info('%q')", rdtree);
+
+  if (!pragma_table_info_rdtree) {
+      rc = SQLITE_NOMEM;
+      goto ti_rdtree_end;
+  }
+
+  rc = sqlite3_prepare_v2(db, pragma_table_info_rdtree, -1, &table_info_rdtree_stmt, 0);
+  if (rc != SQLITE_OK) {
+    goto stmt_rdtree_end;
+  }
+
+  rc = sqlite3_step(table_info_rdtree_stmt);
+  if (rc != SQLITE_ROW) {
+    rc = SQLITE_ERROR;
+    goto rdtree_info_end;
+  }
+
+  rdtree_id = (const char *) sqlite3_column_text(table_info_rdtree_stmt, 1);
+
+  rc = sqlite3_step(table_info_rdtree_stmt);
+  if (rc != SQLITE_ROW) {
+    rc = SQLITE_ERROR;
+    goto rdtree_info_end;
+  }
+
+  rdtree_bfp = (const char *) sqlite3_column_text(table_info_rdtree_stmt, 1);
+
+  create_insert_trigger
+    = sqlite3_mprintf("CREATE TRIGGER '%q_insert_%q_%q' AFTER INSERT ON '%q'\n"
+		      "FOR EACH ROW BEGIN\n"
+		      "INSERT INTO '%q'('%q', '%q')\n"
+		      "VALUES (NEW.ROWID, \"%w\"(NEW.'%q'%s));\n"
+		      "END;", 
+		      rdtree, table, column, table,
+          rdtree, rdtree_id.c_str(), rdtree_bfp.c_str(),
+          bfp_constructor, column, bfp_args.c_str());
+
+  if (!create_insert_trigger) {
+    rc = SQLITE_NOMEM;
+    goto stri_end;
+  }
+
+  create_update_trigger
+    = sqlite3_mprintf("CREATE TRIGGER '%q_update_%q_%q' AFTER UPDATE ON '%q'\n"
+		      "FOR EACH ROW BEGIN\n"
+		      "UPDATE '%q' "
+		      "SET '%q'=\"%w\"(NEW.'%q'%s)\n"
+		      "WHERE '%q'=NEW.ROWID;\n"
+		      "END;", 
+		      rdtree, table, column, table,
+          rdtree,
+          rdtree_bfp.c_str(), bfp_constructor, column, bfp_args.c_str(),
+          rdtree_id.c_str());
+
+  if (!create_update_trigger) {
+    rc = SQLITE_NOMEM;
+    goto stri_free_insert;
+  }
+
+  create_delete_trigger
+    = sqlite3_mprintf("CREATE TRIGGER '%q_delete_%q_%q' AFTER DELETE ON '%q'\n"
+		      "FOR EACH ROW BEGIN\n"
+		      "DELETE FROM '%q' WHERE '%q'=OLD.ROWID;\n"
+		      "END;",
+		      rdtree, table, column, table,
+          rdtree, rdtree_id.c_str());
+
+  if (!create_delete_trigger) {
+    rc = SQLITE_NOMEM;
+    goto stri_free_update;
+  }
+
+  load_index
+    = sqlite3_mprintf("INSERT INTO '%q'('%q', '%q') "
+		      "SELECT ROWID, \"%w\"('%q'%s) FROM '%q'",
+		      rdtree, rdtree_id.c_str(), rdtree_bfp.c_str(),
+          bfp_constructor, column, bfp_args.c_str(), table);
+
+  if (!load_index) {
+    rc = SQLITE_NOMEM;
+    goto stri_free_delete;
+  }
+
+  /* INSERT trigger */
+  rc = sqlite3_exec(db, create_insert_trigger, NULL, NULL, NULL);
+  if (rc != SQLITE_OK) goto stri_free_load;
+ 
+  /* UPDATE trigger */
+  rc = sqlite3_exec(db, create_update_trigger, NULL, NULL, NULL);
+  if (rc != SQLITE_OK) goto stri_free_load;
+
+  /* DELETE trigger */
+  rc = sqlite3_exec(db, create_delete_trigger, NULL, NULL, NULL);
+  if (rc != SQLITE_OK) goto stri_free_load;
+
+  /* load the index with the current data */
+  rc = sqlite3_exec(db, load_index, NULL, NULL, NULL);
+
+  /* free the allocated statements */
+ stri_free_load:  
+  sqlite3_free(load_index);
+
+ stri_free_delete:  
+  sqlite3_free(create_delete_trigger);
+
+ stri_free_update:  
+  sqlite3_free(create_update_trigger);
+
+ stri_free_insert:  
+  sqlite3_free(create_insert_trigger);
+
+ stri_end:
+ rdtree_info_end:
+  sqlite3_finalize(table_info_rdtree_stmt);
+
+ stmt_rdtree_end:
+  sqlite3_free(pragma_table_info_rdtree);
+
+ ti_rdtree_end:
+  if (rc != SQLITE_OK) {
+    sqlite3_result_error_code(ctx, rc);
+  }
+  else {
+    sqlite3_result_int(ctx, 1);
+  }
+}
+
+/*
+** Disconnect an rdtree index from a mol column
+*/
+static void rdtree_unlink_index(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
+{
+  /* check arguments type */
+  if (sqlite3_value_type(argv[0]) != SQLITE_TEXT || // table
+      sqlite3_value_type(argv[1]) != SQLITE_TEXT || // column
+      sqlite3_value_type(argv[2]) != SQLITE_TEXT) { // rdtree
+    sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
+    return;
+  }
+
+  sqlite3 *db = sqlite3_context_db_handle(ctx);
+  const char *table = (const char *)sqlite3_value_text(argv[0]);
+  const char *column = (const char *)sqlite3_value_text(argv[1]);
+  const char *rdtree = (const char *)sqlite3_value_text(argv[2]);
+
+  char * drop_insert_trigger;
+  char * drop_update_trigger;
+  char * drop_delete_trigger;
+
+  int rc = SQLITE_OK;
+
+  drop_insert_trigger
+    = sqlite3_mprintf("DROP TRIGGER IF EXISTS '%q_insert_%q_%q'", 
+		      rdtree, table, column);
+
+  if (!drop_insert_trigger) {
+    rc = SQLITE_NOMEM;
+    goto stri_end;
+  }
+
+  drop_update_trigger
+    = sqlite3_mprintf("DROP TRIGGER IF EXISTS '%q_update_%q_%q'", 
+		      rdtree, table, column);
+
+  if (!drop_update_trigger) {
+    rc = SQLITE_NOMEM;
+    goto stri_free_insert;
+  }
+
+  drop_delete_trigger
+    = sqlite3_mprintf("DROP TRIGGER IF EXISTS '%q_delete_%q_%q'",
+		      rdtree, table, column);
+
+  if (!drop_delete_trigger) {
+    rc = SQLITE_NOMEM;
+    goto stri_free_update;
+  }
+
+  /* INSERT trigger */
+  rc = sqlite3_exec(db, drop_insert_trigger, NULL, NULL, NULL);
+  if (rc != SQLITE_OK) goto stri_free_delete;
+ 
+  /* UPDATE trigger */
+  rc = sqlite3_exec(db, drop_update_trigger, NULL, NULL, NULL);
+  if (rc != SQLITE_OK) goto stri_free_delete;
+
+  /* DELETE trigger */
+  rc = sqlite3_exec(db, drop_delete_trigger, NULL, NULL, NULL);
+
+  /* free the allocated statements */
+ stri_free_delete:  
+  sqlite3_free(drop_delete_trigger);
+
+ stri_free_update:  
+  sqlite3_free(drop_update_trigger);
+
+ stri_free_insert:  
+  sqlite3_free(drop_insert_trigger);
+
+ stri_end:
+  if (rc != SQLITE_OK) {
+    sqlite3_result_error_code(ctx, rc);
+  }
+  else {
+    sqlite3_result_int(ctx, 1);
+  }
+}
+
+/*
 ** A factory function for a substructure search match object
 */
 static void rdtree_subset(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
@@ -236,6 +497,10 @@ int chemicalite_init_rdtree(sqlite3 *db)
 
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "rdtree_subset", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<rdtree_subset>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "rdtree_tanimoto", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<rdtree_tanimoto>, 0, 0);
+
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "rdtree_link_index", 5, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, rdtree_link_index, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "rdtree_link_index", 6, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, rdtree_link_index, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "rdtree_unlink_index", 3, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, rdtree_unlink_index, 0, 0);
 
   return rc;
 }
