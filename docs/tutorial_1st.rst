@@ -4,41 +4,38 @@ ChemicaLite Tutorial
 Building a database
 -------------------
 
-This tutorial is based on a similar one which is included with the `RDKit PostgreSQL Cartridge documentation <https://rdkit.readthedocs.org/en/latest/Cartridge.html#creating-databases>`_ and it will guide you through the construction of a chemical SQLite database and the execution of some simple queries. Python will be used in illustrating the various operations, but almost any other programming language could be used instead (as long as SQLite drivers are available).
+This tutorial is based on a similar one which is part of the `RDKit PostgreSQL Cartridge documentation <https://rdkit.readthedocs.org/en/latest/Cartridge.html#creating-databases>`_ and it will guide you through the construction of a chemical SQLite database and the execution of some simple queries. Python will be used in illustrating the various operations, but almost any other programming language could be used instead (as long as SQLite drivers are available).
 
-Download a copy of the `ChEMBLdb database <ftp://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_20/chembl_20_chemreps.txt.gz>`_ and decompress it::
+Download a copy of the `ChEMBLdb database <ftp://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/latest/chembl_28_chemreps.txt.gz>`_ and decompress it::
 
-    $ gunzip chembl_20_chemreps.txt.gz
+    $ gunzip chembl_28_chemreps.txt.gz
 
 Creating a database and initializing its schema requires just a few statements::
 
-    import apsw
+    import sqlite3
     
+    connection = sqlite3.connect('chembldb.sql')
+
     # the extension is usually loaded right after the connection to the
     # database
-    connection = apsw.Connection('chembldb.sql')
-    connection.enableloadextension(True)
-    connection.loadextension(path_to_chemicalite_ext)
-    connection.enableloadextension(False)
 
-    cursor = connection.cursor()
-    
-    # the SQLite memory page size affects the configuration of the
-    # substructure search index tree. this operation must be performed
-    # at database creation, before the first CREATE TABLE.
-    cursor.execute("PRAGMA page_size=2048")
-    
-    # our database will consist of a single table, containing a subset of the
-    # columns from the ChEMBLdb database. The molecular structure is inserted
-    # as a binary blob of the pickled molecule.
-    cursor.execute("CREATE TABLE chembl(id INTEGER PRIMARY KEY, " +
-                   "chembl_id TEXT, smiles TEXT, molecule MOL)")
-	       	       
-    # finally, this statement will create and configure an index
-    # associated to the 'molecule' column of the 'chembl' table.       
-    cursor.execute("SELECT create_molecule_rdtree('chembl', 'molecule')")
+    # because this operation loads external code from the extension module into
+    # the program, it's considered potentially insecure, and it's by default disabled.
+    # it therefore needs to be explicitly enabled (and then disabled again).
+    connection.enable_load_extension(True)
 
-Support for custom indexes in SQLite is a bit different than other database engines. The data structure of a custom index is in fact wrapped behind the implementation of a "virtual table", an object that exposes an interface that is almost identical to that of a regular SQL table, but whose implementation can be customized.
+    # if the chemicalite extension is installed under the dynamic library search path
+    # for the system or running process, you can simply refer to it by name.
+    # otherwise you may need to pass the filesystem path to the loadable module file:
+    # connection.load_extension('/path/to/chemicalite.so')
+    connection.load_extension('chemicalite')
+ 
+    connection.enable_load_extension(False)
+
+    # the database will consist of a single table, containing a subset of the
+    # columns from the ChEMBLdb data.
+    connection.execute("CREATE TABLE chembl(id INTEGER PRIMARY KEY, " +
+                       "chembl_id TEXT, smiles TEXT, molecule MOL)")
 
 The above call to the `create_molecule_rdtree` function creates a virtual table with SQL name `str_idx_chembl_molecule` and a few triggers that connect the manipulation of the `molecule` column of the `chembl` table with the management of the tree data structure wrapped behind `str_idx_chembl_molecule`.
 
@@ -46,21 +43,23 @@ For example, each time a new record is inserted into the `chembl` table, a bitst
 
 Join operations involving the `chembl` and `str_idx_chembl_molecule` tables can this way use the tree data structure to strongly reduce the number of `chembl` records that are checked during a substructure search. 
 
-The ChEMBLdb data can be parsed with a python generator function similar to the following::
+The ChEMBLdb data is available as a simple tsv file, that can be parsed with a python generator function similar to the following::
+
+    import csv
 
     def chembl(path):
-        """Extract the chembl_id and SMILES fields"""
         with open(path, 'rb') as inputfile:
-            reader = csv.reader(inputfile, delimiter='\t',
-                                skipinitialspace=True)
+            reader = csv.reader(inputfile, delimiter='\t')
             reader.next() # skip header line
-            
-            for chembl_id, smiles, inchi, inchi_key in reader:
-                # check the SMILES and skip problematic compounds
-                # [...]
+            for chembl_id, smiles, *_ in reader:
                 yield chembl_id, smiles
 
-And the database is loaded with loop like this::
+And the database table can be loaded with a statement like this::
+
+    with connection:
+        connection.executemany(
+            "INSERT INTO chembl(chembl_id, smiles, molecule) "
+            "VALUES(?1, ?2, mol_from_smiles(?2))", chembl('chembl_28_chemreps.txt'))
 
     cursor.execute('BEGIN')
     for chembl_id, smiles in chembl(chembl_path):
@@ -68,26 +67,41 @@ And the database is loaded with loop like this::
                        "VALUES(?, ?, mol(?))", (chembl_id, smiles, smiles))
     cursor.execute('COMMIT')
 
-Please note that loading the whole ChEMBLdb is going to take a substantial amount of time and the resulting file will require about 1.5GB of disk space.
-
-A python script implementing the full schema creation and database loading procedure as a single command line tool is available in the `docs` directory of the source code distribution::
-
-    # This will create the molecular database as a file named 'chembldb.sql'
-    $ ./create_chembldb.py /path/to/chemicalite.so chembl_20_chemreps.txt
+.. note::
+    Loading the entire collection of ChEMBLdb compounds may take some time and the resulting file will require several GB of disk space.
 
 Substructure Searches
 ---------------------
 
-A search for substructures could be performed with a query like the following::
+A search for substructures could be performed with a simple query like the following::
 
     SELECT COUNT(*) FROM chembl WHERE mol_is_substruct(molecule, 'c1ccnnc1');
 
-but this would check every single record of the `chembl` table, resulting very inefficient. Performances can strongly improve if the index table is joined::
+but this would sequentially check every single record of the `chembl` table, resulting very inefficient. 
+
+Support for custom indexes in SQLite is a bit different than other database engines. The data structure of a custom index is in fact wrapped behind the implementation of a "virtual table", an object that exposes an interface that is almost identical to that of a regular SQL table, but whose implementation can be customized.
+
+ChemicaLite uses this virtual table mechanism to support indexing binary fingerprints in an RD-tree data structure, and this way improve the performances of substructure and similarity queries.
+
+An RD-tree virtual table for substructure queries is created with a query like the following::
+
+    connection.execute("CREATE VIRTUAL TABLE str_idx_chembl_molecule " +
+                       "USING rdtree(id, fp bits(2048))")
+
+This index table is then filled with structural fingerprint data generated from the `chembl` table::
+
+    with connection:
+        connection.execute( 
+            "INSERT INTO str_idx_chembl_molecule(id, fp) " + 
+            "SELECT id, mol_pattern_bfp(molecule, 2048) FROM chembl " + 
+            "WHERE molecule IS NOT NULL")
+
+Performances can strongly improve if the index table is joined::
 
     SELECT COUNT(*) FROM chembl, str_idx_chembl_molecule AS idx WHERE
         chembl.id = idx.id AND 
-        mol_is_substruct(chembl.molecule, 'c1ccnnc1') AND
-        idx.id MATCH rdtree_subset(mol_bfp_signature('c1ccnnc1'));
+        mol_is_substruct(chembl.molecule, mol_from_smiles('c1ccnnc1')) AND
+        idx.id MATCH rdtree_subset(mol_pattern_bfp(mol_from_smiles('c1ccnnc1'), 2048));
 
 A python script executing this second query is available in the `docs` directory of the source code distribution::
 
