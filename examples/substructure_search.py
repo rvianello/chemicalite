@@ -43,3 +43,5 @@ if __name__=="__main__":
     connection.enable_load_extension(False)
 
     substructure_search(connection, args.smiles, args.limit)
+
+    connection.close()

@@ -41,3 +41,5 @@ if __name__=="__main__":
     connection.enable_load_extension(False)
 
     match_count(connection, args.smiles)
+
+    connection.close()

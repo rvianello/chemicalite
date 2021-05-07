@@ -6,7 +6,7 @@
 ChemicaLite
 ===========
 
-ChemicaLite is a chemical database cartridge for SQLite.
+ChemicaLite is an SQLite extension for chemoninformatics applications.
 
 Contents:
 
@@ -15,6 +15,7 @@ Contents:
 
    installation
    build
+   tutorial_1st
    api
    links
 

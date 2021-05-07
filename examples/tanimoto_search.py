@@ -1,40 +1,49 @@
-#!/bin/env python
-from __future__ import print_function
-
-import sys
+#!/bin/env python3
+import argparse
 import time
 
-import apsw
+import sqlite3
 
-def search(c, target, threshold):
-    t1 = time.time()
-    rs = c.execute(
-        "SELECT c.chembl_id, c.smiles, "
-        "bfp_tanimoto(mol_morgan_bfp(c.molecule, 2), mol_morgan_bfp(?, 2)) as t "
-        "FROM "
-        "chembl as c JOIN "
-        "(SELECT id FROM morgan WHERE "
-        "id match rdtree_tanimoto(mol_morgan_bfp(?, 2), ?)) as idx "
-        "USING(id) ORDER BY t DESC",
-        (target, target, threshold)).fetchall()
-    t2 = time.time()
-    return rs, t2-t1
-
-def tanimoto_search(chemicalite_path, chembldb_sql, target, threshold):
-    connection = apsw.Connection(chembldb_sql)
-    connection.enableloadextension(True)
-    connection.loadextension(chemicalite_path)
-    connection.enableloadextension(False)
-
-    cursor = connection.cursor()
-
+def tanimoto_search(connection, target, threshold):
     print('searching for target:', target)
 
-    matches, t = search(cursor, target, float(threshold))
-    for match in matches:
-        print(match[0], match[1], match[2])
-    print('Found {0} matches in {1} seconds'.format(len(matches), t))
+    t1 = time.time()
+    rs = connection.execute(
+        "SELECT c.chembl_id, mol_to_smiles(c.molecule), "
+        "bfp_tanimoto(mol_morgan_bfp(c.molecule, 2, 1024), "
+        "             mol_morgan_bfp(mol_from_smiles(?1), 2, 1024)) as t "
+        "FROM "
+        "chembl as c JOIN morgan_idx_chembl_molecule as idx USING(id) "
+        "WHERE "
+        "idx.id MATCH rdtree_tanimoto(mol_morgan_bfp(mol_from_smiles(?1), 2, 1024), ?2) "
+        "ORDER BY t DESC",
+        (target, threshold)).fetchall()
+    t2 = time.time()
+
+    for chembl_id, smiles, sim in rs:
+        print(chembl_id, smiles, sim)
+
+    print('Found {0} matches in {1} seconds'.format(len(rs), t2-t1))
 
 
 if __name__=="__main__":
-    tanimoto_search(*sys.argv[1:5])
+    parser= argparse.ArgumentParser(
+        description='Find the compounds similar to the input structure')
+    parser.add_argument('chembldb',
+        help='The path to the SQLite database w/ the ChEMBL compounds')
+    parser.add_argument('smiles', help='The input structure in SMILES format')
+    parser.add_argument('threshold', type=float,
+        help='The minimum similarity of the matching objects')
+    parser.add_argument('--chemicalite', default='chemicalite',
+        help='The name or path to the ChemicaLite extension module')
+    
+    args = parser.parse_args()
+
+    connection = sqlite3.connect(args.chembldb)
+    connection.enable_load_extension(True)
+    connection.load_extension(args.chemicalite)
+    connection.enable_load_extension(False)
+
+    tanimoto_search(connection, args.smiles, args.threshold)
+
+    connection.close()

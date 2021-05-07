@@ -4,7 +4,7 @@ ChemicaLite Tutorial
 Building a database
 -------------------
 
-This tutorial is based on a similar one which is part of the `RDKit PostgreSQL Cartridge documentation <https://rdkit.readthedocs.org/en/latest/Cartridge.html#creating-databases>`_ and it will guide you through the construction of a chemical SQLite database and the execution of some simple queries. Python will be used in illustrating the various operations, but almost any other programming language could be used instead (as long as SQLite drivers are available).
+This tutorial is based on a similar one which is part of the `RDKit PostgreSQL Cartridge documentation <https://rdkit.readthedocs.org/en/latest/Cartridge.html#creating-databases>`_ and it will guide you through the construction of a chemical SQLite database, and the execution of some simple queries. Python will be used in illustrating the various operations, but almost any other programming language could be used instead (as long as SQLite drivers are available).
 
 Download a copy of the `ChEMBLdb database <ftp://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/latest/chembl_28_chemreps.txt.gz>`_ and decompress it::
 
@@ -26,7 +26,7 @@ Creating a database and initializing its schema requires just a few statements::
 
     # if the chemicalite extension is installed under the dynamic library search path
     # for the system or running process, you can simply refer to it by name.
-    # otherwise you may need to pass the filesystem path to the loadable module file:
+    # otherwise you may need to pass the filesystem path of the loadable module file:
     # connection.load_extension('/path/to/chemicalite.so')
     connection.load_extension('chemicalite')
  
@@ -37,7 +37,7 @@ Creating a database and initializing its schema requires just a few statements::
     connection.execute(
         "CREATE TABLE chembl(id INTEGER PRIMARY KEY, chembl_id TEXT, molecule MOL)")
 
-The ChEMBLdb data is available as a simple tsv file, that can be parsed with a python generator function similar to the following::
+The ChEMBLdb compounds data is available as a simple tsv file, that can be parsed with a python generator function similar to the following::
 
     import csv
 
@@ -55,19 +55,22 @@ And the database table can be loaded with a statement like this::
             "INSERT INTO chembl(chembl_id, molecule) "
             "VALUES(?1, mol_from_smiles(?2))", chembl('chembl_28_chemreps.txt'))
 
+A complete script implementing the full creation of this simple database of chemical structures is available from the examples directory of the source code distribution.
+
 .. note::
-    Loading the entire collection of ChEMBLdb compounds may take some time and the resulting file will require several GB of disk space.
+    Loading the entire collection of ChEMBLdb compounds may take some time and the resulting file will require several GB of disk space. The `create_chembldb.py` script supports a 
+    command line option that may help limiting the number of imported compounds during tests.
 
 Substructure queries
 --------------------
 
-A search for substructures could be performed with a simple query like the following::
+A search for substructures could be performed with a query like the following::
 
     SELECT COUNT(*) FROM chembl WHERE mol_is_substruct(molecule, 'c1ccnnc1');
 
-but this would explicitly check every single molecule in the `chembl` table, resulting very inefficient. 
+but this kind of simple query would sequentially check every single molecule in the `chembl` table, resulting very inefficient. 
 
-Support for custom indexes in SQLite is a bit different than other database engines. The data structure of a custom index is in fact wrapped behind the implementation of a "virtual table", an object that exposes an interface that is almost identical to that of a regular SQL table, but whose implementation can be customized.
+Support for custom indexes in SQLite is a bit different than other database engines. The data structure of a custom index is in fact wrapped behind the implementation of a "virtual table", an object that exposes the interface of a regular SQL table, but whose implementation can be customized.
 
 ChemicaLite uses this virtual table mechanism to support indexing binary fingerprints in an RD-tree data structure, and this way improve the performances of substructure and similarity queries.
 
@@ -84,7 +87,7 @@ And this index table is then filled with the structural fingerprint data generat
             "SELECT id, mol_pattern_bfp(molecule, 2048) FROM chembl " + 
             "WHERE molecule IS NOT NULL")
 
-The performances of the substructure query above can this way strongly improve if the index table is joined::
+The performances of the substructure query above can this way strongly improve if the index table is joined, and a substructure constraint is specified using an `rdtree_subset` match object::
 
     SELECT COUNT(*) FROM chembl, str_idx_chembl_molecule AS idx WHERE
         chembl.id = idx.id AND 
@@ -122,9 +125,9 @@ And here are some example queries::
     searching for substructure: c1cccc2c1CNCCN2
     Found 1973 matching structures in 2.547306776046753 seconds
 
-*Note*: Execution times are only provided for reference and may vary depending on the available computational resources.   
+*(Execution times are only provided for reference and may vary depending on the available computational resources)*.   
 
-A second script is provided with the examples and it illustrates how to return only the first results (sometimes useful for queries that return a large number of matches)::
+A second script is available in the examples directory, and it illustrates how to return only the first results (sometimes useful for queries that return a large number of matches)::
 
     $ ./substructure_search.py chembldb.sql c1cccc2c1CNCCN2
     searching for substructure: c1cccc2c1CNCCN2
@@ -139,75 +142,63 @@ A second script is provided with the examples and it illustrates how to return o
     CHEMBL50257 CN1Cc2cc(C(=O)NCCc3cccc(N)n3)ccc2N[C@@H](CC(=O)O)C1=O
     Found 25 matches in 0.08957481384277344 seconds
 
-Similarity Searches
--------------------
+Similarity queries
+------------------
 
-Fingerprint data for similarity searches is conveniently stored into indexed virtual tables, as illustrated by the following statements::
+In the same way, binary fingerprint data for similarity queries is conveniently stored and indexed into RD-tree virtual tables, as illustrated by the following statements::
 
-    import apsw
-
-    connection = apsw.Connection(chembldb_path)
-    connection.enableloadextension(True)
-    connection.loadextension(chemicalite_path)
-    connection.enableloadextension(False)
-
-    cursor = connection.cursor()
-    
     # create a virtual table to be filled with morgan bfp data
-    cursor.execute("CREATE VIRTUAL TABLE morgan USING\n" +
-                   "rdtree(id, bfp bytes(64))");
+    connection.execute("CREATE VIRTUAL TABLE morgan_idx_chembl_molecule " +
+                "USING rdtree(id, fp bits(1024))");
 
     # compute and insert the fingerprints
-    cursor.execute("INSERT INTO morgan(id, bfp)\n" +
-                   "SELECT id, mol_morgan_bfp(molecule, 2) FROM chembl")
+    with connection:
+        connection.execute( 
+            "INSERT INTO morgan_idx_chembl_molecule(id, fp) " + 
+            "SELECT id, mol_morgan_bfp(molecule, 2, 1024) FROM chembl " + 
+            "WHERE molecule IS NOT NULL")
 
-Once again, a script file implementing the above commands is provided::
+A search for similar structures is therefore based on filtering this new virtual table. The following statement would for example return the number of compounds with a Tanimoto similarity greater than or equal to the threshold value (see also the `tanimoto_count.py` script for a complete example)::
 
-    $ ./create_bfp_data.py /path/to/chemicalite.so /path/to/chembldb.sql
+    count = connection.execute(
+        "SELECT count(*) FROM "
+        "morgan_idx_chembl_molecule as idx WHERE "
+        "idx.id match rdtree_tanimoto(mol_morgan_bfp(mol_from_smiles(?), 2, 1024), ?)",
+        (target, threshold)).fetchall()[0][0]
 
-A search for similar structures is therefore based on filtering this newly created table. The following statement would for example return the number of compounds with a Tanimoto similarity greater than or equal to the threshold value (see also the `tanimoto_count.py` file for a complete script)::
+A sorted list of SMILES strings identifying the most similar compounds is instead for example returned by the following query::
 
-    count = c.execute("SELECT count(*) FROM "
-                      "morgan as idx WHERE "
-                      "idx.id match rdtree_tanimoto(mol_morgan_bfp(?, 2), ?)",
-                      (target, threshold)).fetchone()[0]
-
-A sorted list of SMILES strings identifying the most similar compounds is for example produced by the following query::
-
-    rs = c.execute(
-        "SELECT c.chembl_id, c.smiles, bfp_tanimoto(mol_morgan_bfp(c.molecule, 2), mol_morgan_bfp(?, 2)) as t "
+    rs = connection.execute(
+        "SELECT c.chembl_id, mol_to_smiles(c.molecule), "
+        "bfp_tanimoto(mol_morgan_bfp(c.molecule, 2, 1024), "
+        "             mol_morgan_bfp(mol_from_smiles(?1), 2, 1024)) as t "
         "FROM "
-        "chembl as c JOIN "
-        "(SELECT id FROM morgan WHERE id match rdtree_tanimoto(mol_morgan_bfp(?, 2), ?)) as idx "
-        "USING(id) ORDER BY t DESC",
-        (target, target, threshold)).fetchall()
+        "chembl as c JOIN morgan_idx_chembl_molecule as idx USING(id) "
+        "WHERE "
+        "idx.id MATCH rdtree_tanimoto(mol_morgan_bfp(mol_from_smiles(?1), 2, 1024), ?2) "
+        "ORDER BY t DESC",
+        (target, threshold)).fetchall()
 
-Finally, these last two examples were executed using the `tanimoto_search.py` script, which is based on the previous query::
+These last two examples show the output produced by the `tanimoto_search.py` script, which is based on the previous query::
 
-    $ ./tanimoto_search.py /path/to/chemicalite.so /path/to/chembldb.sql "Cc1ccc2nc(-c3ccc(NC(C4N(C(c5cccs5)=O)CCC4)=O)cc3)sc2c1" 0.5
-    searching for target:  Cc1ccc2nc(-c3ccc(NC(C4N(C(c5cccs5)=O)CCC4)=O)cc3)sc2c1
-    CHEMBL467428 Cc1ccc2nc(sc2c1)c3ccc(NC(=O)C4CCN(CC4)C(=O)c5cccs5)cc3 0.772727272727
-    CHEMBL461435 Cc1ccc2nc(sc2c1)c3ccc(NC(=O)C4CCCN(C4)S(=O)(=O)c5cccs5)cc3 0.657534246575
-    CHEMBL460340 Cc1ccc2nc(sc2c1)c3ccc(NC(=O)C4CCN(CC4)S(=O)(=O)c5cccs5)cc3 0.647887323944
-    CHEMBL460588 Cc1ccc2nc(sc2c1)c3ccc(NC(=O)C4CCN(C4)S(=O)(=O)c5cccs5)cc3 0.638888888889
-    CHEMBL1608585 Clc1ccc2nc(NC(=O)[C@@H]3CCCN3C(=O)c4cccs4)sc2c1 0.623188405797
+    $ ./tanimoto_search.py /path/to/chembldb.sql "Cc1ccc2nc(-c3ccc(NC(C4N(C(c5cccs5)=O)CCC4)=O)cc3)sc2c1" 0.5
+    searching for target: Cc1ccc2nc(-c3ccc(NC(C4N(C(c5cccs5)=O)CCC4)=O)cc3)sc2c1
+    CHEMBL467428 Cc1ccc2nc(-c3ccc(NC(=O)C4CCN(C(=O)c5cccs5)CC4)cc3)sc2c1 0.7611940298507462
+    CHEMBL461435 Cc1ccc2nc(-c3ccc(NC(=O)C4CCCN(S(=O)(=O)c5cccs5)C4)cc3)sc2c1 0.6486486486486487
+    CHEMBL460340 Cc1ccc2nc(-c3ccc(NC(=O)C4CCN(S(=O)(=O)c5cccs5)CC4)cc3)sc2c1 0.6301369863013698
     [...]
-    CHEMBL1325810 Cc1ccc(NC(=O)N2CCCC2C(=O)NCc3cccs3)cc1 0.5
-    CHEMBL1864141 Clc1ccc(NC(=O)[C@@H]2CCCN2C(=O)c3cccs3)cc1S(=O)(=O)N4CCOCC4 0.5
-    CHEMBL1421062 COc1cc(Cl)c(C)cc1NC(=O)[C@@H]2CCCN2C(=O)c3cccs3 0.5
-    Found 66 matches in 1.53940916061 seconds
+    CHEMBL218058 Cc1ccc2nc(-c3ccc(NC(=O)Nc4ccc(Cl)cc4)cc3)sc2c1 0.5
+    CHEMBL1317763 Cc1cc(C)c(NC(=O)CNC(=O)[C@@H]2CCCN2C(=O)c2cccs2)c(C)c1 0.5
+    Found 54 matches in 0.6459760665893555 seconds
 
 ::
 
     $ ./tanimoto_search.py /path/to/chemicalite.so /path/to/chembldb.sql "Cc1ccc2nc(N(C)CC(=O)O)sc2c1" 0.5
-    searching for target: Cc1ccc2nc(N(C)CC(=O)O)sc2c1
-    CHEMBL394654 CN(CCN(C)c1nc2ccc(C)cc2s1)c3nc4ccc(C)cc4s3 0.692307692308
-    CHEMBL491074 CN(CC(=O)O)c1nc2cc(ccc2s1)[N+](=O)[O-] 0.583333333333
-    CHEMBL1617304 CN(C)CCCN(C(=O)C)c1nc2ccc(C)cc2s1 0.571428571429
-    CHEMBL1350062 Cl.CN(C)CCCN(C(=O)C)c1nc2ccc(C)cc2s1 0.549019607843
+    CHEMBL394654 Cc1ccc2nc(N(C)CCN(C)c3nc4ccc(C)cc4s3)sc2c1 0.6923076923076923
+    CHEMBL3928717 CN(CC(=O)O)c1nc2ccc([N+](=O)[O-])cc2s1 0.6739130434782609
+    CHEMBL491074 CN(CC(=O)O)c1nc2cc([N+](=O)[O-])ccc2s1 0.5833333333333334
     [...]
-    CHEMBL1610437 Cl.CN(C)CCCN(C(=O)CS(=O)(=O)c1ccccc1)c2nc3ccc(C)cc3s2 0.5
-    CHEMBL1351385 Cl.CN(C)CCCN(C(=O)CCc1ccccc1)c2nc3ccc(C)cc3s2 0.5
-    CHEMBL1622712 CN(C)CCCN(C(=O)COc1ccc(Cl)cc1)c2nc3ccc(C)cc3s2 0.5
-    CHEMBL1591601 Cc1ccc2nc(sc2c1)N(Cc3cccnc3)C(=O)Cc4ccccc4 0.5
-    Found 18 matches in 1.39061594009 seconds
+    CHEMBL1617545 Cc1ccc2nc(N(CCCN(C)C)C(=O)CCc3ccccc3)sc2c1 0.5087719298245614
+    CHEMBL1351385 Cc1ccc2nc(N(CCCN(C)C)C(=O)CCc3ccccc3)sc2c1.Cl 0.5
+    CHEMBL1418054 Cc1ccc2nc(N(CCN(C)C)C(=O)c3ccc4ccccc4c3)sc2c1.Cl 0.5
+    Found 12 matches in 1.2354457378387451 seconds
