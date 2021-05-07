@@ -9,7 +9,7 @@ def substructure_search(connection, substructure, limit):
 
     t1 = time.time()
     rs = connection.execute(
-        "select chembl.chembl_id, chembl.smiles from "
+        "select chembl.chembl_id, mol_to_smiles(chembl.molecule) from "
         "chembl, str_idx_chembl_molecule as idx where "
         "chembl.id = idx.id and "
         "mol_is_substruct(chembl.molecule, mol_from_smiles(?1)) and "
