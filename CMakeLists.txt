@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 project(chemicalite)
 
-set(CHEMICALITE_VERSION "2020.12.5")
+set(CHEMICALITE_VERSION "2021.05.1")
 
 add_compile_definitions("CHEMICALITE_VERSION=${CHEMICALITE_VERSION}")
 
@@ -20,29 +20,9 @@ include_directories(${SQLite3_INCLUDE_DIRS})
 find_package(RDKit 2020.09.1 REQUIRED)
 include_directories(${RDKit_INCLUDE_DIRS})
 
-add_subdirectory(src)
-
 option(CHEMICALITE_ENABLE_NATIVE_OPT
        "enable compiler optimization for the native architecture" ${RDKit_USE_OPTIMIZED_POPCNT})
 option(CHEMICALITE_ENABLE_TESTS "enable tests" ON)
-option(CHEMICALITE_ENABLE_PYTHON_TESTS "enable python tests" ON)
-option(CHEMICALITE_BUILD_EXAMPLES "build the example programs" ON)
-
-if (CHEMICALITE_ENABLE_TESTS)
-    find_program(MEMORYCHECK_COMMAND NAMES valgrind)
-    set(MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full")
-
-    include(CTest)
-
-    enable_testing()
-
-    add_subdirectory(tests)
-    if (CHEMICALITE_ENABLE_PYTHON_TESTS)
-        find_package (Python3 COMPONENTS Interpreter)
-        # FIXME should also check that APSW is available
-        add_subdirectory(pytests)
-    endif (CHEMICALITE_ENABLE_PYTHON_TESTS)
-endif (CHEMICALITE_ENABLE_TESTS)
 
 if (CHEMICALITE_ENABLE_NATIVE_OPT)
     if (CMAKE_COMPILER_IS_GNUCC)
@@ -51,6 +31,11 @@ if (CHEMICALITE_ENABLE_NATIVE_OPT)
     endif (CMAKE_COMPILER_IS_GNUCC)
 endif (CHEMICALITE_ENABLE_NATIVE_OPT)
 
-if (CHEMICALITE_BUILD_EXAMPLES)
-    add_subdirectory(examples)
-endif (CHEMICALITE_BUILD_EXAMPLES)
+if (CHEMICALITE_ENABLE_TESTS)
+    find_program(MEMORYCHECK_COMMAND NAMES valgrind)
+    set(MEMORYCHECK_COMMAND_OPTIONS "--trace-children=yes --leak-check=full")
+    include(CTest)
+    enable_testing()
+endif (CHEMICALITE_ENABLE_TESTS)
+
+add_subdirectory(src)

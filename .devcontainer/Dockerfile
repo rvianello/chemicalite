@@ -1,5 +1,5 @@
 ARG fedora_release=33
-ARG rdkit_release=2020.09.3
+ARG rdkit_release=2021.03.1
 FROM rvianello/fedora-rdkit-cpp:${fedora_release}-${rdkit_release}
 #FROM fedora-rdkit-cpp-dev:latest
 
@@ -31,6 +31,7 @@ RUN dnf install -y \
     sqlite-devel \
     valgrind \
     which \
+    zlib-devel \
     #
     # Create a non-root user to use if preferred - see https://aka.ms/vscode-remote/containers/non-root-user.
     && groupadd --gid $USER_GID $USERNAME \

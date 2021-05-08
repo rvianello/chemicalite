@@ -1,14 +1,29 @@
 include(GNUInstallDirs)
 
 add_library(chemicalite MODULE
-        settings.c
-        logging.c
- 	    molecule.c
-	    bfp_ops.c
- 	    bitstring.c
-	    rdtree.c
-        chemicalite.c
-        rdkit_adapter.cpp)
+        settings.cpp
+        logging.cpp
+        mol.cpp
+        bfp.cpp
+        mol_formats.cpp
+        mol_compare.cpp
+        mol_descriptors.cpp
+        mol_hash.cpp
+        mol_to_bfp.cpp
+        bfp_ops.cpp
+        bfp_compare.cpp
+        bfp_descriptors.cpp
+        rdtree.cpp
+        rdtree_vtab.cpp
+        rdtree_node.cpp
+        rdtree_item.cpp
+        rdtree_strategy.cpp
+        rdtree_constraint.cpp
+        rdtree_constraint_subset.cpp
+        rdtree_constraint_tanimoto.cpp
+        versions.cpp
+        chemicalite.cpp
+        )
 
 set_target_properties(chemicalite PROPERTIES PREFIX "")
 
@@ -16,8 +31,22 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set_target_properties(chemicalite PROPERTIES SUFFIX .dylib)
 endif()
 
+set(CHEMICALITE_RDKIT_LIBRARIES
+    RDKit::MolHash
+    RDKit::Descriptors
+    RDKit::Fingerprints
+    RDKit::FileParsers
+    RDKit::GraphMol
+    )
+
 target_link_libraries(chemicalite PUBLIC
-                      RDKit::MolHash RDKit::Descriptors RDKit::Fingerprints RDKit::GraphMol
-                      ${SQLite3_LIBRARIES})
+    ${CHEMICALITE_RDKIT_LIBRARIES}
+    ${SQLite3_LIBRARIES}
+    )
 
 install(TARGETS chemicalite LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
+
+if (CHEMICALITE_ENABLE_TESTS)
+    add_subdirectory(tests)
+endif (CHEMICALITE_ENABLE_TESTS)
+
