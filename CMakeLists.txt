@@ -20,16 +20,22 @@ include_directories(${SQLite3_INCLUDE_DIRS})
 find_package(RDKit 2020.09.1 REQUIRED)
 include_directories(${RDKit_INCLUDE_DIRS})
 
-option(CHEMICALITE_ENABLE_NATIVE_OPT
+option(CHEMICALITE_ENABLE_OPTIMIZED_POPCNT
        "enable compiler optimization for the native architecture" ${RDKit_USE_OPTIMIZED_POPCNT})
 option(CHEMICALITE_ENABLE_TESTS "enable tests" ON)
 
-if (CHEMICALITE_ENABLE_NATIVE_OPT)
-    if (CMAKE_COMPILER_IS_GNUCC)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-    endif (CMAKE_COMPILER_IS_GNUCC)
-endif (CHEMICALITE_ENABLE_NATIVE_OPT)
+if (CHEMICALITE_ENABLE_OPTIMIZED_POPCNT)
+  # this logic is copied from the RDKit's cmake scripts
+  if (NOT MSVC)
+    if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "aarch64")
+      message("RDK_OPTIMIZE_POPCNT is not available on aarch64")
+    elseif(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "^(ppc64|powerpc64)")
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mpopcntd")
+    else()
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mpopcnt")
+    endif()
+  endif()
+endif (CHEMICALITE_ENABLE_OPTIMIZED_POPCNT)
 
 if (CHEMICALITE_ENABLE_TESTS)
     find_program(MEMORYCHECK_COMMAND NAMES valgrind)

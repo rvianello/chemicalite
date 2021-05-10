@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Compiler settings for using the optimized popcnt instructions (-mpopcnt replaces -march=native)
+
 ## [2021.05.1] - 2021-05-08
 
 ### Changed
