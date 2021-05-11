@@ -13,6 +13,7 @@ add_library(chemicalite MODULE
         bfp_ops.cpp
         bfp_compare.cpp
         bfp_descriptors.cpp
+        periodic_table.cpp
         rdtree.cpp
         rdtree_vtab.cpp
         rdtree_node.cpp
