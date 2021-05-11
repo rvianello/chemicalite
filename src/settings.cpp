@@ -128,7 +128,6 @@ int chemicalite_get(ChemicaLiteSetting setting, double *pValue)
 struct SettingsTable {
   sqlite3_vtab base;
 };
-typedef struct SettingsTable SettingsTable;
 
 
 static int settingsConnect(sqlite3 *db, void */*pAux*/,
