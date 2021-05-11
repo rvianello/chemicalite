@@ -174,7 +174,6 @@ struct SettingsCursor {
   sqlite3_vtab_cursor base;
   sqlite3_int64 rowid;
 };
-typedef struct SettingsCursor SettingsCursor;
 
 static int settingsOpen(sqlite3_vtab */*pVTab*/, sqlite3_vtab_cursor **ppCursor)
 {
