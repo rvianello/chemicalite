@@ -1,10 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Bindings to RDKit's Periodic Table.
+
 ## [2021.05.2] - 2021-05-10
 
 ### Changed
 
-- Compiler settings for using the optimized popcnt instructions (-mpopcnt replaces -march=native)
+- Compiler settings for using the optimized popcnt instructions (-mpopcnt replaces -march=native).
 
 ## [2021.05.1] - 2021-05-08
 

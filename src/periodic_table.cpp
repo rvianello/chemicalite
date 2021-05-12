@@ -25,7 +25,13 @@ static int pteConnect(sqlite3 *db, void */*pAux*/,
     "atomic_number INTEGER, "
     "symbol TEXT, "
     "atomic_weight REAL, "
-    "vdw_radius REAL"
+    "vdw_radius REAL, "
+    "covalent_radius REAL, "
+    "b0_radius REAL, "
+    "default_valence INTEGER, "
+    "n_outer_electrons INTEGER, "
+    "most_common_isotope INTEGER, "
+    "most_common_isotope_mass REAL "
     ")");
 
   if (rc != SQLITE_OK) {
@@ -119,6 +125,30 @@ static int pteColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *ctx, int N)
     case 3:
       // vdw radius
       sqlite3_result_double(ctx, RDKit::PeriodicTable::getTable()->getRvdw(p->rowid));
+      break;
+    case 4:
+      // covalent radius
+      sqlite3_result_double(ctx, RDKit::PeriodicTable::getTable()->getRcovalent(p->rowid));
+      break;
+    case 5:
+      // b0 radius
+      sqlite3_result_double(ctx, RDKit::PeriodicTable::getTable()->getRb0(p->rowid));
+      break;
+    case 6:
+      // default valence
+      sqlite3_result_int(ctx, RDKit::PeriodicTable::getTable()->getDefaultValence(p->rowid));
+      break;
+    case 7:
+      // N outer electrons
+      sqlite3_result_int(ctx, RDKit::PeriodicTable::getTable()->getNouterElecs(p->rowid));
+      break;
+    case 8:
+      // most common isotope
+      sqlite3_result_int(ctx, RDKit::PeriodicTable::getTable()->getMostCommonIsotope(p->rowid));
+      break;
+    case 9:
+      // most common isotope mass
+      sqlite3_result_double(ctx, RDKit::PeriodicTable::getTable()->getMostCommonIsotopeMass(p->rowid));
       break;
     default:
       assert(!"Unexpected column number");
