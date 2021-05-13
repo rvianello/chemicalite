@@ -52,7 +52,7 @@ int pteBestIndex(sqlite3_vtab */*pVTab*/, sqlite3_index_info *pIndexInfo)
   return SQLITE_OK;
 }
 
-static int pteDestroyDisconnect(sqlite3_vtab *pVTab)
+static int pteDisconnect(sqlite3_vtab *pVTab)
 {
   sqlite3_free(pVTab);
   return SQLITE_OK;
@@ -172,8 +172,8 @@ static sqlite3_module pteModule = {
   0,                           /* xCreate - create a table */ /* null because eponymous-only */
   pteConnect,                  /* xConnect - connect to an existing table */
   pteBestIndex,                /* xBestIndex - Determine search strategy */
-  pteDestroyDisconnect,        /* xDisconnect - Disconnect from a table */
-  pteDestroyDisconnect,        /* xDestroy - Drop a table */
+  pteDisconnect,               /* xDisconnect - Disconnect from a table */
+  0,                           /* xDestroy - Drop a table */
   pteOpen,                     /* xOpen - open a cursor */
   pteClose,                    /* xClose - close a cursor */
   pteFilter,                   /* xFilter - configure scan constraints */
