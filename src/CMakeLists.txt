@@ -22,6 +22,7 @@ add_library(chemicalite MODULE
         rdtree_constraint.cpp
         rdtree_constraint_subset.cpp
         rdtree_constraint_tanimoto.cpp
+        sdf_io.cpp
         versions.cpp
         chemicalite.cpp
         )
