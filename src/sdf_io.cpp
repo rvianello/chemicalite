@@ -13,8 +13,8 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "sdf_io.hpp"
 #include "mol.hpp"
 
-static const int SDF_INDEX_COLUMN = 0;
-static const int SDF_MOLECULE_COLUMN = 1;
+// static const int SDF_INDEX_COLUMN = 0;
+// static const int SDF_MOLECULE_COLUMN = 1;
 static const int SDF_FILEPATH_COLUMN = 2;
 
 static int sdfReaderConnect(sqlite3 *db, void */*pAux*/,
