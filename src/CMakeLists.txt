@@ -9,6 +9,7 @@ add_library(chemicalite MODULE
         mol_compare.cpp
         mol_descriptors.cpp
         mol_hash.cpp
+        mol_props.cpp
         mol_to_bfp.cpp
         bfp_ops.cpp
         bfp_compare.cpp
