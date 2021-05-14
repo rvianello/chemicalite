@@ -13,9 +13,8 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "sdf_io.hpp"
 #include "mol.hpp"
 
-// static const int SDF_INDEX_COLUMN = 0;
-// static const int SDF_MOLECULE_COLUMN = 1;
-static const int SDF_FILEPATH_COLUMN = 2;
+// static const int SDF_MOLECULE_COLUMN = 0;
+static const int SDF_FILEPATH_COLUMN = 1;
 
 static int sdfReaderConnect(sqlite3 *db, void */*pAux*/,
                       int /*argc*/, const char * const */*argv*/,
@@ -23,7 +22,7 @@ static int sdfReaderConnect(sqlite3 *db, void */*pAux*/,
                       char **pzErr)
 {
   int rc = sqlite3_declare_vtab(db, "CREATE TABLE x("
-    "idx INTEGER, molecule MOL, "
+    "molecule MOL, "
     "file_path HIDDEN"
     ")");
 
@@ -151,10 +150,6 @@ static int sdfReaderColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *ctx, i
 
   switch (N) {
     case 0:
-      // row id
-      sqlite3_result_int(ctx, p->rowid);
-      break;
-    case 1:
       // the molecule
       if (p->mol) {
         int rc = SQLITE_OK;
