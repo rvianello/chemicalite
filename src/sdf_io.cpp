@@ -15,6 +15,17 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "sdf_io.hpp"
 #include "mol.hpp"
 
+
+struct SdfColumn {
+  std::string property;
+  std::string column;
+
+  SdfColumn * create(const std::string & spec);
+  void sqlite3_result(const RDKit::ROMol &, sqlite3_context *);
+  virtual void do_sqlite3_result(const RDKit::ROMol &, sqlite3_context *) = 0;
+};
+
+
 struct SdfReaderVtab : public sqlite3_vtab {
   std::string filename;
 };
@@ -24,13 +35,47 @@ static int sdfReaderInit(sqlite3 *db, void */*pAux*/,
                       sqlite3_vtab **ppVTab,
                       char **pzErr)
 {
-  if (argc != 4) {
+  if (argc < 4) {
     return SQLITE_ERROR;
   }
 
   std::string filename;
   std::istringstream filename_ss(argv[3]);
   filename_ss >> std::quoted(filename);
+
+  for (int idx = 4; idx < argc; ++idx) {
+      std::string arg = argv[idx];
+
+      // optional args are expected to be formatted as 
+      // name = value
+      // where value let's say could be a numeric type or a quoted string
+      const std::size_t eq_pos = arg.find('=');
+      if (eq_pos == std::string::npos) {
+        // TODO log something like
+        // unable to parse optional arg, '=' not found
+        return SQLITE_ERROR;
+      }
+    
+      std::string arg_name = trim(std::string(arg, 0, eq_pos));
+
+      // because at this time 'schema' is the only supported optional arg,
+      // we keep things simple
+      if (arg_name != "schema") {
+        // TODO log something because the arg name is not recognized
+        return SQLITE_ERROR;
+      }
+
+      // we expect the value to be in quotes and consist in a comma-separated
+      // list of mol properties to be reflected as table columns
+      // "column-spec, column-spec, ...,column-spec"
+      // where column-spec can be 
+      //     prop-name type
+      // or
+      //     prop-name type as column-name
+      // and prop-name / column-name can be enclosed in single quotes if needed.
+
+      // TO BE CONTINUED
+  }
 
   int rc = sqlite3_declare_vtab(db, "CREATE TABLE x(molecule MOL)");
 

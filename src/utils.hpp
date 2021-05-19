@@ -23,6 +23,8 @@ static void strict(sqlite3_context* ctx, int argc, sqlite3_value** argv)
   F(ctx, argc, argv);
 }
 
+std::string trim(const std::string &);
+
 inline uint16_t read_uint16(const uint8_t *p)
 {
   return (p[0]<<8) + p[1];
