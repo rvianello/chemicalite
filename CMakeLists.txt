@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.14)
 
 project(chemicalite)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 set(CHEMICALITE_VERSION "2021.05.2")
 
 add_compile_definitions("CHEMICALITE_VERSION=${CHEMICALITE_VERSION}")
