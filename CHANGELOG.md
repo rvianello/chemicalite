@@ -4,6 +4,7 @@
 
 ### Added
 
+- `sdf_reader` virtual table.
 - Bindings to RDKit's Periodic Table.
 
 ## [2021.05.2] - 2021-05-10

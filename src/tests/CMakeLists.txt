@@ -15,6 +15,7 @@ set(TEST_CHEMICALITE_SRC_FILES
     test_rdtree_insert.cpp
     test_rdtree_select.cpp
     test_rdtree_update.cpp
+    test_sdf_reader.cpp
 )
 
 add_executable(test_chemicalite ${TEST_CHEMICALITE_SRC_FILES})
@@ -26,5 +27,7 @@ target_link_libraries(
     ${SQLite3_LIBRARIES}
     )
 
-catch_discover_tests(test_chemicalite)
+catch_discover_tests(
+    test_chemicalite
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data)
 
