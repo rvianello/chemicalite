@@ -171,7 +171,8 @@ public:
       if (eq_pos == arg.size() - 1) {
         // TODO log about missing value following '='
       }
-      std::string arg_name = trim(std::string(arg, 0, eq_pos));
+      std::string arg_name(arg, 0, eq_pos);
+      boost::trim(arg_name);
       // because at this time 'schema' is the only supported optional arg,
       // we keep things simple
       if (arg_name != "schema") {
@@ -195,7 +196,8 @@ public:
       while (spec_pos < arg_value.size()) {
         // fetch the substring covering the column spec
         std::size_t spec_len = (sep_pos == std::string::npos) ? sep_pos : sep_pos - spec_pos;
-        std::string spec = trim(std::string(arg_value, spec_pos, spec_len));
+        std::string spec(arg_value, spec_pos, spec_len);
+        boost::trim(spec);
         // process and store the column spec
         std::unique_ptr<SdfColumn> column(SdfColumn::from_spec(spec));
         if (column) {
