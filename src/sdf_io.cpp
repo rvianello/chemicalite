@@ -93,7 +93,9 @@ struct SdfColumn {
       case Type::TEXT: return "TEXT";
       case Type::REAL: return "REAL";
       case Type::INTEGER: return "INTEGER";
-      default: assert(!"Unexpected value for Type enum");
+      default:
+        assert(!"Unexpected value for Type enum");
+        return "";
     }
   }
 
