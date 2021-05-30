@@ -12,6 +12,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "utils.hpp"
 #include "mol_props.hpp"
 #include "mol.hpp"
+#include "logging.hpp"
 
 // static const int MOL_PROPERTIES_PROPERTY_COLUMN = 0;
 static const int MOL_PROPERTIES_MOLECULE_COLUMN = 1;
@@ -84,7 +85,7 @@ struct MolPropsCursor : public sqlite3_vtab_cursor {
 static int molPropsOpen(sqlite3_vtab */*pVTab*/, sqlite3_vtab_cursor **ppCursor)
 {
   int rc = SQLITE_OK;
-  MolPropsCursor *pCsr = new MolPropsCursor; //FIXME 
+  MolPropsCursor *pCsr = new MolPropsCursor;
   *ppCursor = (sqlite3_vtab_cursor *)pCsr;
   return rc;
 }
@@ -214,7 +215,7 @@ static void mol_set_prop(sqlite3_context* ctx, int /*argc*/, sqlite3_value** arg
   arg = argv[1];
   if (sqlite3_value_type(arg) != SQLITE_TEXT) {
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
-    // chemicalite_log(SQLITE_MISMATCH, "the property key arg must be of type text or NULL");
+    chemicalite_log(SQLITE_MISMATCH, "the property key arg must be of type text or NULL");
     return;
   }
   std::string key = (const char *) sqlite3_value_text(arg);
@@ -235,7 +236,7 @@ static void mol_set_prop(sqlite3_context* ctx, int /*argc*/, sqlite3_value** arg
   }
   else {
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
-    // chemicalite_log(SQLITE_MISMATCH, "the property value arg must be of type text, int, real or NULL");
+    chemicalite_log(SQLITE_MISMATCH, "the property value arg must be of type text, int, real or NULL");
     return;
   }
 
@@ -265,7 +266,7 @@ static void mol_has_prop(sqlite3_context* ctx, int /*argc*/, sqlite3_value** arg
   arg = argv[1];
   if (sqlite3_value_type(arg) != SQLITE_TEXT) {
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
-    // chemicalite_log(SQLITE_MISMATCH, "the property key arg must be of type text or NULL");
+    chemicalite_log(SQLITE_MISMATCH, "the property key arg must be of type text or NULL");
     return;
   }
   std::string key = (const char *) sqlite3_value_text(arg);
@@ -293,7 +294,7 @@ static void mol_get_prop(sqlite3_context* ctx, int /*argc*/, sqlite3_value** arg
   arg = argv[1];
   if (sqlite3_value_type(arg) != SQLITE_TEXT) {
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
-    // chemicalite_log(SQLITE_MISMATCH, "the property key arg must be of type text or NULL");
+    chemicalite_log(SQLITE_MISMATCH, "the property key arg must be of type text or NULL");
     return;
   }
   std::string key = (const char *) sqlite3_value_text(arg);

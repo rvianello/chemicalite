@@ -14,6 +14,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "mol.hpp"
 #include "bfp.hpp"
 #include "mol_to_bfp.hpp"
+#include "logging.hpp"
 
 template <ExplicitBitVect * (*F)(const RDKit::ROMol &, int), int DEFAULT_LENGTH>
 static void mol_to_bfp(sqlite3_context* ctx, int argc, sqlite3_value** argv)
@@ -42,11 +43,13 @@ static void mol_to_bfp(sqlite3_context* ctx, int argc, sqlite3_value** argv)
         }
         else {
           rc = SQLITE_ERROR;
+          chemicalite_log(rc, "bfp computation failed");
         }
       } 
       catch (...) {
         // unknown exception
         rc = SQLITE_ERROR;
+        chemicalite_log(rc, "bfp computation failed with an exception");
       }
     }
 
@@ -137,11 +140,13 @@ static void mol_to_morgan_bfp(sqlite3_context* ctx, int argc, sqlite3_value** ar
         }
         else {
           rc = SQLITE_ERROR;
+          chemicalite_log(rc, "bfp computation failed");
         }
       } 
       catch (...) {
         // unknown exception
         rc = SQLITE_ERROR;
+        chemicalite_log(rc, "bfp computation failed with an exception");
       }
     }
 

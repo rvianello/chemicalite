@@ -54,6 +54,7 @@ std::string blob_to_binary_mol(const Blob &blob, int *rc)
   uint32_t magic = read_uint32(p);
   if (magic != MOL_MAGIC) {
     *rc = SQLITE_MISMATCH;
+    chemicalite_log(*rc, "mismatching blob header found");
     return "";
   }
   p += sizeof(uint32_t);
