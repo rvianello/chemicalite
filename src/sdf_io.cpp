@@ -16,7 +16,7 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "utils.hpp"
 #include "sdf_io.hpp"
 #include "mol.hpp"
-
+#include "logging.hpp"
 
 struct SdfColumn {
   enum class Type { TEXT, REAL, INTEGER };
@@ -27,6 +27,9 @@ struct SdfColumn {
 
   static SdfColumn * from_spec(const std::string & spec)
   {
+    // prepare a common error message prefix
+    std::string error = "could not parse column specifier \"" + spec + "\": ";
+
     // where column-spec can be 
     //     prop-name type
     // or
@@ -66,7 +69,15 @@ struct SdfColumn {
       tokens.push_back(tokens[0]);
     }
 
-    if (num_tokens != 4 || tokens[2] != "AS") {
+    if (num_tokens != 4) {
+      error += "unexpected number of tokens";
+      chemicalite_log(SQLITE_ERROR, error.c_str());
+      return nullptr;
+    }
+
+    if (tokens[2] != "AS") {
+      error += "third token should be \"AS\"";
+      chemicalite_log(SQLITE_ERROR, error.c_str());
       return nullptr;
     }
 
@@ -81,6 +92,8 @@ struct SdfColumn {
       type = Type::INTEGER;
     }
     else if (type_term != "TEXT") {
+      error += "type should be one of \"TEXT\", \"REAL\" or \"INTEGER\"";
+      chemicalite_log(SQLITE_ERROR, error.c_str());
       return nullptr;
     }
 
@@ -127,6 +140,7 @@ struct SdfColumn {
       }
     }
     catch (const boost::bad_any_cast & e) {
+      chemicalite_log(SQLITE_MISMATCH, "could not convert the mol property to the requested type");
       sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
     }
   }
@@ -149,6 +163,7 @@ public:
   int init(sqlite3 *db, int argc, const char * const *argv, char **pzErr)
   {
     if (argc < 4) {
+      chemicalite_log(SQLITE_ERROR, "the sdf_reader requires at least one filename argument");
       return SQLITE_ERROR;
     }
 
@@ -164,19 +179,24 @@ public:
       if (eq_pos == std::string::npos) {
         // TODO log something like
         // unable to parse optional arg, '=' not found
+        std::string error = "could not parse \"" + arg + "\": optional arg expression should include an equal sign";
+        chemicalite_log(SQLITE_ERROR, error.c_str());
         return SQLITE_ERROR;
       }
       // we want to fetch the substring after the equal sign, make sure that
       // it's not the last char in the string.
       if (eq_pos == arg.size() - 1) {
-        // TODO log about missing value following '='
+        std::string error = "could not parse \"" + arg + "\": no arg value following the equal sign";
+        chemicalite_log(SQLITE_ERROR, error.c_str());
+        return SQLITE_ERROR;
       }
       std::string arg_name(arg, 0, eq_pos);
       boost::trim(arg_name);
       // because at this time 'schema' is the only supported optional arg,
       // we keep things simple
       if (arg_name != "schema") {
-        // TODO log something because the arg name is not recognized
+        std::string error = "could not parse \"" + arg + "\": unexpected arg name: " + arg_name;
+        chemicalite_log(SQLITE_ERROR, error.c_str());
         return SQLITE_ERROR;
       }
       // we expect the value to be in quotes, and consist in a comma-separated
@@ -187,7 +207,8 @@ public:
       arg_value_ss >> std::quoted(arg_value, '\'');
       // make sure the arg value wasn't just blank spaces
       if (arg_value.empty()) {
-        // TODO log and complain that the arg is badly formatted
+        std::string error = "could not parse \"" + arg + "\": arg value is blank";
+        chemicalite_log(SQLITE_ERROR, error.c_str());
         return SQLITE_ERROR;
       }
       // split on commas, and parse the columns specs
@@ -204,6 +225,8 @@ public:
           columns.push_back(std::move(column));
         }
         else {
+          std::string error = "could not configure a column from \"" + arg + "\"";
+          chemicalite_log(SQLITE_ERROR, error.c_str());
           return SQLITE_ERROR;
         }
         // move spec pos after the separator (or to the end)
@@ -235,7 +258,7 @@ static int sdfReaderInit(sqlite3 *db, void */*pAux*/,
                       sqlite3_vtab **ppVTab,
                       char **pzErr)
 {  
-  SdfReaderVtab *vtab = new SdfReaderVtab; // FIXME
+  SdfReaderVtab *vtab = new SdfReaderVtab;
 
   int rc = vtab->init(db, argc, argv, pzErr);
 
@@ -288,7 +311,7 @@ struct SdfReaderCursor : public sqlite3_vtab_cursor {
 static int sdfReaderOpen(sqlite3_vtab */*pVTab*/, sqlite3_vtab_cursor **ppCursor)
 {
   int rc = SQLITE_OK;
-  SdfReaderCursor *pCsr = new SdfReaderCursor; //FIXME 
+  SdfReaderCursor *pCsr = new SdfReaderCursor; 
   *ppCursor = (sqlite3_vtab_cursor *)pCsr;
   return rc;
 }
@@ -341,7 +364,10 @@ static int sdfReaderColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *ctx, i
 {
   SdfReaderCursor * p = (SdfReaderCursor *)pCursor;
 
-  if (N == 0) {
+  if (!p->mol) {
+      sqlite3_result_null(ctx);
+  }
+  else if (N == 0) {
     // the molecule
     if (p->mol) {
       int rc = SQLITE_OK;
