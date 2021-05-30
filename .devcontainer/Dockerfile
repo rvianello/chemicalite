@@ -25,6 +25,7 @@ RUN dnf install -y \
     g++ \
     gdb \
     git \
+    litecli \
     make \
     python3-ipython \
     python3-rstcheck \
