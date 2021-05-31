@@ -13,10 +13,6 @@
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [
-                {
-                    "name": "LD_LIBRARY_PATH",
-                    "value": "${workspaceFolder}/build/src"
-                }
             ],
             "externalConsole": false,
             "MIMode": "gdb",
