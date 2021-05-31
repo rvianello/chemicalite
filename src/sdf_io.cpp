@@ -177,7 +177,6 @@ public:
       // where value let's say could be of a numeric type or a quoted string
       const std::size_t eq_pos = arg.find('=');
       if (eq_pos == std::string::npos) {
-        // TODO log something like
         // unable to parse optional arg, '=' not found
         std::string error = "could not parse \"" + arg + "\": optional arg expression should include an equal sign";
         chemicalite_log(SQLITE_ERROR, error.c_str());
