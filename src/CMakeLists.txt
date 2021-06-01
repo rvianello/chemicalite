@@ -6,6 +6,7 @@ add_library(chemicalite MODULE
         mol.cpp
         bfp.cpp
         mol_formats.cpp
+        mol_chemtransforms.cpp
         mol_compare.cpp
         mol_descriptors.cpp
         mol_hash.cpp
@@ -39,6 +40,7 @@ set(CHEMICALITE_RDKIT_LIBRARIES
     RDKit::Descriptors
     RDKit::Fingerprints
     RDKit::FileParsers
+    RDKit::ChemTransforms
     RDKit::GraphMol
     )
 
