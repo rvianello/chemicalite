@@ -82,6 +82,15 @@ Molecule
 * `mol_hash_smallworldindexbrl(mol) -> text`
 * `mol_hash_arthorsubstructureorder(mol) -> text`
 
+..
+
+* `mol_prop_list(mol) -> [text]`
+* `mol_has_prop(mol, text) -> int`
+* `mol_set_prop(mol, text, text|real|int) -> mol`
+* `mol_get_text_prop(mol, text) -> text`
+* `mol_get_int_prop(mol, text) -> int`
+* `mol_get_float_prop(mol, text) -> real`
+
 Binary Fingerprint
 ..................
 
