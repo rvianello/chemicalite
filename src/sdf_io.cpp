@@ -402,7 +402,7 @@ static int sdfReaderRowid(sqlite3_vtab_cursor *pCursor, sqlite_int64 *pRowid)
 }
 
 /*
-** The SDF reader module, collecting the methods that operate on the PeriodicTable vtab
+** The SDF reader module
 */
 static sqlite3_module sdfReaderModule = {
   0,                           /* iVersion */

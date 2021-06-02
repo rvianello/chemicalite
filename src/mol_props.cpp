@@ -169,7 +169,7 @@ static int molPropsRowid(sqlite3_vtab_cursor *pCursor, sqlite_int64 *pRowid)
 }
 
 /*
-** The SDF reader module, collecting the methods that operate on the PeriodicTable vtab
+** The mol props module, collecting the methods that implement mol_prop_list as an eponymous virtual table
 */
 static sqlite3_module molPropsModule = {
   0,                           /* iVersion */
