@@ -44,7 +44,7 @@ static int molPropsConnect(sqlite3 *db, void */*pAux*/,
   return rc;
 }
 
-int molPropsBestIndex(sqlite3_vtab */*pVTab*/, sqlite3_index_info *pIndexInfo)
+static int molPropsBestIndex(sqlite3_vtab */*pVTab*/, sqlite3_index_info *pIndexInfo)
 {
   // At this time the only supported arg is the input molecule
   // this function is consequently very simple. it might become more complex
