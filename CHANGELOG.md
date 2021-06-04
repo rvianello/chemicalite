@@ -4,6 +4,7 @@
 
 ### Added
 
+- Substructure-based mol transformations + Murcko decomposition
 - `sdf_reader` virtual table.
 - Bindings to RDKit's Periodic Table.
 

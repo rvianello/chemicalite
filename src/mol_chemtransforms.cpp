@@ -42,48 +42,6 @@ static void mol_delete_substructs(sqlite3_context* ctx, int /*argc*/, sqlite3_va
   }
 }
 
-#if 0
-static void mol_replace_substructs(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
-{
-  int rc = SQLITE_OK;
-  sqlite3_value *arg = nullptr;
-  
-  // the input molecule
-  arg = argv[0];
-  std::unique_ptr<RDKit::ROMol> mol(arg_to_romol(arg, &rc));
-  if ( rc != SQLITE_OK ) {
-    sqlite3_result_error_code(ctx, rc);
-    return;
-  }
-
-  // the input pattern
-  arg = argv[1];
-  std::unique_ptr<RDKit::ROMol> query(arg_to_romol(arg, &rc));
-  if ( rc != SQLITE_OK ) {
-    sqlite3_result_error_code(ctx, rc);
-    return;
-  }
-
-  // the replacement
-  arg = argv[2];
-  std::unique_ptr<RDKit::ROMol> replacement(arg_to_romol(arg, &rc));
-  if ( rc != SQLITE_OK ) {
-    sqlite3_result_error_code(ctx, rc);
-    return;
-  }
-
-  std::unique_ptr<RDKit::ROMol> result(RDKit::replaceSubstructs(*mol, *query, *replacement));
-
-  Blob blob = mol_to_blob(*result, &rc);
-  if (rc != SQLITE_OK) {
-    sqlite3_result_error_code(ctx, rc);
-  }
-  else {
-    sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
-  }
-}
-#endif
-
 static int molReplSubstructsConnect(sqlite3 *db, void */*pAux*/,
                       int /*argc*/, const char * const */*argv*/,
                       sqlite3_vtab **ppVTab,
@@ -257,6 +215,94 @@ static sqlite3_module molReplSubstructsModule = {
   0                            /* xShadowName */
 };
 
+static void mol_replace_sidechains(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
+{
+  int rc = SQLITE_OK;
+  sqlite3_value *arg = nullptr;
+  
+  // the input molecule
+  arg = argv[0];
+  std::unique_ptr<RDKit::ROMol> mol(arg_to_romol(arg, &rc));
+  if ( rc != SQLITE_OK ) {
+    sqlite3_result_error_code(ctx, rc);
+    return;
+  }
+
+  // the input pattern
+  arg = argv[1];
+  std::unique_ptr<RDKit::ROMol> query(arg_to_romol(arg, &rc));
+  if ( rc != SQLITE_OK ) {
+    sqlite3_result_error_code(ctx, rc);
+    return;
+  }
+
+  std::unique_ptr<RDKit::ROMol> result(RDKit::replaceSidechains(*mol, *query));
+
+  Blob blob = mol_to_blob(*result, &rc);
+  if (rc != SQLITE_OK) {
+    sqlite3_result_error_code(ctx, rc);
+  }
+  else {
+    sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
+  }
+}
+
+static void mol_replace_core(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
+{
+  int rc = SQLITE_OK;
+  sqlite3_value *arg = nullptr;
+  
+  // the input molecule
+  arg = argv[0];
+  std::unique_ptr<RDKit::ROMol> mol(arg_to_romol(arg, &rc));
+  if ( rc != SQLITE_OK ) {
+    sqlite3_result_error_code(ctx, rc);
+    return;
+  }
+
+  // the input pattern
+  arg = argv[1];
+  std::unique_ptr<RDKit::ROMol> query(arg_to_romol(arg, &rc));
+  if ( rc != SQLITE_OK ) {
+    sqlite3_result_error_code(ctx, rc);
+    return;
+  }
+
+  std::unique_ptr<RDKit::ROMol> result(RDKit::replaceCore(*mol, *query));
+
+  Blob blob = mol_to_blob(*result, &rc);
+  if (rc != SQLITE_OK) {
+    sqlite3_result_error_code(ctx, rc);
+  }
+  else {
+    sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
+  }
+}
+
+static void mol_murcko_decompose(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
+{
+  int rc = SQLITE_OK;
+  sqlite3_value *arg = nullptr;
+  
+  // the input molecule
+  arg = argv[0];
+  std::unique_ptr<RDKit::ROMol> mol(arg_to_romol(arg, &rc));
+  if ( rc != SQLITE_OK ) {
+    sqlite3_result_error_code(ctx, rc);
+    return;
+  }
+
+  std::unique_ptr<RDKit::ROMol> result(RDKit::MurckoDecompose(*mol));
+
+  Blob blob = mol_to_blob(*result, &rc);
+  if (rc != SQLITE_OK) {
+    sqlite3_result_error_code(ctx, rc);
+  }
+  else {
+    sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
+  }
+}
+
 int chemicalite_init_mol_chemtransforms(sqlite3 *db)
 {
   int rc = SQLITE_OK;
@@ -268,6 +314,9 @@ int chemicalite_init_mol_chemtransforms(sqlite3 *db)
 				  0   /* Module destructor function */
 				  );
   }
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_replace_sidechains", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_replace_sidechains>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_replace_core", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_replace_core>, 0, 0);
+  if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_murcko_decompose", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_murcko_decompose>, 0, 0);
 
   return rc;
 }

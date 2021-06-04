@@ -91,6 +91,14 @@ Molecule
 * `mol_get_int_prop(mol, text) -> int`
 * `mol_get_float_prop(mol, text) -> real`
 
+..
+
+* `mol_delete_substructs() -> mol`
+* `mol_replace_substructs() -> [mol]`
+* `mol_replace_sidechains() -> mol`
+* `mol_replace_core() -> mol`
+* `mol_murcko_decompose() -> mol`
+
 Binary Fingerprint
 ..................
 
