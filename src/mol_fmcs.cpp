@@ -9,9 +9,8 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "mol_fmcs.hpp"
 #include "mol.hpp"
 
-void mol_fmcs_step(sqlite3_context* ctx, int argc, sqlite3_value** argv)
+void mol_fmcs_step(sqlite3_context* ctx, int, sqlite3_value** argv)
 {
-  assert(argc == 1);
   int rc = SQLITE_OK;
   
   sqlite3_value *arg = argv[0];
