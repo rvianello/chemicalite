@@ -2,6 +2,7 @@
 SQLITE_EXTENSION_INIT1
 
 #include "settings.hpp"
+#include "mol_fmcs.hpp"
 #include "mol_formats.hpp"
 #include "mol_chemtransforms.hpp"
 #include "mol_compare.hpp"
@@ -30,6 +31,7 @@ extern "C" int sqlite3_chemicalite_init(sqlite3 *db, char ** /*pzErrMsg*/,
 
   if (rc == SQLITE_OK) rc = chemicalite_init_versions(db);
   if (rc == SQLITE_OK) rc = chemicalite_init_settings(db);
+  if (rc == SQLITE_OK) rc = chemicalite_init_mol_fmcs(db);
   if (rc == SQLITE_OK) rc = chemicalite_init_mol_formats(db);
   if (rc == SQLITE_OK) rc = chemicalite_init_mol_chemtransforms(db);
   if (rc == SQLITE_OK) rc = chemicalite_init_mol_compare(db);
