@@ -4,7 +4,8 @@
 
 ### Added
 
-- Substructure-based mol transformations + Murcko decomposition
+- `mol_find_mcs` aggregate function.
+- Substructure-based mol transformations + Murcko decomposition.
 - `sdf_reader` virtual table.
 - Bindings to RDKit's Periodic Table.
 

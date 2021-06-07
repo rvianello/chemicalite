@@ -99,6 +99,11 @@ Molecule
 * `mol_replace_core() -> mol`
 * `mol_murcko_decompose() -> mol`
 
+..
+
+* `mol_find_mcs([mol]) -> mol`
+
+
 Binary Fingerprint
 ..................
 
