@@ -42,7 +42,18 @@ void mol_fmcs_final(sqlite3_context * ctx)
     std::vector<RDKit::ROMOL_SPTR> *mols = (std::vector<RDKit::ROMOL_SPTR> *) *agg;
     RDKit::MCSResult results = findMCS(*mols);
 
+#if 0
     sqlite3_result_text(ctx, results.SmartsString.c_str(), -1, SQLITE_TRANSIENT);
+#else
+    int rc = SQLITE_OK;
+    Blob blob = mol_to_blob(*results.QueryMol, &rc);
+    if (rc != SQLITE_OK) {
+      sqlite3_result_error_code(ctx, rc);
+    }
+    else {
+      sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
+    }
+#endif
   }
   else {
     sqlite3_result_null(ctx);
