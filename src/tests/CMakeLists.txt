@@ -1,6 +1,12 @@
 find_package(Catch2 REQUIRED)
 include(Catch)
 
+string(REGEX MATCH "clang" CMAKE_COMPILER_IS_CLANG "${CMAKE_C_COMPILER}")
+if (CMAKE_COMPILER_IS_CLANG)
+    # https://github.com/catchorg/Catch2/issues/1218
+    add_compile_definitions("CATCH_CONFIG_NO_CPP17_UNCAUGHT_EXCEPTIONS")
+endif()
+
 set(TEST_CHEMICALITE_SRC_FILES
     test_main.cpp
     test_common.cpp
