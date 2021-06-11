@@ -9,6 +9,9 @@ extern const sqlite3_api_routines *sqlite3_api;
 #include "mol_standardize.hpp"
 #include "mol.hpp"
 
+// Note: the MolStandardize api is getting several fixes in the next
+// RDKit release 2021.09. I'm keeping this module on hold for now.
+
 static void mol_cleanup(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
 {
   int rc = SQLITE_OK;
