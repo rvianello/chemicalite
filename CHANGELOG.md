@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [2021.06.1] - 2021-06-11
 
 ### Added
 
