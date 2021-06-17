@@ -36,7 +36,6 @@
 */
 
 const int RDtreeVtab::RDTREE_MAX_BITSTRING_SIZE = 256;
-const int RDtreeVtab::RDTREE_MAXITEMS = 51;
 
 /*
 ** The largest supported item size is 264 bytes (8 byte rowid + 256 bytes 
@@ -244,9 +243,7 @@ static int select_int(sqlite3 * db, const char *query, int *value)
 ** the root node of the tree.
 **
 ** Otherwise, for an xCreate(), use 64 bytes less than the database page-size. 
-** This ensures that each node is stored on a single database page. If the 
-** database page-size is so large that more than RDTREE_MAXITEMS entries 
-** would fit in a single node, use a smaller node-size.
+** This ensures that each node is stored on a single database page.
 */
 int RDtreeVtab::get_node_bytes(int is_create)
 {
@@ -258,16 +255,6 @@ int RDtreeVtab::get_node_bytes(int is_create)
     rc = select_int(db, sql, &page_size);
     if (rc==SQLITE_OK) {
       node_bytes = page_size - 64;
-      int max_node_bytes = (
-        2 // tree depth, only used for the root node
-        + 2 // current number of stored items
-        + item_bytes*RDTREE_MAXITEMS // max space possibly used for items
-      );
-      // if the allowed node size exceeds the max space we need/want to use
-      // reduce it to match this max value
-      if (node_bytes > max_node_bytes) {
-        node_bytes = max_node_bytes;
-      }
     }
   }
   else{
@@ -277,7 +264,11 @@ int RDtreeVtab::get_node_bytes(int is_create)
   }
 
   // so, how may items can be stored in one node?
-  node_capacity = (node_bytes - 4)/item_bytes;
+  node_capacity = (
+      node_bytes
+      - 2 // tree depth, only used for the root node
+      - 2 // current number of stored items
+      )/item_bytes;
 
   sqlite3_free(sql);
   return rc;
