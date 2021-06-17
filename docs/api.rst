@@ -107,20 +107,12 @@ Molecule
 Binary Fingerprint
 ..................
 
-* `mol_layered_bfp(mol) -> bfp`
 * `mol_layered_bfp(mol, int) -> bfp`
-* `mol_rdkit_bfp(mol) -> bfp`
 * `mol_rdkit_bfp(mol, int) -> bfp`
-* `mol_atom_pairs_bfp(mol) -> bfp`
 * `mol_atom_pairs_bfp(mol, int) -> bfp`
-* `mol_topological_torsion_bfp(mol) -> bfp`
 * `mol_topological_torsion_bfp(mol, int) -> bfp`
-* `mol_pattern_bfp(mol) -> bfp`
 * `mol_pattern_bfp(mol, int) -> bfp`
-* `mol_maccs_bfp(mol) -> bfp`
-* `mol_morgan_bfp(mol, int) -> bfp`
 * `mol_morgan_bfp(mol, int, int) -> bfp`
-* `mol_feat_morgan_bfp(mol, int) -> bfp`
 * `mol_feat_morgan_bfp(mol, int, int) -> bfp`
 
 ..
