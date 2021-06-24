@@ -11,5 +11,6 @@ int bfp_op_contains(int length, const uint8_t *bfp1, const uint8_t *bfp2);
 int bfp_op_intersects(int length, const uint8_t *bfp1, const uint8_t *bfp2);
 double bfp_op_tanimoto(int length, const uint8_t *bfp1, const uint8_t *bfp2);
 double bfp_op_dice(int length, const uint8_t *bfp1, const uint8_t *bfp2);
+int bfp_op_cmp(int length, const uint8_t *bfp1, const uint8_t *bfp2);
 
 #endif

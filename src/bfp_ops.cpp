@@ -1,4 +1,6 @@
-//#include "chemicalite.h"
+
+#include <cassert>
+
 #include "bfp_ops.hpp"
 
 // the Tanimoto and Dice similarity code is adapted
@@ -357,4 +359,38 @@ double bfp_op_dice(int length, const uint8_t *afp, const uint8_t *bfp)
   }
 
   return sim;
+}
+
+int bfp_op_cmp(int length, const uint8_t *afp, const uint8_t *bfp)
+{
+  uint8_t higher = 1;
+
+  const uint8_t *afp_end = afp + length;
+
+  while (afp < afp_end) {
+    const uint8_t bytea = *afp++;
+    const uint8_t byteb = *bfp++;
+    if (bytea == byteb) {
+      // if the number of 1s in ba is odd, higher needs to be flipped
+      higher ^= (1 & byte_popcounts[bytea]);
+    }
+    else {
+      uint8_t mask = 0x80;
+      for (int bit = 0; bit < 8; ++bit) {
+        uint8_t bita = (bytea & mask) ? 1 : 0;
+        uint8_t bitb = (byteb & mask) ? 1 : 0;
+        if (bita != bitb) {
+          return (bita == higher) ? 1 : -1;
+        }
+        else {
+          // flip higher if bita is 1
+          higher ^= bita;
+        }
+      }
+      assert(!"should never get here if bytea != byteb");
+    }
+  }
+
+  // same bfp value
+  return 0;
 }
