@@ -10,96 +10,102 @@
 
 int RDtreeGenericStrategy::assign_items(
     RDtreeItem *items, int num_items,
-	RDtreeNode *left, RDtreeNode *right,
-	RDtreeItem *left_bounds, RDtreeItem *right_bounds)
+	  RDtreeNode *left, RDtreeNode *right,
+	  RDtreeItem *left_bounds, RDtreeItem *right_bounds)
 {
-  int left_seed_idx = 0;
-  int right_seed_idx = 1;
+  /* the first (num_items - 1) elements in items are the contents of the node we want to split.
+  ** these items are assumed to be already ordered.
+  ** the last element in the array is the new item. this new item needs to be inserted in the
+  ** appropriate position.
+  **
+  ** as long as these preconditions are satisfied (FIXME: assert/verify the preconditions) the
+  ** job should be relatively simple: the first half of the node's original content goes into the
+  ** left node, the second half goes into the right node, and the new item needs to be inserted 
+  ** at the correct position into one or the other node, so that at the end the output nodes are
+  ** both correctly ordered.
+  */
+  
+  // Note: maybe we could first determine the new item's position in the array, and save a few
+  // comparisons, but I'm not sure it would be worth it considering the small size of the nodes.
 
-  std::vector<int> used(num_items, 0);
+  // Get a pointer to the new item, because we'll compare it to the items we are 
+  // inserting until we find its location. Once inserted, this pointer is made null.
+  RDtreeItem * new_item = &items[num_items - 1];
 
-  pick_seeds(items, num_items, &left_seed_idx, &right_seed_idx);
+  // We are going to fill the left node with about a half of the items
+  int left_insert_limit = num_items / 2;
+  int left_insert_count = 0;
 
-  *left_bounds = items[left_seed_idx];
-  *right_bounds = items[right_seed_idx];
-  left->insert_item(&items[left_seed_idx]);
-  right->insert_item(&items[right_seed_idx]);
-  used[left_seed_idx] = 1;
-  used[right_seed_idx] = 1;
+  // The index of the item we are about to insert into one of the new nodes
+  int item_index = 0;
 
-  for(int i = num_items - 2; i > 0; i--) {
-    int prefer_right;
-    RDtreeItem *next_item;
-    pick_next(items, num_items, used.data(), &items[left_seed_idx], &items[right_seed_idx], &next_item, &prefer_right);
-
-    if ((node_minsize() - right->get_size() == i) || (prefer_right > 0 && (node_minsize() - left->get_size() != i))) {
-      right->insert_item(next_item);
-      right_bounds->extend_bounds(*next_item);
+  // Fill the left node
+  while (left_insert_count < left_insert_limit) {
+    RDtreeItem *item = &items[item_index];
+    // first check if it's time to insert the new item
+    if (new_item && bfp_op_cmp(bfp_bytes, new_item->max.data(), item->max.data()) <= 0) {
+      left->insert_item(new_item);
+      if (left_insert_count == 0) {
+        *left_bounds = *new_item;
+      }
+      else {
+        left_bounds->extend_bounds(*new_item);
+      }
+      ++left_insert_count;
+      new_item = nullptr;
+    }
+    // then insert the item from the overfull node
+    left->insert_item(item);
+    if (left_insert_count == 0) {
+      *left_bounds = *item;
     }
     else {
-      left->insert_item(next_item);
-      left_bounds->extend_bounds(*next_item);
+      left_bounds->extend_bounds(*item);
     }
+    ++left_insert_count;
+    // move to the next item
+    ++item_index;
+  }
+
+  // Now insert the remaining items (which may still include the new one)
+  // into the right node.
+  int right_insert_count = 0;
+  int num_old_items = num_items - 1;
+  while (item_index < num_old_items) {
+    RDtreeItem *item = &items[item_index];
+    // first check if it's time to insert the new item
+    if (new_item && bfp_op_cmp(bfp_bytes, new_item->max.data(), item->max.data()) <= 0) {
+      right->insert_item(new_item);
+      if (right_insert_count == 0) {
+        *right_bounds = *new_item;
+      }
+      else {
+        right_bounds->extend_bounds(*new_item);
+      }
+      ++right_insert_count;
+      new_item = nullptr;
+    }
+    // then insert the item from the overfull node
+    right->insert_item(item);
+    if (right_insert_count == 0) {
+      *right_bounds = *item;
+    }
+    else {
+      right_bounds->extend_bounds(*item);
+    }
+    ++right_insert_count;
+    // move to the next item
+    ++item_index;
+  }
+
+  // if the new item is still to be inserted, just append it
+  // to the right node
+  if (new_item) {
+    right->insert_item(new_item);
+    right_bounds->extend_bounds(*new_item);
   }
 
   return SQLITE_OK;
-}
-
-void RDtreeGenericStrategy::pick_seeds(
-    RDtreeItem *items, int num_items, int *left_seed_idx, int *right_seed_idx)
-{
-  int left_idx = 0;
-  int right_idx = 1;
-  double max_distance = 0.;
-
-  for (int ii = 0; ii < num_items; ii++) {
-    for (int jj = ii + 1; jj < num_items; jj++) {
-      double tanimoto 
-        = bfp_op_tanimoto(bfp_bytes, items[ii].bfp.data(), items[jj].bfp.data());
-      double distance = 1. - tanimoto;
-
-      if (distance > max_distance) {
-        left_idx = ii;
-        right_idx = jj;
-        max_distance = distance;
-      }
-    }
-  }
-
-  *left_seed_idx = left_idx;
-  *right_seed_idx = right_idx;
-}
-
-void RDtreeGenericStrategy::pick_next(
-    RDtreeItem *items, int num_items, int *used,
-    RDtreeItem *left_seed, RDtreeItem *right_seed,
-	RDtreeItem **next_item, int *prefer_right)
-{
-  int selected = -1;
-  int right_is_closer = 0;
-  double max_preference = -1.;
-
-  for (int ii = 0; ii < num_items; ii++){
-    if (used[ii] == 0) {
-      double left 
-        = 1. - bfp_op_tanimoto(bfp_bytes, items[ii].bfp.data(), left_seed->bfp.data());
-      double right 
-        = 1. - bfp_op_tanimoto(bfp_bytes, items[ii].bfp.data(), right_seed->bfp.data());
-      double diff = left - right;
-      double preference = 0.;
-      if ((left + right) > 0.) { // CHECK don't want to divide by zero, but it's always >= 0.
-        preference = fabs(diff)/(left + right);
-      }
-      if (selected < 0 || preference > max_preference) {
-        max_preference = preference;
-        selected = ii;
-        right_is_closer = diff > 0.;
-      }
-    }
-  }
-  used[selected] = 1;
-  *next_item = &items[selected];
-  *prefer_right = right_is_closer;
 }
 
 int RDtreeGenericStrategy::choose_node(RDtreeItem *item, int height, RDtreeNode **leaf)
@@ -108,37 +114,23 @@ int RDtreeGenericStrategy::choose_node(RDtreeItem *item, int height, RDtreeNode 
   int rc = node_acquire(1, 0, &node);
 
   for (int ii = 0; rc == SQLITE_OK && ii < (depth - height); ii++) {
-    sqlite3_int64 best = 0;
-
-    int min_growth = 0;
-    double min_distance = 0.;
-    int min_weight = 0;
+    sqlite3_int64 selected_rowid = 0;
 
     int node_size = node->get_size();
-    RDtreeNode *child;
 
-    /* Select the child node which will be enlarged the least if pItem
-    ** is inserted into it.
-    */
+    /* Select the child node based on the bfp ordering */
     for (int idx = 0; idx < node_size; idx++) {
       RDtreeItem curr_item(bfp_bytes);
       node->get_item(idx, &curr_item);
+      selected_rowid = curr_item.rowid;
 
-      int growth = curr_item.growth(*item);
-      double distance = RDtreeItem::weight_distance(curr_item, *item);
-      int weight = curr_item.weight();
-
-      if (idx == 0 || growth < min_growth ||
-	        (growth == min_growth && distance < min_distance) ||
-	        (growth == min_growth && distance == min_distance && weight < min_weight)) {
-        min_growth = growth;
-        min_distance = distance;
-        min_weight = weight;
-        best = curr_item.rowid;
+      if (bfp_op_cmp(bfp_bytes, item->max.data(), curr_item.max.data()) <= 0) {
+        break;
       }
     }
 
-    rc = node_acquire(best, node, &child);
+    RDtreeNode *child;
+    rc = node_acquire(selected_rowid, node, &child);
     node_decref(node);
     node = child;
   }

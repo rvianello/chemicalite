@@ -11,6 +11,7 @@ public:
 	RDtreeNode *left, RDtreeNode *right,
 	RDtreeItem *left_bounds, RDtreeItem *right_bounds);
 
+#if 0
   /*
   ** Pick the two most dissimilar fingerprints.
   */
@@ -25,6 +26,7 @@ public:
     RDtreeItem *items, int num_items, int *used,
     RDtreeItem *left_seed, RDtreeItem *right_seed,
 	RDtreeItem **next_item, int *prefer_right);
+#endif
 
   /*
   ** This function implements the chooseLeaf algorithm from Gutman[84].

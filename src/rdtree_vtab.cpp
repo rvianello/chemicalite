@@ -914,14 +914,17 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   RDtreeItem leftbounds(bfp_bytes);
   RDtreeItem rightbounds(bfp_bytes);
 
-  /* Allocate an array and populate it with a copy of pItem and 
+  /* Allocate an array and populate it with a copy of the new item and 
   ** all items from node left. Then zero the original node.
   */
   std::vector<RDtreeItem> items(node_size + 1, RDtreeItem(bfp_bytes)); // TODO: try/catch
+  
+  /* the node items are copied first, in their original order. */
   for (int i = 0; i < node_size; i++) {
     node->get_item(i, &items[i]);
   }
   node->zero();
+  /* the last element in the vector is the new item */
   items[node_size] = *item;
   node_size += 1;
 
