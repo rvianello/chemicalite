@@ -52,8 +52,6 @@ const int RDtreeVtab::RDTREE_MAX_BITSTRING_SIZE = 256;
 const int RDtreeVtab::RDTREE_MAX_DEPTH = 64;
 
 static const unsigned int RDTREE_FLAGS_UNASSIGNED = 0;
-static const unsigned int RDTREE_OPTIMIZED_FOR_SUBSET_QUERIES = 1;
-static const unsigned int RDTREE_OPTIMIZED_FOR_SIMILARITY_QUERIES = 2;
 
 int RDtreeVtab::create(
   sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
@@ -121,33 +119,17 @@ int RDtreeVtab::init(
     return SQLITE_ERROR;
   }
 
-  unsigned int flags = RDTREE_FLAGS_UNASSIGNED;
+  /* unsigned int flags = RDTREE_FLAGS_UNASSIGNED; */ // unused
   if (argc == 6) {
-    if (strcmp(argv[5], "OPTIMIZED_FOR_SUBSET_QUERIES") == 0) {
-      flags |= RDTREE_OPTIMIZED_FOR_SUBSET_QUERIES;
-    }
-    else if (strcmp(argv[5], "OPTIMIZED_FOR_SIMILARITY_QUERIES") == 0) {
-      flags |= RDTREE_OPTIMIZED_FOR_SIMILARITY_QUERIES;
-    }
-    else {
-      *err = sqlite3_mprintf("unrecognized option: %s", argv[5]);
-      return SQLITE_ERROR;
-    }
+    /* no configuration flags/options are supported at this time */
+    *err = sqlite3_mprintf("unrecognized option: %s", argv[5]);
+    return SQLITE_ERROR;
   }
 
   sqlite3_vtab_config(db, SQLITE_VTAB_CONSTRAINT_SUPPORT, 1);
 
   /* Allocate the sqlite3_vtab structure */
-  RDtreeVtab * rdtree = nullptr;
-    if (flags | RDTREE_OPTIMIZED_FOR_SIMILARITY_QUERIES) {
-    rdtree = new RDtreeSimilarityStrategy;
-  }
-  else if (flags | RDTREE_OPTIMIZED_FOR_SUBSET_QUERIES) {
-    rdtree = new RDtreeSubsetStrategy;
-  }
-  else {
-    rdtree = new RDtreeGenericStrategy;
-  }
+  RDtreeVtab * rdtree = new RDtreeGenericStrategy;
 
   rdtree->db_name = argv[1];
   rdtree->table_name = argv[2];
