@@ -23,6 +23,7 @@ public:
   int min_weight;
   int max_weight;
   Blob bfp;
+  Blob max;
 };
 
 #endif

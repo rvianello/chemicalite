@@ -2,7 +2,7 @@
 #include "bfp_ops.hpp"
 
 RDtreeItem::RDtreeItem(int sz)
-  : bfp(sz)
+  : bfp(sz), max(sz)
 {
 }
 
@@ -23,8 +23,10 @@ bool RDtreeItem::contains(const RDtreeItem & other) const
 {
   return (
     min_weight <= other.min_weight &&
-	max_weight >= other.max_weight &&
-	bfp_op_contains(bfp.size(), bfp.data(), other.bfp.data()) );
+	  max_weight >= other.max_weight &&
+	  bfp_op_contains(bfp.size(), bfp.data(), other.bfp.data()) &&
+    bfp_op_cmp(max.size(), max.data(), other.max.data()) >= 0
+    );
 }
 
 int RDtreeItem::growth(const RDtreeItem & added) const
@@ -37,4 +39,7 @@ void RDtreeItem::extend_bounds(const RDtreeItem & added)
   bfp_op_union(bfp.size(), bfp.data(), added.bfp.data());
   if (min_weight > added.min_weight) { min_weight = added.min_weight; }
   if (max_weight < added.max_weight) { max_weight = added.max_weight; }
+  if (bfp_op_cmp(max.size(), max.data(), added.max.data()) < 0) {
+    std::copy(added.max.cbegin(), added.max.cend(), max.begin());
+  }
 }

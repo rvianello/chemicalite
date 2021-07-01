@@ -99,6 +99,17 @@ const uint8_t *RDtreeNode::get_bfp(int item) const
 }
 
 /*
+** Return pointer to the max binary fingerprint associated with the given item and its
+** descentants. If node is a leaf node, this is the same as the item's own fingerprint
+*/
+const uint8_t *RDtreeNode::get_max(int item) const
+{
+  assert(item < get_size());
+  return &data.data()[
+    4 + vtab->item_bytes*item + 8 /* rowid */ + 4 /* min/max weight */ + vtab->bfp_bytes /* bfp */];
+}
+
+/*
 ** Deserialize item idx. Populate the structure pointed to by item with the results.
 */
 void RDtreeNode::get_item(int idx, RDtreeItem *item) const
@@ -107,7 +118,9 @@ void RDtreeNode::get_item(int idx, RDtreeItem *item) const
   item->min_weight = get_min_weight(idx);
   item->max_weight = get_max_weight(idx);
   const uint8_t *bfp = get_bfp(idx);
-  item->bfp.assign(bfp, bfp+vtab->bfp_bytes); // CHECK or copy?
+  item->bfp.assign(bfp, bfp+vtab->bfp_bytes); // CHECK: or std::copy?
+  const uint8_t *max = get_max(idx);
+  item->max.assign(max, max+vtab->bfp_bytes);
 }
 
 /*
@@ -120,6 +133,8 @@ void RDtreeNode::overwrite_item(int idx, RDtreeItem *item)
   p += write_uint16(p, item->min_weight);
   p += write_uint16(p, item->max_weight);
   memcpy(p, item->bfp.data(), vtab->bfp_bytes); // FIXME std::copy
+  p += vtab->bfp_bytes;
+  memcpy(p, item->max.data(), vtab->bfp_bytes);
   dirty = true;
 }
 

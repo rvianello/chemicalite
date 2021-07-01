@@ -22,6 +22,7 @@ public:
   int get_min_weight(int item) const;
   int get_max_weight(int item) const;
   const uint8_t * get_bfp(int item) const;
+  const uint8_t * get_max(int item) const;
   void get_item(int idx, RDtreeItem *item) const;
   void overwrite_item(int idx, RDtreeItem *item);
   void delete_item(int idx);
