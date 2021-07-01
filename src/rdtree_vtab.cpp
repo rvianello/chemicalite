@@ -153,7 +153,7 @@ int RDtreeVtab::init(
   rdtree->table_name = argv[2];
   rdtree->db = db;
   rdtree->bfp_bytes = bfp_bytes;
-  rdtree->item_bytes = 8 /* row id */ + 4 /* min/max weight */ + bfp_bytes; 
+  rdtree->item_bytes = 8 /* row id */ + 4 /* min/max weight */ + 2*bfp_bytes /* bfp + max */; 
   rdtree->n_ref = 1;
 
   /* Figure out the node size to use. */
@@ -943,7 +943,13 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
   items[node_size] = *item;
   node_size += 1;
 
-  if (node->nodeid == 1) { /* splitting the root node */
+  /* We generally need to create a new sibling node, and distribute the items between
+  ** the original node and the new one, unless the overfull node is the root node. In 
+  ** that case, two child nodes are created to contain the items, and the height of tree
+  ** grows by one.
+  */
+  if (node->nodeid == 1) {
+    /* splitting the root node */
     right = node_new(node);
     left = node_new(node);
     depth++;
@@ -951,6 +957,7 @@ int RDtreeVtab::split_node(RDtreeNode *node, RDtreeItem *item, int height)
     write_uint16(node->data.data(), depth);
   }
   else {
+    /* create a new sibling node */
     left = node;
     node_incref(left);
     right = node_new(left->parent);
