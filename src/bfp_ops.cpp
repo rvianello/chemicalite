@@ -376,7 +376,7 @@ int bfp_op_cmp(int length, const uint8_t *afp, const uint8_t *bfp)
     }
     else {
       uint8_t mask = 0x80;
-      for (int bit = 0; bit < 8; ++bit) {
+      while (mask) {
         uint8_t bita = (bytea & mask) ? 1 : 0;
         uint8_t bitb = (byteb & mask) ? 1 : 0;
         if (bita != bitb) {
@@ -386,6 +386,7 @@ int bfp_op_cmp(int length, const uint8_t *afp, const uint8_t *bfp)
           // flip higher if bita is 1
           higher ^= bita;
         }
+        mask >>= 1;
       }
       assert(!"should never get here if bytea != byteb");
     }
