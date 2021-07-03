@@ -1499,6 +1499,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *updated_row
     std::string bfp = arg_to_bfp(argv[3], &rc);
     int input_bfp_bytes = bfp.size();
     if (rc == SQLITE_OK && input_bfp_bytes != bfp_bytes) {
+      // TODO: log an informative error message
       rc = SQLITE_MISMATCH;
     }
     else {
@@ -1506,6 +1507,7 @@ int RDtreeVtab::update(int argc, sqlite3_value **argv, sqlite_int64 *updated_row
         item.rowid = rowid;
       }
       memcpy(item.bfp.data(), bfp.data(), bfp_bytes); // TODO std::copy
+      item.max = item.bfp;
       item.min_weight = item.max_weight = bfp_op_weight(bfp_bytes, item.bfp.data());
     }
 
