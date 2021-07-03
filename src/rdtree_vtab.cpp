@@ -51,7 +51,7 @@ const int RDtreeVtab::RDTREE_MAX_BITSTRING_SIZE = 256;
 */
 const int RDtreeVtab::RDTREE_MAX_DEPTH = 64;
 
-static const unsigned int RDTREE_FLAGS_UNASSIGNED = 0;
+//static const unsigned int RDTREE_FLAGS_UNASSIGNED = 0; /* not currently used */
 
 int RDtreeVtab::create(
   sqlite3 *db, void */*paux*/, int argc, const char *const*argv, 
