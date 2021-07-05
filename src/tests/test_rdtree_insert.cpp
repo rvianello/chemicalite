@@ -81,8 +81,8 @@ TEST_CASE("rdtree insert", "[rdtree]")
     sqlite3_finalize(pStmt);
 
     test_select_value(db, "SELECT COUNT(*) FROM xyz_rowid", NUM_BFPS);
-    test_select_value(db, "SELECT COUNT(*) FROM xyz_parent", 5);
-    test_select_value(db, "SELECT COUNT(*) FROM xyz_node", 6);
+    test_select_value(db, "SELECT COUNT(*) FROM xyz_parent", 4);
+    test_select_value(db, "SELECT COUNT(*) FROM xyz_node", 5);
 
     // verify we get back a wrapped bfp type 
     rc = sqlite3_prepare(db, "SELECT s FROM xyz WHERE id=16", -1, &pStmt, 0);

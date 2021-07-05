@@ -44,7 +44,7 @@ int RDtreeGenericStrategy::assign_items(
     RDtreeItem *item = &items[item_index];
     // first check if it's time to insert the new item
     if (new_item && bfp_op_cmp(bfp_bytes, new_item->max.data(), item->max.data()) <= 0) {
-      left->insert_item(new_item);
+      left->append_item(new_item);
       if (left_insert_count == 0) {
         *left_bounds = *new_item;
       }
@@ -55,7 +55,7 @@ int RDtreeGenericStrategy::assign_items(
       new_item = nullptr;
     }
     // then insert the item from the overfull node
-    left->insert_item(item);
+    left->append_item(item);
     if (left_insert_count == 0) {
       *left_bounds = *item;
     }
@@ -75,7 +75,7 @@ int RDtreeGenericStrategy::assign_items(
     RDtreeItem *item = &items[item_index];
     // first check if it's time to insert the new item
     if (new_item && bfp_op_cmp(bfp_bytes, new_item->max.data(), item->max.data()) <= 0) {
-      right->insert_item(new_item);
+      right->append_item(new_item);
       if (right_insert_count == 0) {
         *right_bounds = *new_item;
       }
@@ -86,7 +86,7 @@ int RDtreeGenericStrategy::assign_items(
       new_item = nullptr;
     }
     // then insert the item from the overfull node
-    right->insert_item(item);
+    right->append_item(item);
     if (right_insert_count == 0) {
       *right_bounds = *item;
     }
@@ -101,7 +101,7 @@ int RDtreeGenericStrategy::assign_items(
   // if the new item is still to be inserted, just append it
   // to the right node
   if (new_item) {
-    right->insert_item(new_item);
+    right->append_item(new_item);
     right_bounds->extend_bounds(*new_item);
   }
 

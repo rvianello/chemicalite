@@ -27,6 +27,7 @@ public:
   void overwrite_item(int idx, RDtreeItem *item);
   void delete_item(int idx);
   int insert_item(RDtreeItem *item);
+  int append_item(RDtreeItem *item);
   sqlite3_int64 get_rowid(int item) const;
   int get_rowid_index(sqlite3_int64 rowid, int *idx) const;
   int get_index_in_parent(int *idx) const;

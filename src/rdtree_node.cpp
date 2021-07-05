@@ -4,6 +4,7 @@
 #include "rdtree_node.hpp"
 #include "rdtree_item.hpp"
 #include "rdtree_vtab.hpp"
+#include "bfp_ops.hpp"
 
 /*
 ** The root node of an rd-tree always exists, even if the rd-tree table is
@@ -157,6 +158,43 @@ void RDtreeNode::delete_item(int idx)
 ** If there is not enough free space in pNode, return SQLITE_FULL.
 */
 int RDtreeNode::insert_item(RDtreeItem *item)
+{
+  int node_size = get_size();  /* Current number of items in pNode */
+
+  assert(node_size <= vtab->node_capacity);
+
+  if (node_size < vtab->node_capacity) {
+    // Insert the new item, while preserving the ordering within the
+    // node.
+
+    // 1 - determine the insert location (idx) for the new item
+    int idx = 0;
+    for (int idx=0; idx < node_size; ++idx) {
+      RDtreeItem curr_item(vtab->bfp_bytes);
+      get_item(idx, &curr_item);
+      if (bfp_op_cmp(vtab->bfp_bytes, item->max.data(), curr_item.max.data()) <= 0) {
+        break;
+      }
+    }
+
+    // 2 - move the items from idx to node_size-1 one position forward
+    uint8_t *src = &data.data()[4 + vtab->item_bytes*idx];
+    uint8_t *dst = src + vtab->item_bytes; // one item forward
+    int bytes = (node_size - idx) * vtab->item_bytes;
+    memmove(dst, src, bytes);
+
+    // 3 - overwrite the item at idx with the new one
+    overwrite_item(idx, item);
+
+    // update the node size
+    write_uint16(&data.data()[2], node_size+1);
+    dirty = true;
+  } 
+
+  return (node_size == vtab->node_capacity) ? SQLITE_FULL : SQLITE_OK;
+}
+
+int RDtreeNode::append_item(RDtreeItem *item)
 {
   int node_size = get_size();  /* Current number of items in pNode */
 
