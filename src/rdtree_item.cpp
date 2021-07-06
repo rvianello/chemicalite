@@ -40,6 +40,6 @@ void RDtreeItem::extend_bounds(const RDtreeItem & added)
   if (min_weight > added.min_weight) { min_weight = added.min_weight; }
   if (max_weight < added.max_weight) { max_weight = added.max_weight; }
   if (bfp_op_cmp(max.size(), max.data(), added.max.data()) < 0) {
-    std::copy(added.max.cbegin(), added.max.cend(), max.begin());
+    max = added.max;
   }
 }
