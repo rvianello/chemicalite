@@ -1181,6 +1181,11 @@ int RDtreeVtab::remove_node(RDtreeNode *node, int height)
   return SQLITE_OK;
 }
 
+/*
+** Recursively recompute the bounding box for this node
+** and its parents chain. Called when items are removed
+** and the bounding box may shrink.
+*/
 int RDtreeVtab::update_node_bounds(RDtreeNode *node)
 {
   int rc = SQLITE_OK; 

@@ -169,7 +169,7 @@ int RDtreeNode::insert_item(RDtreeItem *item)
 
     // 1 - determine the insert location (idx) for the new item
     int idx = 0;
-    for (int idx=0; idx < node_size; ++idx) {
+    for (; idx < node_size; ++idx) {
       RDtreeItem curr_item(vtab->bfp_bytes);
       get_item(idx, &curr_item);
       if (bfp_op_cmp(vtab->bfp_bytes, item->max.data(), curr_item.max.data()) <= 0) {
