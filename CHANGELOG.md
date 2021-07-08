@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- The strategy for indexing binary fingerprints into the `rdtree` virtual table was substantially reimplemented.
+
 ## [2021.06.1] - 2021-06-11
 
 ### Added
