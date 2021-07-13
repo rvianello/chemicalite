@@ -1,5 +1,4 @@
-Unless otherwise noted, all files in this directory and all
-subdirectories are distributed under the following license:
+BSD 3-Clause License
 
 Copyright (c) 2011-2021 Riccardo Vianello
 
