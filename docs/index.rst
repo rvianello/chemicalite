@@ -18,6 +18,7 @@ Contents:
    tutorial_1st
    api
    links
+   pragma
 
 Indices and tables
 ==================
