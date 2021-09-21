@@ -247,8 +247,8 @@ TEST_CASE("mol formats interconversion", "[mol]")
     rc = sqlite3_prepare_v2(db, "SELECT mol_to_smarts(mol_from_smarts(:smarts))", -1, &pStmt, 0);
     REQUIRE(rc == SQLITE_OK);
 
-    for (const std::string & smarts: {"CC[C,N]C"}) {
-      rc = sqlite3_bind_text(pStmt, 1, smarts.c_str(), smarts.size(), SQLITE_TRANSIENT);
+    for (const char * smarts: {"CC[C,N]C"}) {
+      rc = sqlite3_bind_text(pStmt, 1, smarts, -1, SQLITE_STATIC);
       REQUIRE(rc == SQLITE_OK);
 
       rc = sqlite3_step(pStmt);
