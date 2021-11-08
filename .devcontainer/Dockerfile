@@ -1,6 +1,6 @@
-ARG fedora_release=33
-ARG rdkit_release=2021.03.1
-FROM registry.hub.docker.com/rvianello/fedora-rdkit-cpp:${fedora_release}-${rdkit_release}
+ARG fedora_release=34
+ARG rdkit_release=2021.09.2
+FROM docker.io/rvianello/fedora-rdkit-cpp:${fedora_release}-${rdkit_release}
 #FROM fedora-rdkit-cpp-dev:latest
 
 # This Dockerfile image has a non-root user with sudo access. Use the "remoteUser"
