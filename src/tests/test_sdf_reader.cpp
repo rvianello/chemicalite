@@ -19,6 +19,13 @@ TEST_CASE("SDF I/O", "[sdf_reader]")
     test_select_value(db, "SELECT MAX(mol_amw(molecule)) FROM cdk2", 449.517);
   }
 
+  SECTION("basic table-valued function")
+  {
+    test_select_value(db, "SELECT COUNT(*) FROM sdf_reader('cdk2.sdf')", 47);
+
+    test_select_value(db, "SELECT MAX(mol_amw(molecule)) FROM sdf_reader('cdk2.sdf')", 449.517);
+  }
+
   SECTION("with props")
   {
     int rc = sqlite3_exec(

@@ -152,6 +152,7 @@ class SdfReaderVtab : public sqlite3_vtab {
 public:
   std::string filename;
   std::vector<std::unique_ptr<SdfColumn>> columns;
+  bool is_function;
 
   SdfReaderVtab()
   {
@@ -162,11 +163,27 @@ public:
 
   int init(sqlite3 *db, int argc, const char * const *argv, char **pzErr)
   {
+    // used like a table-valued function
+    if ((argc == 3) && (std::string(argv[0]) == std::string(argv[2]))) {
+      is_function = true;
+
+      int rc = sqlite3_declare_vtab(db, "CREATE TABLE x(molecule MOL, filename TEXT HIDDEN)");
+
+      if (rc != SQLITE_OK) {
+        *pzErr = sqlite3_mprintf("%s", sqlite3_errmsg(db));
+      }
+
+      return rc;
+    }
+
     if (argc < 4) {
-      chemicalite_log(SQLITE_ERROR, "the sdf_reader requires at least one filename argument");
+      chemicalite_log(
+        SQLITE_ERROR, "the sdf_reader virtual table requires at least one filename argument");
       return SQLITE_ERROR;
     }
 
+    // used like a regular table
+    is_function = false;
     std::istringstream filename_ss(argv[3]);
     filename_ss >> std::quoted(filename, '\'');
 
@@ -271,24 +288,37 @@ static int sdfReaderInit(sqlite3 *db, void */*pAux*/,
   return rc;
 }
 
-static int sdfReaderCreate(sqlite3 *db, void *pAux,
-                      int argc, const char * const *argv,
-                      sqlite3_vtab **ppVTab,
-                      char **pzErr)
+int sdfReaderBestIndex(sqlite3_vtab *pVTab, sqlite3_index_info *pIndexInfo)
 {
-  return sdfReaderInit(db, pAux, argc, argv, ppVTab, pzErr);
-}
+  SdfReaderVtab *vtab = (SdfReaderVtab *)pVTab;
 
-static int sdfReaderConnect(sqlite3 *db, void *pAux,
-                      int argc, const char * const *argv,
-                      sqlite3_vtab **ppVTab,
-                      char **pzErr)
-{
-  return sdfReaderInit(db, pAux, argc, argv, ppVTab, pzErr);
-}
+  /* Two different cases exist, depending on whether the module is used as a plain
+  ** table, or as a table-valued function.
+  */
 
-int sdfReaderBestIndex(sqlite3_vtab */*pVTab*/, sqlite3_index_info *pIndexInfo)
-{
+  if (vtab->is_function) {
+    // We expect the filename to be provided as an argument to the table-valued function
+    // and made available to this code as an equality constraint on the hidden filename
+    // column (the 2nd column in the declared vtab schema)
+    bool found = false;
+    for (int ii=0; ii<pIndexInfo->nConstraint; ++ii) {
+      if (pIndexInfo->aConstraint[ii].iColumn == 1 &&
+          pIndexInfo->aConstraint[ii].op == SQLITE_INDEX_CONSTRAINT_EQ) {
+        if (!pIndexInfo->aConstraint[ii].usable) {
+          return SQLITE_CONSTRAINT;
+        }
+        pIndexInfo->aConstraintUsage[ii].argvIndex = 1;
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      chemicalite_log(
+        SQLITE_ERROR, "the sdf_reader function requires a filename argument");
+      return SQLITE_ERROR;
+    }
+  }
+
   /* A forward scan is the only supported mode, this method is therefore very minimal */
   pIndexInfo->estimatedCost = 100000; 
   return SQLITE_OK;
@@ -302,6 +332,7 @@ static int sdfReaderDisconnectDestroy(sqlite3_vtab *pVTab)
 }
 
 struct SdfReaderCursor : public sqlite3_vtab_cursor {
+  std::string filename;
   std::unique_ptr<RDKit::ForwardSDMolSupplier> supplier;
   sqlite3_int64 rowid;
   std::unique_ptr<RDKit::ROMol> mol;
@@ -323,14 +354,40 @@ static int sdfReaderClose(sqlite3_vtab_cursor *pCursor)
 }
 
 static int sdfReaderFilter(sqlite3_vtab_cursor *pCursor, int /*idxNum*/, const char */*idxStr*/,
-                     int /*argc*/, sqlite3_value **/*argv*/)
+                     int argc, sqlite3_value **argv)
 {
   SdfReaderCursor *p = (SdfReaderCursor *)pCursor;
   SdfReaderVtab *vtab = (SdfReaderVtab *)p->pVtab;
 
-  std::unique_ptr<std::ifstream> pins(new std::ifstream(vtab->filename));
+  if (vtab->is_function) {
+    // a single arg is expected
+    if (argc != 1) {
+      chemicalite_log(
+        SQLITE_ERROR, "the sdf_reader function expects one single argument");
+      return SQLITE_ERROR;
+    }
+
+    // of string/text type
+    sqlite3_value *arg = argv[0];
+    int value_type = sqlite3_value_type(arg);
+    if (value_type != SQLITE_TEXT) {
+      chemicalite_log(
+        SQLITE_ERROR, "the sdf_reader function requires a filename argument of type TEXT");
+      return SQLITE_MISMATCH;
+    }
+
+    p->filename = (const char *)sqlite3_value_text(arg);
+  }
+  else {
+    p->filename = vtab->filename;
+  }
+
+  std::unique_ptr<std::ifstream> pins(new std::ifstream(p->filename));
+
   if (!pins->is_open()) {
     // Maybe log something
+    std::string message = "could not open file '" + p->filename + "'";
+    chemicalite_log(SQLITE_ERROR, message.c_str());
     return SQLITE_ERROR;
   }
 
@@ -385,10 +442,15 @@ static int sdfReaderColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *ctx, i
   else {
     SdfReaderVtab * vtab = (SdfReaderVtab *) p->pVtab;
     
-    // The requested index must map to one of the additional columns
-    // that provide access to the mol properties
-    assert(N <= int(vtab->columns.size()));
-    vtab->columns[N-1]->sqlite3_result(*p->mol, ctx);
+    if (vtab->is_function) {
+      sqlite3_result_text(ctx, p->filename.c_str(), -1, SQLITE_TRANSIENT);
+    }
+    else {
+      // The requested index must map to one of the additional columns
+      // that provide access to the mol properties
+      assert(N <= int(vtab->columns.size()));
+      vtab->columns[N-1]->sqlite3_result(*p->mol, ctx);
+    }
   }
 
   return SQLITE_OK;
@@ -406,8 +468,8 @@ static int sdfReaderRowid(sqlite3_vtab_cursor *pCursor, sqlite_int64 *pRowid)
 */
 static sqlite3_module sdfReaderModule = {
   0,                           /* iVersion */
-  sdfReaderCreate,             /* xCreate - create a table */ /* null because eponymous-only */
-  sdfReaderConnect,            /* xConnect - connect to an existing table */
+  sdfReaderInit,               /* xCreate - create a table */
+  sdfReaderInit,               /* xConnect - connect to an existing table */
   sdfReaderBestIndex,          /* xBestIndex - Determine search strategy */
   sdfReaderDisconnectDestroy,  /* xDisconnect - Disconnect from a table */
   sdfReaderDisconnectDestroy,  /* xDestroy - Drop a table */
