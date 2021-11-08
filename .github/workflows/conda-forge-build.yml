@@ -22,7 +22,7 @@ jobs:
             cxx-compiler: clangxx_osx-64
             link-path-env-var: DYLD_LIBRARY_PATH
         rdkit:
-          - 2021.03.5
+          - 2021.09.2
         build-type:
           - Release
           - Debug
@@ -75,7 +75,7 @@ jobs:
           - os: windows-latest
             miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe"
         rdkit:
-          - 2021.03.5
+          - 2021.09.2
         build-type:
           - Release
           #- Debug
