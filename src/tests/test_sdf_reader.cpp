@@ -1,7 +1,7 @@
 #include "test_common.hpp"
 
 
-TEST_CASE("SDF I/O", "[sdf_reader]")
+TEST_CASE("SDF reader", "[sdf_reader]")
 {
   sqlite3 * db = nullptr;
   test_db_open(&db);

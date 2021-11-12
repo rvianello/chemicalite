@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `sdf_writer` aggregate function.
+
+### Changed
+
+- `sdf_reader` can be also used as a table-valued function
+ 
 ## [2021.07.1] - 2021-07-12
 
 ### Changed

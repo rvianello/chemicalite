@@ -9,6 +9,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include <GraphMol/FileParsers/MolSupplier.h>
+#include <GraphMol/FileParsers/MolWriters.h>
 
 #include <sqlite3ext.h>
 extern const sqlite3_api_routines *sqlite3_api;
@@ -493,6 +494,107 @@ static sqlite3_module sdfReaderModule = {
   0                            /* xShadowName */
 };
 
+
+struct SdfWriterAggregateContext {
+  std::shared_ptr<RDKit::SDWriter> writer;
+};
+
+void sdf_writer_step(sqlite3_context* ctx, int, sqlite3_value** argv)
+{
+  // get the input args
+  sqlite3_value *filename_arg = argv[0];
+
+  if (sqlite3_value_type(filename_arg) == SQLITE_NULL) {
+    chemicalite_log(SQLITE_MISUSE, "filename argument is not allowed to be null");
+    sqlite3_result_error_code(ctx, SQLITE_MISUSE);
+    return;
+  }
+
+  if (sqlite3_value_type(filename_arg) != SQLITE_TEXT) {
+    chemicalite_log(SQLITE_MISMATCH, "filename argument must be text");
+    sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
+    return;
+  }
+
+  std::string filename((const char *)sqlite3_value_text(filename_arg));
+
+  sqlite3_value *mol_arg = argv[1];
+
+  std::unique_ptr<RDKit::ROMol> mol;
+  if (sqlite3_value_type(mol_arg) != SQLITE_NULL) {
+    int rc = SQLITE_OK;
+    mol.reset(arg_to_romol(mol_arg, &rc));
+    if (rc != SQLITE_OK) {
+      chemicalite_log(SQLITE_MISMATCH, "invalid molecule input");
+      sqlite3_result_error_code(ctx, rc);
+      return;
+    }
+  } 
+
+  // get the aggregate context
+  void **agg = (void **) sqlite3_aggregate_context(ctx, sizeof(void *));
+
+  if (!agg) {
+    // this should be *very* unlikely
+    chemicalite_log(SQLITE_NOMEM, "sd_writer_step no aggregate context");
+    sqlite3_result_error_code(ctx, SQLITE_NOMEM);
+    return;
+  }  
+
+  if (!*agg) {
+    // open the output file stream, allocate an aggregate context, and initialize the writer
+    std::unique_ptr<std::ofstream> pouts(new std::ofstream(filename));
+
+    if (!pouts->is_open()) {
+      std::string message = "could not open file '" + filename + "'";
+      chemicalite_log(SQLITE_ERROR, message.c_str());
+      sqlite3_result_error(ctx, message.c_str(), -1);
+      return;
+    }
+
+    // create the SD writer, instructing it to take ownership of the ofstream pointer
+    std::shared_ptr<RDKit::SDWriter> writer(new RDKit::SDWriter(pouts.release(), true));
+    // create the aggregate context, and assign the writer to it
+    std::unique_ptr<SdfWriterAggregateContext> context(new SdfWriterAggregateContext);
+    context->writer = writer;
+
+    *agg = (void *) context.release();
+  }
+
+  SdfWriterAggregateContext * context = (SdfWriterAggregateContext *) *agg;
+
+  if (mol) {
+    context->writer->write(*mol); // can this throw?
+    context->writer->flush();
+  }
+}
+
+void sdf_writer_final(sqlite3_context * ctx)
+{
+  // get the aggregate context
+  void **agg = (void **) sqlite3_aggregate_context(ctx, 0);
+
+  if (!agg) {
+    sqlite3_result_null(ctx);
+    return;
+  }
+
+  if (*agg) {
+    SdfWriterAggregateContext * context = (SdfWriterAggregateContext *) *agg;
+
+    context->writer->close();
+
+    int num_mols = context->writer->numMols();
+    if (num_mols > 0) {
+      sqlite3_result_int(ctx, num_mols);
+    }
+    else {
+      sqlite3_result_null(ctx);
+    }
+  }
+}
+
+
 int chemicalite_init_sdf_io(sqlite3 *db)
 {
   int rc = SQLITE_OK;
@@ -503,6 +605,19 @@ int chemicalite_init_sdf_io(sqlite3 *db)
 				  0   /* Module destructor function */
 				  );
   }
+
+  rc = sqlite3_create_window_function(
+    db,
+    "sdf_writer",
+    2, // int nArg,
+    SQLITE_UTF8, // int eTextRep,
+    0, // void *pApp,
+    sdf_writer_step, // void (*xStep)(sqlite3_context*,int,sqlite3_value**),
+    sdf_writer_final, // void (*xFinal)(sqlite3_context*),
+    0, // void (*xValue)(sqlite3_context*),
+    0, // void (*xInverse)(sqlite3_context*,int,sqlite3_value**),
+    0  // void(*xDestroy)(void*)
+  );
 
   return rc;
 }
