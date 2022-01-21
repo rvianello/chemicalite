@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [2022.01.1] - 2022-01-21
 
 ### Added
 
