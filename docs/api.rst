@@ -143,8 +143,8 @@ Substructure searches are performed constraining the selection on a column of `m
 
     SELECT * FROM mytable, str_idx_mytable_molcolumn AS idx WHERE
         mytable.id = idx.id AND 
-        mol_is_substruct(mytable.molcolumn, 'c1ccnnc1') AND
-        idx.id MATCH rdtree_subset(mol_bfp_signature('c1ccnnc1'));
+        mol_is_substruct(mytable.molcolumn, mol_from_smiles('c1ccnnc1')) AND
+        idx.id MATCH rdtree_subset(mol_pattern_bfp(mol_from_smiles('c1ccnnc1'), 2048));
 
 Similarity search queryes on `rdtree` virtual tables of binary fingerprint data are supported by the match object returned by the `rdtree_tanimoto` factory function::
 
