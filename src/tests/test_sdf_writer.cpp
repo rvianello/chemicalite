@@ -10,7 +10,7 @@ TEST_CASE("SDF writer", "[sdf_writer]")
   {
     test_select_value(
       db, 
-      "SELECT sdf_writer('/tmp/copy.sdf', molecule) FROM sdf_reader('cdk2.sdf')", 47);
+      "SELECT sdf_writer(molecule, '/tmp/copy.sdf') FROM sdf_reader('cdk2.sdf')", 47);
 
     test_select_value(db, "SELECT COUNT(*) FROM sdf_reader('/tmp/copy.sdf')", 47);
   }
@@ -19,7 +19,7 @@ TEST_CASE("SDF writer", "[sdf_writer]")
   {
     test_select_value(
       db, 
-      "SELECT sdf_writer('/tmp/copy.sdf', molecule) FROM sdf_reader('cdk2.sdf')"
+      "SELECT sdf_writer(molecule, '/tmp/copy.sdf') FROM sdf_reader('cdk2.sdf')"
       " WHERE mol_amw(molecule) < 350.0", 23);
 
     test_select_value(db, "SELECT COUNT(*) FROM sdf_reader('/tmp/copy.sdf')", 23);

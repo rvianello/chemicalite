@@ -25,6 +25,8 @@ set(TEST_CHEMICALITE_SRC_FILES
     test_rdtree_update.cpp
     test_sdf_reader.cpp
     test_sdf_writer.cpp
+    test_smi_reader.cpp
+    test_smi_writer.cpp
 )
 
 add_executable(test_chemicalite ${TEST_CHEMICALITE_SRC_FILES})

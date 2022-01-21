@@ -16,6 +16,7 @@ SQLITE_EXTENSION_INIT1
 #include "periodic_table.hpp"
 #include "rdtree.hpp"
 #include "sdf_io.hpp"
+#include "smi_io.hpp"
 #include "versions.hpp"
 
 /*
@@ -45,6 +46,7 @@ extern "C" int sqlite3_chemicalite_init(sqlite3 *db, char ** /*pzErrMsg*/,
   if (rc == SQLITE_OK) rc = chemicalite_init_bfp_descriptors(db);
   if (rc == SQLITE_OK) rc = chemicalite_init_periodic_table(db);
   if (rc == SQLITE_OK) rc = chemicalite_init_sdf_io(db);
+  if (rc == SQLITE_OK) rc = chemicalite_init_smi_io(db);
   if (rc == SQLITE_OK) rc = chemicalite_init_rdtree(db);
 
   return rc;

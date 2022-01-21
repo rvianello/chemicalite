@@ -15,7 +15,7 @@ std::string mol_to_binary_mol(const RDKit::ROMol & mol, int * rc)
 {
   std::string buf;
   try {
-    RDKit::MolPickler::pickleMol(mol, buf, RDKit::PicklerOps::MolProps);
+    RDKit::MolPickler::pickleMol(mol, buf, RDKit::PicklerOps::AllProps);
   }
   catch (...) {
     *rc = SQLITE_ERROR;

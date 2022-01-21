@@ -5,10 +5,12 @@
 ### Added
 
 - `sdf_writer` aggregate function.
+- `smi_reader` and `smi_writer` functions.
 
 ### Changed
 
 - `sdf_reader` can be also used as a table-valued function
+- Mol serialization extended again to AllProps (reverting a change in 2021.07.1)
  
 ## [2021.07.1] - 2021-07-12
 
