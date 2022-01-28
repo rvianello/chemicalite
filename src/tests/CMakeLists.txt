@@ -17,6 +17,7 @@ set(TEST_CHEMICALITE_SRC_FILES
     test_mol_descriptors.cpp
     test_mol_compare.cpp
     test_mol_hash.cpp
+    test_mol_standardize.cpp
     test_bfp.cpp
     test_periodic_table.cpp
     test_rdtree_create.cpp
