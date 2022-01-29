@@ -1,10 +1,10 @@
 # Changelog
 
-## [Unreleased]
+## [2022.01.2] - 2022-01-30
 
 ### Added
 
-- Basic support for mol standardization functions.
+- Mol standardization functions.
 
 ## [2022.01.1] - 2022-01-21
 

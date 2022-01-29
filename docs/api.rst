@@ -103,6 +103,19 @@ Molecule
 
 * `mol_find_mcs([mol]) -> mol`
 
+..
+
+* `mol_cleanup(mol, update_params='') -> mol`
+* `mol_normalize(mol, update_params='') -> mol`
+* `mol_reionize(mol, update_params='') -> mol`
+* `mol_remove_fragments(mol, update_params='') -> mol`
+* `mol_canonical_tautomer(mol, update_params='') -> mol`
+* `mol_tautomer_parent(mol, update_params='', skip_standardize=false) -> mol`
+* `mol_fragment_parent(mol, update_params='', skip_standardize=false) -> mol`
+* `mol_stereo_parent(mol, update_params='', skip_standardize=false) -> mol`
+* `mol_isotope_parent(mol, update_params='', skip_standardize=false) -> mol`
+* `mol_charge_parent(mol, update_params='', skip_standardize=false) -> mol`
+* `mol_super_parent(mol, update_params='', skip_standardize=false) -> mol`
 
 Binary Fingerprint
 ..................
@@ -152,3 +165,11 @@ Similarity search queryes on `rdtree` virtual tables of binary fingerprint data 
         FROM mytable as c JOIN (SELECT id FROM morgan WHERE id match rdtree_tanimoto(mol_morgan_bfp(?, 2), ?)) as idx
         USING(id) ORDER BY t DESC;
 
+
+Molecular file format readers and writers
+.........................................
+
+* `sdf_reader`
+* `sdf_writer`
+* `smi_reader`
+* `smi_writer`
