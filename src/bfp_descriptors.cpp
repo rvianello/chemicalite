@@ -21,7 +21,7 @@ static void bfp_descriptor(sqlite3_context* ctx, int /*argc*/, sqlite3_value** a
     sqlite3_result_error_code(ctx, rc);
   }
   else {
-    typename std::result_of<F(const std::string &)>::type descriptor = f(bfp);
+    auto descriptor = f(bfp);
     sqlite3_result(ctx, descriptor);
   }
 }

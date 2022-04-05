@@ -1,5 +1,5 @@
 ARG fedora_release=35
-ARG rdkit_release=2021.09.4
+ARG rdkit_release=2022.03.1
 FROM docker.io/rvianello/fedora-rdkit-cpp:${fedora_release}-${rdkit_release}
 #FROM fedora-rdkit-cpp-dev:latest
 

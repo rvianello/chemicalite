@@ -1,5 +1,11 @@
 # Changelog
 
+## [2022.04.1] - 2022-04-05
+
+### Fixed
+
+- #8 - stop using std::result_of (esp. if not needed).
+
 ## [2022.01.2] - 2022-01-30
 
 ### Added

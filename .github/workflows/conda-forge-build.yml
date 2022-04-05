@@ -22,6 +22,7 @@ jobs:
             cxx-compiler: clangxx_osx-64
             link-path-env-var: DYLD_LIBRARY_PATH
         rdkit:
+          - 2022.03.1
           - 2021.09.4
         build-type:
           - Release

@@ -23,7 +23,7 @@ static void mol_descriptor(sqlite3_context* ctx, int /*argc*/, sqlite3_value** a
     sqlite3_result_error_code(ctx, rc);
   }
   else {
-    typename std::result_of<F(const RDKit::ROMol &)>::type descriptor = f(*mol);
+    auto descriptor = f(*mol);
     sqlite3_result(ctx, descriptor);
   }
 }
