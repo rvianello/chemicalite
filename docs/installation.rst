@@ -7,7 +7,7 @@ To install the ChemicaLite extension using conda, just specify the `conda-forge`
 
 For example::
 
-    $ conda install -c cond-forge chemicalite
+    $ conda install -c conda-forge chemicalite
 
  
 

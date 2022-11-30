@@ -6,9 +6,9 @@ Building a database
 
 This tutorial is based on a similar one which is part of the `RDKit PostgreSQL Cartridge documentation <https://rdkit.readthedocs.org/en/latest/Cartridge.html#creating-databases>`_ and it will guide you through the construction of a chemical SQLite database, and the execution of some simple queries. Python will be used in illustrating the various operations, but almost any other programming language could be used instead (as long as SQLite drivers are available).
 
-Download a copy of the `ChEMBLdb database <ftp://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/latest/chembl_28_chemreps.txt.gz>`_ and decompress it::
+Download a copy of the `ChEMBLdb database <https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_31/chembl_31_chemreps.txt.gz>`_ and decompress it::
 
-    $ gunzip chembl_28_chemreps.txt.gz
+    $ gunzip chembl_31_chemreps.txt.gz
 
 Creating a database and initializing its schema requires just a few statements::
 
@@ -53,7 +53,7 @@ And the database table can be loaded with a statement like this::
     with connection:
         connection.executemany(
             "INSERT INTO chembl(chembl_id, molecule) "
-            "VALUES(?1, mol_from_smiles(?2))", chembl('chembl_28_chemreps.txt'))
+            "VALUES(?1, mol_from_smiles(?2))", chembl('chembl_31_chemreps.txt'))
 
 A complete script implementing the full creation of this simple database of chemical structures is available from the examples directory of the source code distribution.
 
@@ -66,7 +66,7 @@ Substructure queries
 
 A search for substructures could be performed with a query like the following::
 
-    SELECT COUNT(*) FROM chembl WHERE mol_is_substruct(molecule, 'c1ccnnc1');
+    SELECT COUNT(*) FROM chembl WHERE mol_is_substruct(molecule, mol_from_smiles('c1ccnnc1'));
 
 but this kind of simple query would sequentially check every single molecule in the `chembl` table, resulting very inefficient. 
 
