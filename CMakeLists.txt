@@ -20,6 +20,8 @@ endif()
 find_package(SQLite3 REQUIRED)
 include_directories(${SQLite3_INCLUDE_DIRS})
 
+find_package(Boost 1.58.0 COMPONENTS system serialization iostreams REQUIRED)
+
 find_package(RDKit 2020.09.1 REQUIRED)
 include_directories(${RDKit_INCLUDE_DIRS})
 
