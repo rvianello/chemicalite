@@ -11,10 +11,10 @@
 #ifdef __MSC_VER
 #include <intrin.h>
 #define POPCNT __popcnt
-typedef unsigned int POPCNT_TYPE;
+using POPCNT_TYPE = unsigned int;
 #else
 #define POPCNT __builtin_popcountll
-typedef unsigned long long POPCNT_TYPE;
+using POPCNT_TYPE = unsigned long long;
 #endif
 
 static int byte_popcounts[] = {

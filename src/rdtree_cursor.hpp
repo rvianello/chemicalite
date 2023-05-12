@@ -14,7 +14,7 @@ class RDtreeConstraint;
 */
 class RDtreeCursor : public sqlite3_vtab_cursor {
 public:
-  typedef std::vector<std::shared_ptr<RDtreeConstraint>> Constraints;
+  using Constraints = std::vector<std::shared_ptr<RDtreeConstraint>>;
   
   RDtreeNode *node;                 /* Node cursor is currently pointing at */
   int item;                         /* Index of current item in pNode */

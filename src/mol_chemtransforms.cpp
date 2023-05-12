@@ -122,7 +122,7 @@ static int molReplSubstructsDisconnect(sqlite3_vtab *pVTab)
   return SQLITE_OK;
 }
 
-typedef RowsVecCursor<RDKit::ROMOL_SPTR> MolRowsCursor;
+using MolRowsCursor = RowsVecCursor<RDKit::ROMOL_SPTR>;
 
 static int molReplSubstructsFilter(sqlite3_vtab_cursor *pCursor, int /*idxNum*/, const char */*idxStr*/,
                      int argc, sqlite3_value **argv)

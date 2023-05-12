@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 
-typedef std::vector<std::uint8_t> Blob;
+using Blob = std::vector<std::uint8_t>;
 
 #define XSTRINGIFY(s) STRINGIFY(s)
 #define STRINGIFY(s) #s

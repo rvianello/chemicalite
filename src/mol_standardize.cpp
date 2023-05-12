@@ -15,7 +15,7 @@ static void free_params_auxdata(void * aux)
   delete (RDKit::MolStandardize::CleanupParameters *) aux;
 }
 
-typedef RDKit::RWMol * (*MolStandardizerFunc)(const RDKit::RWMol *mol, const RDKit::MolStandardize::CleanupParameters &params);
+using MolStandardizerFunc = RDKit::RWMol * (*)(const RDKit::RWMol *mol, const RDKit::MolStandardize::CleanupParameters &params);
 
 template <MolStandardizerFunc F>
 void mol_standardize(sqlite3_context* ctx, int argc, sqlite3_value** argv)
@@ -80,7 +80,7 @@ void (*mol_remove_fragments)(sqlite3_context*, int, sqlite3_value**) = strict<mo
 void (*mol_canonical_tautomer)(sqlite3_context*, int, sqlite3_value**) = strict<mol_standardize<RDKit::MolStandardize::canonicalTautomer>>;
 
 
-typedef RDKit::RWMol * (*MolParentFunc)(const RDKit::RWMol &mol, const RDKit::MolStandardize::CleanupParameters &params, bool skip_standardize);
+using MolParentFunc = RDKit::RWMol * (*)(const RDKit::RWMol &mol, const RDKit::MolStandardize::CleanupParameters &params, bool skip_standardize);
 
 template <MolParentFunc F>
 void mol_parent(sqlite3_context* ctx, int argc, sqlite3_value** argv)

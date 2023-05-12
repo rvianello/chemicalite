@@ -22,8 +22,8 @@ struct PropColumn {
   void sqlite3_result(const RDKit::ROMol & mol, sqlite3_context * ctx) const;
 };
 
-typedef std::unique_ptr<PropColumn> PropColumnPtr;
-typedef std::vector<PropColumnPtr> PropColumnPtrs;
+using PropColumnPtr = std::unique_ptr<PropColumn>;
+using PropColumnPtrs = std::vector<PropColumnPtr>;
 
 int parse_schema(const std::string & schema, PropColumnPtrs &);
 
