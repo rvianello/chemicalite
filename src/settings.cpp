@@ -17,7 +17,6 @@ extern const sqlite3_api_routines *sqlite3_api;
  */
 
 enum SettingType { OPTION, INTEGER, REAL };
-typedef enum SettingType SettingType;
 
 struct Setting {
   Setting(const char * setting, ChemicaLiteOption value)
@@ -34,7 +33,6 @@ struct Setting {
     double real;
   };
 };
-typedef struct Setting Setting;
 
 static Setting settings[] = {
   { "logging", LOGGING_DISABLED }

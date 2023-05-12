@@ -11,13 +11,11 @@ enum ChemicaLiteSetting {
 #endif
   CHEMICALITE_NUM_SETTINGS
 };
-typedef enum ChemicaLiteSetting ChemicaLiteSetting;
 
 enum ChemicaLiteOption {
   LOGGING_DISABLED, LOGGING_STDOUT, LOGGING_STDERR,
   CHEMICALITE_NUM_OPTIONS
 };
-typedef enum ChemicaLiteOption ChemicaLiteOption;
 
 const char * chemicalite_option_label(ChemicaLiteOption option);
 
