@@ -16,15 +16,15 @@ extern const sqlite3_api_routines *sqlite3_api;
  * future.
  */
 
-enum SettingType { OPTION, INTEGER, REAL };
+enum class SettingType { OPTION, INTEGER, REAL };
 
 struct Setting {
   Setting(const char * setting, ChemicaLiteOption value)
-    : key(setting), type(OPTION), option(value) {}  
+    : key(setting), type(SettingType::OPTION), option(value) {}
   Setting(const char * setting, int value)
-    : key(setting), type(INTEGER), integer(value) {}
+    : key(setting), type(SettingType::INTEGER), integer(value) {}
   Setting(const char * setting, double value)
-    : key(setting), type(REAL), real(value) {}
+    : key(setting), type(SettingType::REAL), real(value) {}
   std::string key;
   SettingType type;
   union {
@@ -60,7 +60,7 @@ const char * chemicalite_option_label(ChemicaLiteOption option)
 */
 int chemicalite_set(ChemicaLiteSetting setting, ChemicaLiteOption value)
 {
-  if (settings[setting].type != OPTION) {
+  if (settings[setting].type != SettingType::OPTION) {
     return SQLITE_MISMATCH;
   }
 
@@ -75,7 +75,7 @@ int chemicalite_set(ChemicaLiteSetting setting, ChemicaLiteOption value)
 
 int chemicalite_get(ChemicaLiteSetting setting, ChemicaLiteOption *pValue)
 {
-  if (settings[setting].type != OPTION) {
+  if (settings[setting].type != SettingType::OPTION) {
     return SQLITE_MISMATCH;
   }
   *pValue = settings[setting].option;
@@ -84,7 +84,7 @@ int chemicalite_get(ChemicaLiteSetting setting, ChemicaLiteOption *pValue)
 
 int chemicalite_set(ChemicaLiteSetting setting, int value)
 {
-  if (settings[setting].type != INTEGER) {
+  if (settings[setting].type != SettingType::INTEGER) {
     return SQLITE_MISMATCH;
   }
 
@@ -94,7 +94,7 @@ int chemicalite_set(ChemicaLiteSetting setting, int value)
 
 int chemicalite_get(ChemicaLiteSetting setting, int *pValue)
 {
-  if (settings[setting].type != INTEGER) {
+  if (settings[setting].type != SettingType::INTEGER) {
     return SQLITE_MISMATCH;
   }
   *pValue = settings[setting].integer;
@@ -103,7 +103,7 @@ int chemicalite_get(ChemicaLiteSetting setting, int *pValue)
 
 int chemicalite_set(ChemicaLiteSetting setting, double value)
 {
-  if (settings[setting].type != REAL) {
+  if (settings[setting].type != SettingType::REAL) {
     return SQLITE_MISMATCH;
   }
 
@@ -113,7 +113,7 @@ int chemicalite_set(ChemicaLiteSetting setting, double value)
 
 int chemicalite_get(ChemicaLiteSetting setting, double *pValue)
 {
-  if (settings[setting].type != REAL) {
+  if (settings[setting].type != SettingType::REAL) {
     return SQLITE_MISMATCH;
   }
   *pValue = settings[setting].real;
@@ -225,14 +225,14 @@ static int settingsColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *ctx, in
   }
   else if (N == 1) {
     switch (settings[p->rowid].type) {
-    case OPTION: 
+    case SettingType::OPTION:
       sqlite3_result_text(
         ctx, chemicalite_option_label(settings[p->rowid].option), -1, 0);
       break;
-    case INTEGER:
+    case SettingType::INTEGER:
       sqlite3_result_int(ctx, settings[p->rowid].integer);
       break;
-    case REAL:
+    case SettingType::REAL:
       sqlite3_result_double(ctx, settings[p->rowid].real);
       break;
     default:
