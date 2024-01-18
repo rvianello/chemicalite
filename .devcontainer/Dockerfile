@@ -1,5 +1,5 @@
-ARG fedora_release=38
-ARG rdkit_release=2023.03.1
+ARG fedora_release=39
+ARG rdkit_release=2023.09.4
 FROM docker.io/rvianello/fedora-rdkit-cpp:${fedora_release}-${rdkit_release}
 #FROM fedora-rdkit-cpp-dev:latest
 
@@ -17,7 +17,7 @@ ARG USER_GID=$USER_UID
 RUN dnf install -y \
     boost-devel \
     #cairo-devel \
-    catch2-devel \
+    catch-devel \
     cmake \
     cppcheck \
     findutils \
