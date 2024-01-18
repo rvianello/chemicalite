@@ -306,7 +306,7 @@ static void mol_get_prop(sqlite3_context* ctx, int /*argc*/, sqlite3_value** arg
     try {
       F(ctx, *mol, key);
     }
-    catch (const boost::bad_any_cast & e) {
+    catch (const std::bad_any_cast & e) {
       sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
     }
   }

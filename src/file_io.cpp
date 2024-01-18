@@ -127,7 +127,7 @@ void PropColumn::sqlite3_result(const RDKit::ROMol & mol, sqlite3_context * ctx)
         assert(!"Unexpected value for Type enum");
     }
   }
-  catch (const boost::bad_any_cast & e) {
+  catch (const std::bad_any_cast & e) {
     chemicalite_log(SQLITE_MISMATCH, "could not convert the mol property to the requested type");
     sqlite3_result_error_code(ctx, SQLITE_MISMATCH);
   }
