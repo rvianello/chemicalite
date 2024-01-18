@@ -38,7 +38,7 @@ void test_select_value(sqlite3 * db, const std::string & query, double expected)
   REQUIRE(value_type == SQLITE_FLOAT);
 
   double value = sqlite3_column_double(pStmt, 0);
-  REQUIRE(value == Approx(expected));
+  REQUIRE(value == Catch::Approx(expected));
 
   sqlite3_finalize(pStmt);
 }

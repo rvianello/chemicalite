@@ -2,7 +2,7 @@
 #define CHEMICALITE_TEST_COMMON_INCLUDED
 #include <string>
 #include <sqlite3.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 void test_db_open(sqlite3 **db);
 void test_db_close(sqlite3 *db);

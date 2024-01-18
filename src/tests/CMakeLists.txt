@@ -1,4 +1,4 @@
-find_package(Catch2 REQUIRED)
+find_package(Catch2 3 REQUIRED)
 include(Catch)
 
 string(REGEX MATCH "clang" CMAKE_COMPILER_IS_CLANG "${CMAKE_C_COMPILER}")
@@ -8,7 +8,6 @@ if (CMAKE_COMPILER_IS_CLANG)
 endif()
 
 set(TEST_CHEMICALITE_SRC_FILES
-    test_main.cpp
     test_common.cpp
     test_version_info.cpp
     test_mol_chemtransforms.cpp
@@ -34,7 +33,7 @@ add_executable(test_chemicalite ${TEST_CHEMICALITE_SRC_FILES})
 
 target_link_libraries(
     test_chemicalite
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     ${CHEMICALITE_RDKIT_LIBRARIES}
     ${SQLite3_LIBRARIES}
     )
