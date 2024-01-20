@@ -146,7 +146,7 @@ static int rdtreeRename(sqlite3_vtab *vtab, const char *newname)
 
 
 static sqlite3_module rdtreeModule = {
-  3,                           /* iVersion */
+  0,                           /* iVersion */
   rdtreeCreate,                /* xCreate - create a table */
   rdtreeConnect,               /* xConnect - connect to an existing table */
   rdtreeBestIndex,             /* xBestIndex - Determine search strategy */

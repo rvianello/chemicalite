@@ -189,7 +189,7 @@ static int molReplSubstructsColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context
 ** The mol replace substructs module
 */
 static sqlite3_module molReplSubstructsModule = {
-  3,                           /* iVersion */
+  0,                           /* iVersion */
   0,                           /* xCreate - create a table */ /* null because eponymous-only */
   molReplSubstructsConnect,    /* xConnect - connect to an existing table */
   molReplSubstructsBestIndex,  /* xBestIndex - Determine search strategy */
