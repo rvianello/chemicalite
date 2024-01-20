@@ -22,8 +22,7 @@ jobs:
             cxx-compiler: clangxx_osx-64
             link-path-env-var: DYLD_LIBRARY_PATH
         rdkit:
-          - 2022.03.1
-          - 2021.09.4
+          - 2023.09.4
         build-type:
           - Release
           - Debug
@@ -50,7 +49,7 @@ jobs:
         run: >
           conda create -n chemicalite-build
           cmake ${{ matrix.config.c-compiler }} ${{ matrix.config.cxx-compiler }}
-          sqlite rdkit=${{ matrix.rdkit }} eigen catch2=2 zlib
+          sqlite rdkit=${{ matrix.rdkit }} eigen catch2=3 zlib
       # Build and test
       - name: Build and test the chemicalite extension
         shell: bash -l {0}
@@ -76,7 +75,7 @@ jobs:
           - os: windows-latest
             miniforge-url: "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Windows-x86_64.exe"
         rdkit:
-          - 2021.09.2
+          - 2023.09.4
         build-type:
           - Release
           #- Debug
