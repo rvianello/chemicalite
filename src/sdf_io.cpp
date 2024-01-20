@@ -320,7 +320,7 @@ static int sdfReaderRowid(sqlite3_vtab_cursor *pCursor, sqlite_int64 *pRowid)
 ** The SDF reader module
 */
 static sqlite3_module sdfReaderModule = {
-  0,                           /* iVersion */
+  3,                           /* iVersion */
   sdfReaderInit,               /* xCreate - create a table */
   sdfReaderInit,               /* xConnect - connect to an existing table */
   sdfReaderBestIndex,          /* xBestIndex - Determine search strategy */

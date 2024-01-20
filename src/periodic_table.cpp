@@ -168,7 +168,7 @@ static int pteRowid(sqlite3_vtab_cursor *pCursor, sqlite_int64 *pRowid)
 ** The periodic table module, collecting the methods that operate on the PeriodicTable vtab
 */
 static sqlite3_module pteModule = {
-  0,                           /* iVersion */
+  3,                           /* iVersion */
   0,                           /* xCreate - create a table */ /* null because eponymous-only */
   pteConnect,                  /* xConnect - connect to an existing table */
   pteBestIndex,                /* xBestIndex - Determine search strategy */

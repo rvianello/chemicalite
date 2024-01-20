@@ -322,7 +322,7 @@ static int settingsUpdate(sqlite3_vtab */*pVTab*/, int argc, sqlite3_value **arg
 ** The settings module, collecting the methods that operate on the Settings vtab
 */
 static sqlite3_module settingsModule = {
-  0,                           /* iVersion */
+  3,                           /* iVersion */
   0,                           /* xCreate - create a table */ /* null because eponymous-only */
   settingsConnect,             /* xConnect - connect to an existing table */
   settingsBestIndex,           /* xBestIndex - Determine search strategy */

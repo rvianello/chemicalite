@@ -172,7 +172,7 @@ static int molPropsRowid(sqlite3_vtab_cursor *pCursor, sqlite_int64 *pRowid)
 ** The mol props module, collecting the methods that implement mol_prop_list as an eponymous virtual table
 */
 static sqlite3_module molPropsModule = {
-  0,                           /* iVersion */
+  3,                           /* iVersion */
   0,                           /* xCreate - create a table */ /* null because eponymous-only */
   molPropsConnect,             /* xConnect - connect to an existing table */
   molPropsBestIndex,           /* xBestIndex - Determine search strategy */
