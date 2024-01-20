@@ -189,7 +189,11 @@ static int molReplSubstructsColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context
 ** The mol replace substructs module
 */
 static sqlite3_module molReplSubstructsModule = {
-  0,                           /* iVersion */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  4,                           /* iVersion */
+#else
+  3,                           /* iVersion */
+#endif
   0,                           /* xCreate - create a table */ /* null because eponymous-only */
   molReplSubstructsConnect,    /* xConnect - connect to an existing table */
   molReplSubstructsBestIndex,  /* xBestIndex - Determine search strategy */
@@ -213,6 +217,10 @@ static sqlite3_module molReplSubstructsModule = {
   0,                           /* xRelease */
   0,                           /* xRollbackTo */
   0                            /* xShadowName */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  ,
+  0                            /* xIntegrity */
+#endif
 };
 
 static void mol_replace_sidechains(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)

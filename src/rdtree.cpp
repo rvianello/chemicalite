@@ -146,7 +146,11 @@ static int rdtreeRename(sqlite3_vtab *vtab, const char *newname)
 
 
 static sqlite3_module rdtreeModule = {
-  0,                           /* iVersion */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  4,                           /* iVersion */
+#else
+  3,                           /* iVersion */
+#endif
   rdtreeCreate,                /* xCreate - create a table */
   rdtreeConnect,               /* xConnect - connect to an existing table */
   rdtreeBestIndex,             /* xBestIndex - Determine search strategy */
@@ -170,6 +174,10 @@ static sqlite3_module rdtreeModule = {
   0,                           /* xRelease */
   0,                           /* xRollbackTo */
   0                            /* xShadowName */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  ,
+  0                            /* xIntegrity */
+#endif
 };
 
 /*

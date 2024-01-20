@@ -168,7 +168,11 @@ static int pteRowid(sqlite3_vtab_cursor *pCursor, sqlite_int64 *pRowid)
 ** The periodic table module, collecting the methods that operate on the PeriodicTable vtab
 */
 static sqlite3_module pteModule = {
-  0,                           /* iVersion */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  4,                           /* iVersion */
+#else
+  3,                           /* iVersion */
+#endif
   0,                           /* xCreate - create a table */ /* null because eponymous-only */
   pteConnect,                  /* xConnect - connect to an existing table */
   pteBestIndex,                /* xBestIndex - Determine search strategy */
@@ -192,6 +196,10 @@ static sqlite3_module pteModule = {
   0,                           /* xRelease */
   0,                           /* xRollbackTo */
   0                            /* xShadowName */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  ,
+  0                            /* xIntegrity */
+#endif
 };
 
 int chemicalite_init_periodic_table(sqlite3 *db)

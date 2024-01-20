@@ -322,7 +322,11 @@ static int settingsUpdate(sqlite3_vtab */*pVTab*/, int argc, sqlite3_value **arg
 ** The settings module, collecting the methods that operate on the Settings vtab
 */
 static sqlite3_module settingsModule = {
-  0,                           /* iVersion */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  4,                           /* iVersion */
+#else
+  3,                           /* iVersion */
+#endif
   0,                           /* xCreate - create a table */ /* null because eponymous-only */
   settingsConnect,             /* xConnect - connect to an existing table */
   settingsBestIndex,           /* xBestIndex - Determine search strategy */
@@ -346,6 +350,10 @@ static sqlite3_module settingsModule = {
   0,                           /* xRelease */
   0,                           /* xRollbackTo */
   0                            /* xShadowName */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  ,
+  0                            /* xIntegrity */
+#endif
 };
 
 

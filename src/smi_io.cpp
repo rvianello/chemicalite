@@ -483,7 +483,11 @@ static int smiReaderRowid(sqlite3_vtab_cursor *pCursor, sqlite_int64 *pRowid)
 ** The smiles file reader module
 */
 static sqlite3_module smiReaderModule = {
-  0,                           /* iVersion */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  4,                           /* iVersion */
+#else
+  3,                           /* iVersion */
+#endif
   smiReaderInit,               /* xCreate - create a table */
   smiReaderInit,               /* xConnect - connect to an existing table */
   smiReaderBestIndex,          /* xBestIndex - Determine search strategy */
@@ -507,6 +511,10 @@ static sqlite3_module smiReaderModule = {
   0,                           /* xRelease */
   0,                           /* xRollbackTo */
   0                            /* xShadowName */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  ,
+  0                            /* xIntegrity */
+#endif
 };
 
 

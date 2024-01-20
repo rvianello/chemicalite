@@ -172,7 +172,11 @@ static int molPropsRowid(sqlite3_vtab_cursor *pCursor, sqlite_int64 *pRowid)
 ** The mol props module, collecting the methods that implement mol_prop_list as an eponymous virtual table
 */
 static sqlite3_module molPropsModule = {
-  0,                           /* iVersion */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  4,                           /* iVersion */
+#else
+  3,                           /* iVersion */
+#endif
   0,                           /* xCreate - create a table */ /* null because eponymous-only */
   molPropsConnect,             /* xConnect - connect to an existing table */
   molPropsBestIndex,           /* xBestIndex - Determine search strategy */
@@ -196,6 +200,10 @@ static sqlite3_module molPropsModule = {
   0,                           /* xRelease */
   0,                           /* xRollbackTo */
   0                            /* xShadowName */
+#if SQLITE_VERSION_NUMBER >= 3044000
+  ,
+  0                            /* xIntegrity */
+#endif
 };
 
 static void mol_set_prop(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
