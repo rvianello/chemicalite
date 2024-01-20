@@ -35,7 +35,7 @@ jobs:
           installer-url: ${{ matrix.config.miniforge-url }}
           allow-softlinks: true
           show-channel-urls: true
-          use-only-tar-bz2: true
+          use-only-tar-bz2: false
           activate-environment: ""
       # Display some diagnostic info and configure the available conda installation
       - name: Run conda info
@@ -90,7 +90,7 @@ jobs:
           channel-priority: strict
           allow-softlinks: true
           show-channel-urls: true
-          use-only-tar-bz2: true
+          use-only-tar-bz2: false
           activate-environment: ""
       # Display some diagnostic info and configure the available conda installation
       - name: Run conda info
