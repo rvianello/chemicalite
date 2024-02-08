@@ -1,5 +1,11 @@
 # Changelog
 
+## [2024.02.1] - 2024-02-08
+
+### Changed
+
+- Updated the RDKit required version in the CMake config to 2023.09.1
+
 ## [2022.04.1] - 2022-04-05
 
 ### Fixed

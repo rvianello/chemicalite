@@ -5,7 +5,7 @@ project(chemicalite)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CHEMICALITE_VERSION "2024.02.1.dev1")
+set(CHEMICALITE_VERSION "2024.02.1")
 
 add_compile_definitions("CHEMICALITE_VERSION=${CHEMICALITE_VERSION}")
 
@@ -22,7 +22,7 @@ include_directories(${SQLite3_INCLUDE_DIRS})
 
 find_package(Boost 1.58.0 COMPONENTS system serialization iostreams REQUIRED)
 
-find_package(RDKit 2020.09.1 REQUIRED)
+find_package(RDKit 2023.09.1 REQUIRED)
 include_directories(${RDKit_INCLUDE_DIRS})
 
 option(CHEMICALITE_ENABLE_OPTIMIZED_POPCNT
