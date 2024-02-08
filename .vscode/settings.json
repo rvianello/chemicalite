@@ -3,5 +3,6 @@
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "C_Cpp.errorSquiggles": "Enabled",
     "python.pythonPath": "/usr/bin/python3",
-    "restructuredtext.confPath": "${workspaceFolder}/docs"
+    "restructuredtext.confPath": "${workspaceFolder}/docs",
+    "esbonio.sphinx.confDir": "${workspaceFolder}/docs"
 }

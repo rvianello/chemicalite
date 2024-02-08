@@ -19,7 +19,10 @@
 		"ms-vscode.cpptools",
 		"ms-vscode.cmake-tools",
 		"lextudio.restructuredtext",
-		"ms-python.python"
+		"ms-python.python",
+		"ms-vscode.cpptools-extension-pack",
+		"trond-snekvik.simple-rst",
+		"github.vscode-github-actions"
 	],
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
