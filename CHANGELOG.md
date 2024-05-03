@@ -1,5 +1,12 @@
 # Changelog
 
+## [2024.05.1] - 2024-05-02
+
+### Changed
+
+- Migrated the computation of atom pairs and topological torsion fingerprints
+  to use the fingerprint generator API
+
 ## [2024.02.1] - 2024-02-08
 
 ### Changed

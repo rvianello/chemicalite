@@ -4,7 +4,9 @@
 extern const sqlite3_api_routines *sqlite3_api;
 
 #include <GraphMol/Fingerprints/Fingerprints.h>
-#include <GraphMol/Fingerprints/AtomPairs.h>
+#include <GraphMol/Fingerprints/FingerprintGenerator.h>
+#include <GraphMol/Fingerprints/AtomPairGenerator.h>
+#include <GraphMol/Fingerprints/TopologicalTorsionGenerator.h>
 #include <GraphMol/Fingerprints/MorganFingerprints.h>
 #include <GraphMol/Fingerprints/MACCS.h>
 #include <DataStructs/ExplicitBitVect.h>
@@ -90,12 +92,20 @@ static ExplicitBitVect * mol_rdkit_bfp(const RDKit::ROMol & mol, int length)
 
 static ExplicitBitVect * mol_atom_pairs_bfp(const RDKit::ROMol & mol, int length)
 {
-  return RDKit::AtomPairs::getHashedAtomPairFingerprintAsBitVect(mol, length);
+  std::unique_ptr<RDKit::FingerprintGenerator<std::uint32_t>>  atomPairGenerator {
+    RDKit::AtomPair::getAtomPairGenerator<std::uint32_t>(
+      1, RDKit::AtomPair::maxPathLen - 1, false, true, nullptr, true, length)
+  };
+  return atomPairGenerator->getFingerprint(mol);
 }
 
 static ExplicitBitVect * mol_topological_torsion_bfp(const RDKit::ROMol & mol, int length)
 {
-  return RDKit::AtomPairs::getHashedTopologicalTorsionFingerprintAsBitVect(mol, length);
+  std::unique_ptr<RDKit::FingerprintGenerator<std::uint64_t>> topologicalTorsionGenerator {
+      RDKit::TopologicalTorsion::getTopologicalTorsionGenerator<std::uint64_t>(
+          false, 4, nullptr, true, length)
+  };
+  return topologicalTorsionGenerator->getFingerprint(mol);
 }
 
 static ExplicitBitVect * mol_maccs_bfp(const RDKit::ROMol & mol, int /* unused length */)
