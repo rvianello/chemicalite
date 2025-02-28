@@ -7,23 +7,28 @@
 	// https://github.com/microsoft/vscode-remote-release/issues/4443
 	"runArgs": ["--userns=keep-id", "--cap-add=SYS_PTRACE", "--security-opt", "label=disable"],
 
-	// Set *default* container specific settings.json values on container create.
-	"settings": { 
-		"cmake.configureSettings": {
-			"CMAKE_INSTALL_PREFIX": "/usr"
+	"customizations": {
+		"vscode": {
+			// Set *default* container specific settings.json values on container create.
+			"settings": { 
+				"cmake.configureSettings": {
+					"CMAKE_INSTALL_PREFIX": "/usr"
+				},
+				"cmake.buildDirectory": "${workspaceFolder}/build"
+			},
+
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"ms-vscode.cpptools",
+				"ms-vscode.cmake-tools",
+				"lextudio.restructuredtext",
+				"ms-python.python",
+				"ms-vscode.cpptools-extension-pack",
+				"trond-snekvik.simple-rst",
+				"github.vscode-github-actions"
+			]
 		}
 	},
-
-	// Add the IDs of extensions you want installed when the container is created.
-	"extensions": [
-		"ms-vscode.cpptools",
-		"ms-vscode.cmake-tools",
-		"lextudio.restructuredtext",
-		"ms-python.python",
-		"ms-vscode.cpptools-extension-pack",
-		"trond-snekvik.simple-rst",
-		"github.vscode-github-actions"
-	],
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
