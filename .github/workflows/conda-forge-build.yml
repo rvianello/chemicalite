@@ -65,7 +65,8 @@ jobs:
         run: conda remove -n chemicalite-build --all
 
   windows-build:
-    if: "false" # DISABLED
+    # DISABLED
+    if: false
     name: windows build (${{ matrix.config.os }} ${{ matrix.build-type }} rdkit:${{ matrix.rdkit }})
     runs-on: ${{ matrix.config.os }}
     strategy:
