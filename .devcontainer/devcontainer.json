@@ -25,7 +25,8 @@
 				"ms-python.python",
 				"ms-vscode.cpptools-extension-pack",
 				"trond-snekvik.simple-rst",
-				"github.vscode-github-actions"
+				"github.vscode-github-actions",
+				"NathanJ.cppcheck-plugin"
 			]
 		}
 	},

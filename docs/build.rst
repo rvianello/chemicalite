@@ -11,7 +11,7 @@ Dependencies
 Configure and build
 -------------------
 
-The supported build system uses `cmake`, and it requires RDKit 2020.09.1 or later.
+The supported build system uses `cmake`, and it requires RDKit 2023.09.1 or later.
 
 .. note::
   The code was built successfully on some Linux and OSX systems. Building on other operating systems (e.g. Windows) is probably possible, but it wasn't tested.

@@ -6,6 +6,7 @@ RDtreeItem::RDtreeItem(int sz)
 {
 }
 
+#if 0
 double RDtreeItem::weight_distance(const RDtreeItem & a, const RDtreeItem & b)
 {
   int d1 = abs(a.min_weight - b.min_weight);
@@ -13,11 +14,14 @@ double RDtreeItem::weight_distance(const RDtreeItem & a, const RDtreeItem & b)
   return (double) (d1 + d2);
   /* return (double) (d1 > d2) ? d1 : d2; */
 }
+#endif
 
+#if 0
 int RDtreeItem::weight() const
 {
   return bfp_op_weight(bfp.size(), bfp.data());
 }
+#endif
 
 bool RDtreeItem::contains(const RDtreeItem & other) const
 {
@@ -29,10 +33,12 @@ bool RDtreeItem::contains(const RDtreeItem & other) const
     );
 }
 
+#if 0
 int RDtreeItem::growth(const RDtreeItem & added) const
 {
   return bfp_op_growth(bfp.size(), bfp.data(), added.bfp.data());
 }
+#endif
 
 void RDtreeItem::extend_bounds(const RDtreeItem & added)
 {
