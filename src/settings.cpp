@@ -359,14 +359,11 @@ static sqlite3_module settingsModule = {
 
 int chemicalite_init_settings(sqlite3 *db)
 {
-  int rc = SQLITE_OK;
-
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_module_v2(db, "chemicalite_settings", &settingsModule, 
-				  0,  /* Client data for xCreate/xConnect */
-				  0   /* Module destructor function */
-				  );
-  }
+  int rc = sqlite3_create_module_v2(
+    db, "chemicalite_settings", &settingsModule, 
+    0,  /* Client data for xCreate/xConnect */
+    0   /* Module destructor function */
+  );
 
   return rc;
 }

@@ -59,7 +59,15 @@ if (CHEMICALITE_ENABLE_CPPCHECK)
     if(CPPCHECK)
         add_custom_target(
             cppcheck
-            COMMAND ${CPPCHECK} --enable=all --inconclusive --quiet --std=c++${CXX_STANDARD} -I${CMAKE_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/src
+            COMMAND ${CPPCHECK}
+              --enable=all
+              --inconclusive
+              --quiet
+              --std=c++${CXX_STANDARD}
+              --cppcheck-build-dir=${CMAKE_BINARY_DIR}/cppcheck
+              --inline-suppr
+              -I ${CMAKE_SOURCE_DIR}/include
+              ${CMAKE_SOURCE_DIR}/src
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Running CppCheck"
         )

@@ -32,6 +32,7 @@ static void boost_version(sqlite3_context* ctx, int /*argc*/, sqlite3_value** /*
 int chemicalite_init_versions(sqlite3 *db)
 {
   int rc = SQLITE_OK;
+  // cppcheck-suppress knownConditionTrueFalse
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "chemicalite_version", 0, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, chemicalite_version, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "rdkit_version", 0, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, rdkit_version, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "rdkit_build", 0, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, rdkit_build, 0, 0);

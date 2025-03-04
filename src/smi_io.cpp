@@ -348,8 +348,8 @@ static int smiReaderFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char 
     int argn = 1;
 
     if ((argn < argc) && (query_mask & (1 << SmiReaderColumn::DELIMITER))) {
-      sqlite3_value *arg = argv[argn++];
-      int value_type = sqlite3_value_type(arg);
+      arg = argv[argn++];
+      value_type = sqlite3_value_type(arg);
       if (value_type != SQLITE_TEXT) {
         chemicalite_log(
           SQLITE_ERROR, "the smi_reader function expects the delimiter argument to be of type TEXT");
@@ -359,8 +359,8 @@ static int smiReaderFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char 
     }
 
     if ((argn < argc) && (query_mask & (1 << SmiReaderColumn::SMILES_COLUMN))) {
-      sqlite3_value *arg = argv[argn++];
-      int value_type = sqlite3_value_type(arg);
+      arg = argv[argn++];
+      value_type = sqlite3_value_type(arg);
       if (value_type != SQLITE_INTEGER) {
         chemicalite_log(
           SQLITE_ERROR, "the smi_reader function expects the smiles_column argument to be of type INTEGER");
@@ -370,8 +370,8 @@ static int smiReaderFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char 
     }
 
     if ((argn < argc) && (query_mask & (1 << SmiReaderColumn::NAME_COLUMN))) {
-      sqlite3_value *arg = argv[argn++];
-      int value_type = sqlite3_value_type(arg);
+      arg = argv[argn++];
+      value_type = sqlite3_value_type(arg);
       if (value_type != SQLITE_INTEGER) {
         chemicalite_log(
           SQLITE_ERROR, "the smi_reader function expects the name_column argument to be of type INTEGER");
@@ -381,8 +381,8 @@ static int smiReaderFilter(sqlite3_vtab_cursor *pCursor, int idxNum, const char 
     }
 
     if ((argn < argc) && (query_mask & (1 << SmiReaderColumn::TITLE_LINE))) {
-      sqlite3_value *arg = argv[argn++];
-      int value_type = sqlite3_value_type(arg);
+      arg = argv[argn++];
+      value_type = sqlite3_value_type(arg);
       if (value_type != SQLITE_INTEGER) {
         chemicalite_log(
           SQLITE_ERROR, "the smi_reader function expects the title_line argument to be of type INTEGER (bool)");
@@ -440,18 +440,13 @@ static int smiReaderColumn(sqlite3_vtab_cursor *pCursor, sqlite3_context *ctx, i
   }
   else if (N == 0) {
     // the molecule
-    if (p->mol) {
-      int rc = SQLITE_OK;
-      Blob blob = mol_to_blob(*p->mol, &rc);
-      if (rc == SQLITE_OK) {
-        sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
-      }
-      else {
-        sqlite3_result_error_code(ctx, rc);
-      }
+    int rc = SQLITE_OK;
+    Blob blob = mol_to_blob(*p->mol, &rc);
+    if (rc == SQLITE_OK) {
+      sqlite3_result_blob(ctx, blob.data(), blob.size(), SQLITE_TRANSIENT);
     }
     else {
-      sqlite3_result_null(ctx);
+      sqlite3_result_error_code(ctx, rc);
     }
   }
   else {
@@ -693,16 +688,16 @@ void smi_writer_final(sqlite3_context * ctx)
 
 int chemicalite_init_smi_io(sqlite3 *db)
 {
-  int rc = SQLITE_OK;
-
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_module_v2(db, "smi_reader", &smiReaderModule, 
-				  0,  /* Client data for xCreate/xConnect */
-				  0   /* Module destructor function */
-				  );
-  }
+  int rc = sqlite3_create_module_v2(
+    db, "smi_reader", &smiReaderModule, 
+    0,  /* Client data for xCreate/xConnect */
+    0   /* Module destructor function */
+  );
 
   for (int nargs=2; nargs<7; ++nargs) {
+    if (rc != SQLITE_OK) {
+      break;
+    }
     rc = sqlite3_create_window_function(
       db,
       "smi_writer",

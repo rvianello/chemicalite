@@ -457,14 +457,11 @@ void sdf_writer_final(sqlite3_context * ctx)
 
 int chemicalite_init_sdf_io(sqlite3 *db)
 {
-  int rc = SQLITE_OK;
-
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_module_v2(db, "sdf_reader", &sdfReaderModule, 
-				  0,  /* Client data for xCreate/xConnect */
-				  0   /* Module destructor function */
-				  );
-  }
+  int rc = sqlite3_create_module_v2(
+    db, "sdf_reader", &sdfReaderModule, 
+    0,  /* Client data for xCreate/xConnect */
+    0   /* Module destructor function */
+  );
 
   if (rc == SQLITE_OK) {
     rc = sqlite3_create_window_function(

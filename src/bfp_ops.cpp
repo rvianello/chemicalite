@@ -59,6 +59,7 @@ int bfp_op_weight(int length, const uint8_t *bfp)
   return total_popcount;
 }
 
+// cppcheck-suppress unusedFunction
 int bfp_op_subset_weight(int length, const uint8_t *bfp, const uint8_t byte_mask)
 {
   int total_popcount = 0; 

@@ -74,11 +74,13 @@ MolT * binary_mol_to_mol(const std::string & bmol, int * rc)
   return nullptr;
 }
 
+// cppcheck-suppress unusedFunction
 RDKit::ROMol * binary_mol_to_romol(const std::string & bmol, int * rc)
 {
   return binary_mol_to_mol<RDKit::ROMol>(bmol, rc);
 }
 
+// cppcheck-suppress unusedFunction
 RDKit::RWMol * binary_mol_to_rwmol(const std::string & bmol, int * rc)
 {
   return binary_mol_to_mol<RDKit::RWMol>(bmol, rc);
@@ -94,11 +96,13 @@ MolT * blob_to_mol(const Blob &blob, int * rc)
   return nullptr;
 }
 
+// cppcheck-suppress unusedFunction
 RDKit::ROMol * blob_to_romol(const Blob &blob, int * rc)
 {
   return blob_to_mol<RDKit::ROMol>(blob, rc);
 }
 
+// cppcheck-suppress unusedFunction
 RDKit::RWMol * blob_to_rwmol(const Blob &blob, int * rc)
 {
   return blob_to_mol<RDKit::RWMol>(blob, rc);
