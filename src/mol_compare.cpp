@@ -107,6 +107,7 @@ static void mol_compare(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv
 int chemicalite_init_mol_compare(sqlite3 *db)
 {
   int rc = SQLITE_OK;
+  // cppcheck-suppress knownConditionTrueFalse
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_is_substruct", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_compare<mol_is_substruct>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_is_superstruct", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_compare<mol_is_superstruct>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_cmp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_compare<mol_cmp>>, 0, 0);

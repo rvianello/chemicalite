@@ -82,6 +82,7 @@ static double dice_similarity(const std::string & bfp1, const std::string & bfp2
 int chemicalite_init_bfp_compare(sqlite3 *db)
 {
   int rc = SQLITE_OK;
+  // cppcheck-suppress knownConditionTrueFalse
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "bfp_tanimoto", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<bfp_compare<tanimoto_similarity>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "bfp_dice", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<bfp_compare<dice_similarity>>, 0, 0);
   return rc;

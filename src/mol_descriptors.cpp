@@ -77,6 +77,7 @@ int chemicalite_init_mol_descriptors(sqlite3 *db)
 {
   int rc = SQLITE_OK;
 
+  // cppcheck-suppress knownConditionTrueFalse
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_amw", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<MOL_DESCRIPTOR(mol_amw)>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_tpsa", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<MOL_DESCRIPTOR(mol_tpsa)>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_fraction_csp3", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<MOL_DESCRIPTOR(mol_fraction_csp3)>, 0, 0);

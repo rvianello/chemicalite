@@ -243,29 +243,15 @@ int chemicalite_init_mol_to_bfp(sqlite3 *db)
 {
   int rc = SQLITE_OK;
 
-  //if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_layered_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
+  // cppcheck-suppress knownConditionTrueFalse
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_layered_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_layered_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
-
-  //if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_rdkit_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_rdkit_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_rdkit_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_rdkit_bfp, DEFAULT_LAYERED_BFP_LENGTH>>, 0, 0);
-
-  //if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_atom_pairs_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_atom_pairs_bfp, DEFAULT_HASHED_PAIR_BFP_LENGTH>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_atom_pairs_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_atom_pairs_bfp, DEFAULT_HASHED_PAIR_BFP_LENGTH>>, 0, 0);
-
-  //if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_topological_torsion_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_topological_torsion_bfp, DEFAULT_HASHED_TORSION_BFP_LENGTH>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_topological_torsion_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_topological_torsion_bfp, DEFAULT_HASHED_TORSION_BFP_LENGTH>>, 0, 0);
-
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_maccs_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_maccs_bfp, -1>>, 0, 0);
-
-  //if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_pattern_bfp", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_pattern_bfp, DEFAULT_SSS_BFP_LENGTH>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_pattern_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_bfp<mol_pattern_bfp, DEFAULT_SSS_BFP_LENGTH>>, 0, 0);
-
-  //if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_morgan_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_morgan_bfp<mol_morgan_bfp, DEFAULT_MORGAN_BFP_LENGTH>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_morgan_bfp", 3, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_morgan_bfp<mol_morgan_bfp, DEFAULT_MORGAN_BFP_LENGTH>>, 0, 0);
-
-  //if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_feat_morgan_bfp", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_morgan_bfp<mol_feat_morgan_bfp, DEFAULT_MORGAN_BFP_LENGTH>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_feat_morgan_bfp", 3, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_morgan_bfp<mol_feat_morgan_bfp, DEFAULT_MORGAN_BFP_LENGTH>>, 0, 0);
-
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "bfp_dummy", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<bfp_dummy>, 0, 0);
 
   return rc;

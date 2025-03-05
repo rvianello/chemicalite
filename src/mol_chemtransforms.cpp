@@ -315,6 +315,7 @@ int chemicalite_init_mol_chemtransforms(sqlite3 *db)
 {
   int rc = SQLITE_OK;
 
+  // cppcheck-suppress knownConditionTrueFalse
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_delete_substructs", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_delete_substructs>, 0, 0);
   if (rc == SQLITE_OK) {
     rc = sqlite3_create_module_v2(db, "mol_replace_substructs", &molReplSubstructsModule, 

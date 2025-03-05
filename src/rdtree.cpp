@@ -475,14 +475,11 @@ static void rdtree_tanimoto(sqlite3_context* ctx, int /*argc*/, sqlite3_value** 
 
 int chemicalite_init_rdtree(sqlite3 *db)
 {
-  int rc = SQLITE_OK;
-
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_module_v2(db, "rdtree", &rdtreeModule, 
-				0,  /* Client data for xCreate/xConnect */
-				0   /* Module destructor function */
-				);
-  }
+  int rc = sqlite3_create_module_v2(
+    db, "rdtree", &rdtreeModule, 
+		0,  /* Client data for xCreate/xConnect */
+		0   /* Module destructor function */
+  );
 
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "rdtree_subset", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<rdtree_subset>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "rdtree_tanimoto", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<rdtree_tanimoto>, 0, 0);

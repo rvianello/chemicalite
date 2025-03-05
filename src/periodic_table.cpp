@@ -204,14 +204,11 @@ static sqlite3_module pteModule = {
 
 int chemicalite_init_periodic_table(sqlite3 *db)
 {
-  int rc = SQLITE_OK;
-
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_module_v2(db, "periodic_table", &pteModule, 
-				  0,  /* Client data for xCreate/xConnect */
-				  0   /* Module destructor function */
-				  );
-  }
+  int rc = sqlite3_create_module_v2(
+    db, "periodic_table", &pteModule, 
+		0,  /* Client data for xCreate/xConnect */
+		0   /* Module destructor function */
+  );
 
   return rc;
 }

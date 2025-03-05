@@ -39,6 +39,7 @@ int chemicalite_init_bfp_descriptors(sqlite3 *db)
 {
   int rc = SQLITE_OK;
 
+  // cppcheck-suppress knownConditionTrueFalse
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "bfp_length", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<BFP_DESCRIPTOR(bfp_length)>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "bfp_weight", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<BFP_DESCRIPTOR(bfp_weight)>, 0, 0);
  

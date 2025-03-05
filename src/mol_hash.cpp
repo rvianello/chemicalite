@@ -28,6 +28,7 @@ static void mol_hash(sqlite3_context* ctx, int /*argc*/, sqlite3_value** argv)
 int chemicalite_init_mol_hash(sqlite3 *db)
 {
   int rc = SQLITE_OK;
+  // cppcheck-suppress knownConditionTrueFalse
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_hash_anonymousgraph", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_hash<RDKit::MolHash::HashFunction::AnonymousGraph>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_hash_elementgraph", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_hash<RDKit::MolHash::HashFunction::ElementGraph>>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_hash_canonicalsmiles", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_hash<RDKit::MolHash::HashFunction::CanonicalSmiles>>, 0, 0);

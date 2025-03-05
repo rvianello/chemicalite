@@ -66,7 +66,9 @@ if (CHEMICALITE_ENABLE_CPPCHECK)
               --std=c++${CXX_STANDARD}
               --cppcheck-build-dir=${CMAKE_BINARY_DIR}/cppcheck
               --inline-suppr
-              -I ${CMAKE_SOURCE_DIR}/include
+              --suppress=missingIncludeSystem
+              --suppress=funcArgNamesDifferent
+              --suppress=cstyleCast
               ${CMAKE_SOURCE_DIR}/src
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Running CppCheck"

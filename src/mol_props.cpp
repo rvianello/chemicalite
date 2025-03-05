@@ -346,14 +346,11 @@ static void mol_get_float_prop(sqlite3_context* ctx, const RDKit::ROMol & mol, c
 
 int chemicalite_init_mol_props(sqlite3 *db)
 {
-  int rc = SQLITE_OK;
-
-  if (rc == SQLITE_OK) {
-    rc = sqlite3_create_module_v2(db, "mol_prop_list", &molPropsModule, 
-				  0,  /* Client data for xCreate/xConnect */
-				  0   /* Module destructor function */
-				  );
-  }
+  int rc = sqlite3_create_module_v2(
+    db, "mol_prop_list", &molPropsModule, 
+		0,  /* Client data for xCreate/xConnect */
+		0   /* Module destructor function */
+  );
 
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_set_prop", 3, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_set_prop>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_has_prop", 2, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_has_prop>, 0, 0);

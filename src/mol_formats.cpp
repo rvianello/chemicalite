@@ -280,11 +280,11 @@ int chemicalite_init_mol_formats(sqlite3 *db)
 {
   int rc = SQLITE_OK;
 
+  // cppcheck-suppress knownConditionTrueFalse
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_from_binary_mol", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_from_binary_mol>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_from_smiles", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_from_smiles>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_from_smarts", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_from_smarts>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_from_molblock", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_from_molblock>, 0, 0);
-
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_to_binary_mol", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_binary_mol>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_to_smiles", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_smiles>, 0, 0);
   if (rc == SQLITE_OK) rc = sqlite3_create_function(db, "mol_to_smarts", 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, strict<mol_to_smarts>, 0, 0);
